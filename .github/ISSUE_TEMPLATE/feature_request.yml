@@ -1,0 +1,53 @@
+name: Feature request
+
+description: Предложить улучшение NexRoute
+
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую проблему решает предложение?
+      description: Опишите конкретный пользовательский сценарий.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Предлагаемое решение
+      description: Опишите поведение CLI, команды, стратегию или документацию.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: Влияние на совместимость Flowseal
+      options:
+        - Не влияет
+        - Требует изменения service.bat
+        - Требует изменения стратегий
+        - Требует изменения списков
+        - Требует обновления upstream baseline
+        - Не уверен
+    validations:
+      required: true
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Как проверить результат?
+      description: Укажите ожидаемые тесты для Windows 10/11.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Ограничения
+      options:
+        - label: Предложение не требует хранения бинарников в Git.
+          required: true
+        - label: Я проверил, что похожего предложения ещё нет.
+          required: true
