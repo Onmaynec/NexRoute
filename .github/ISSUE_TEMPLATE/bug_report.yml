@@ -1,0 +1,94 @@
+name: Bug report
+
+description: Сообщить о воспроизводимой проблеме NexRoute
+
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за отчёт. Не прикладывайте приватные данные, полные сетевые журналы или файлы из пользовательских списков.
+
+  - type: input
+    id: version
+    attributes:
+      label: Версия NexRoute
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Версия Windows
+      options:
+        - Windows 10 x64
+        - Windows 11 x64
+        - Другая / неподдерживаемая
+    validations:
+      required: true
+
+  - type: input
+    id: strategy
+    attributes:
+      label: Стратегия
+      description: Укажите точное имя general*.bat или установленной стратегии.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Затронутая функция
+      options:
+        - YouTube Web/Video
+        - Discord Web/CDN
+        - Discord Voice
+        - Windows service
+        - Game Filter
+        - IPSet Filter
+        - Hosts/IPSet update
+        - Diagnostics/Tests
+        - Release builder
+        - Другое
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Что произошло?
+      description: Опишите фактическое и ожидаемое поведение.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      placeholder: |
+        1. Запустил service.bat
+        2. Выбрал ...
+        3. Получил ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Результат диагностики
+      description: Вставьте только релевантные строки без приватных данных.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Предварительные проверки
+      options:
+        - label: Я скачал архив из официального NexRoute Release.
+          required: true
+        - label: Я настроил Secure DNS и проверил несколько стратегий.
+          required: true
+        - label: Я проверил, что параллельно не запущен другой WinDivert-инструмент.
+          required: true

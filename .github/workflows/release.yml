@@ -1,0 +1,93 @@
+name: Build and publish release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: NexRoute version to build
+        required: false
+        type: string
+      upstream_version:
+        description: Flowseal release baseline
+        required: false
+        default: '1.10.0'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Windows distribution
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve versions
+        id: versions
+        shell: pwsh
+        run: |
+          $repositoryVersion = (Get-Content ./.service/version.txt -Raw).Trim()
+          $requestedVersion = '${{ inputs.version }}'
+          $upstreamVersion = '${{ inputs.upstream_version }}'
+
+          if ([string]::IsNullOrWhiteSpace($requestedVersion)) {
+            $requestedVersion = $repositoryVersion
+          }
+          if ([string]::IsNullOrWhiteSpace($upstreamVersion)) {
+            $upstreamVersion = '1.10.0'
+          }
+
+          if ('${{ github.ref_type }}' -eq 'tag') {
+            $expectedTag = "v$repositoryVersion"
+            if ('${{ github.ref_name }}' -ne $expectedTag) {
+              throw "Release tag must be $expectedTag, got ${{ github.ref_name }}"
+            }
+            $requestedVersion = $repositoryVersion
+          }
+
+          "version=$requestedVersion" >> $env:GITHUB_OUTPUT
+          "upstream_version=$upstreamVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Validate source tree
+        shell: pwsh
+        run: ./scripts/Test-Repository.ps1
+
+      - name: Build NexRoute package
+        shell: pwsh
+        run: |
+          ./scripts/Build-NexRoute.ps1 `
+            -Version '${{ steps.versions.outputs.version }}' `
+            -UpstreamVersion '${{ steps.versions.outputs.upstream_version }}' `
+            -OutputDirectory ./artifacts
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-${{ steps.versions.outputs.version }}-win-x64
+          path: |
+            artifacts/*.zip
+            artifacts/*.sha256
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = '${{ steps.versions.outputs.version }}'
+          $archive = "artifacts/NexRoute-$version-win-x64.zip"
+          $checksum = "$archive.sha256"
+
+          gh release create '${{ github.ref_name }}' `
+            $archive `
+            $checksum `
+            --title "NexRoute $version" `
+            --generate-notes `
+            --verify-tag
