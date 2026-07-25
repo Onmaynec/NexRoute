@@ -35,12 +35,13 @@ $required = @(
     'overlay/.service/New-NexRouteIcon.ps1','overlay/.service/i18n/ru.json','overlay/.service/i18n/en.json',
     'overlay/.service/i18n/nexroute-theme.ps1','overlay/.service/i18n/nexroute-pages.ps1',
     'overlay/.service/i18n/nexroute-pages-core.ps1','overlay/.service/i18n/nexroute-pages-network.ps1',
-    'overlay/.service/i18n/nexroute-services-ui.ps1','assets/nexroute-icon-512.b64',
+    'overlay/.service/i18n/nexroute-services-ui.ps1',
     'scripts/Build-NexRoute.ps1','scripts/Build-NexRoute-0.2.2.ps1',
     'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Package-0.2.2.ps1',
     '.github/workflows/validate.yml','.github/workflows/publish-v0.2.2.yml',
     '.github/release-notes/v0.2.2.md','docs/SERVICES.md'
 )
+$required += 0..9 | ForEach-Object { 'assets/nexroute-icon-parts/{0:00}.b64' -f $_ }
 foreach ($relativePath in $required) {
     Assert-True (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf) "Required file exists: $relativePath"
 }
@@ -107,8 +108,11 @@ foreach ($token in @('Expected 22 strategy BAT files','NEXROUTE_SERVICE_FILTERS_
     Assert-True ($buildWrapper -match [regex]::Escape($token)) "0.2.2 builder contains $token"
 }
 
-$iconBase64 = (Get-Content -LiteralPath (Join-Path $root 'assets/nexroute-icon-512.b64') -Raw -Encoding ASCII).Trim()
+$iconPartsPath = Join-Path $root 'assets/nexroute-icon-parts'
+$iconParts = @(Get-ChildItem -LiteralPath $iconPartsPath -Filter '*.b64' -File | Sort-Object Name)
+Assert-True ($iconParts.Count -eq 10) 'User-supplied icon source contains 10 ordered parts'
 try {
+    $iconBase64 = ($iconParts | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw -Encoding ASCII).Trim() }) -join ''
     $iconBytes = [Convert]::FromBase64String($iconBase64)
     Assert-True ($iconBytes.Length -gt 5KB) 'User-supplied icon source decodes successfully'
 }
