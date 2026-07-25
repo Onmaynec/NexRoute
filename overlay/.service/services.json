@@ -1,0 +1,125 @@
+{
+  "schemaVersion": 1,
+  "services": [
+    {
+      "id": "youtube",
+      "nameEn": "YouTube",
+      "nameRu": "YouTube",
+      "defaultEnabled": true,
+      "scope": "baseline",
+      "domains": ["youtube.com", "youtu.be", "googlevideo.com", "ytimg.com", "youtubei.googleapis.com"]
+    },
+    {
+      "id": "discord",
+      "nameEn": "Discord",
+      "nameRu": "Discord",
+      "defaultEnabled": true,
+      "scope": "baseline",
+      "domains": ["discord.com", "discord.gg", "discordapp.com", "discordapp.net", "discord.media"]
+    },
+    {
+      "id": "chatgpt",
+      "nameEn": "ChatGPT",
+      "nameRu": "ChatGPT",
+      "defaultEnabled": false,
+      "scope": "web",
+      "domains": ["chatgpt.com", "openai.com", "oaistatic.com", "oaiusercontent.com"]
+    },
+    {
+      "id": "facetime",
+      "nameEn": "FaceTime",
+      "nameRu": "FaceTime",
+      "defaultEnabled": false,
+      "scope": "experimental",
+      "domains": ["apple.com", "icloud.com", "apple-dns.net", "push.apple.com"]
+    },
+    {
+      "id": "snapchat",
+      "nameEn": "Snapchat",
+      "nameRu": "Snapchat",
+      "defaultEnabled": false,
+      "scope": "web",
+      "domains": ["snapchat.com", "snap.com", "sc-cdn.net"]
+    },
+    {
+      "id": "viber",
+      "nameEn": "Viber",
+      "nameRu": "Viber",
+      "defaultEnabled": false,
+      "scope": "experimental",
+      "domains": ["viber.com", "viber.net", "viber.me"]
+    },
+    {
+      "id": "signal",
+      "nameEn": "Signal",
+      "nameRu": "Signal",
+      "defaultEnabled": false,
+      "scope": "experimental",
+      "domains": ["signal.org", "signal.art", "signal.group", "signal.link", "signal.me", "signal.tube", "voip.signal.org"]
+    },
+    {
+      "id": "x",
+      "nameEn": "X (Twitter)",
+      "nameRu": "X (Twitter)",
+      "defaultEnabled": false,
+      "scope": "web",
+      "domains": ["x.com", "twitter.com", "t.co", "twimg.com", "ads-twitter.com"]
+    },
+    {
+      "id": "instagram",
+      "nameEn": "Instagram",
+      "nameRu": "Instagram",
+      "defaultEnabled": false,
+      "scope": "web",
+      "domains": ["instagram.com", "cdninstagram.com"]
+    },
+    {
+      "id": "facebook",
+      "nameEn": "Facebook",
+      "nameRu": "Facebook",
+      "defaultEnabled": false,
+      "scope": "web",
+      "domains": ["facebook.com", "fbcdn.net", "fbsbx.com"]
+    },
+    {
+      "id": "telegram",
+      "nameEn": "Telegram",
+      "nameRu": "Telegram",
+      "defaultEnabled": false,
+      "scope": "web",
+      "domains": ["telegram.org", "t.me", "telegram.me", "telegram.dog", "telegra.ph"]
+    },
+    {
+      "id": "linkedin",
+      "nameEn": "LinkedIn",
+      "nameRu": "LinkedIn",
+      "defaultEnabled": false,
+      "scope": "web",
+      "domains": ["linkedin.com", "licdn.com"]
+    },
+    {
+      "id": "tiktok",
+      "nameEn": "TikTok",
+      "nameRu": "TikTok",
+      "defaultEnabled": false,
+      "scope": "web",
+      "domains": ["tiktok.com", "tiktokcdn.com", "tiktokv.com", "byteoversea.com", "ibytedtos.com", "muscdn.com"]
+    },
+    {
+      "id": "whatsapp",
+      "nameEn": "WhatsApp",
+      "nameRu": "WhatsApp",
+      "defaultEnabled": false,
+      "scope": "experimental",
+      "domains": ["whatsapp.com", "whatsapp.net", "wa.me"]
+    },
+    {
+      "id": "casebattle",
+      "nameEn": "CaseBattle",
+      "nameRu": "Кейс батл",
+      "defaultEnabled": false,
+      "scope": "web",
+      "domains": ["casebattle.net"]
+    }
+  ]
+}
