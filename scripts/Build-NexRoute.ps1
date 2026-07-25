@@ -46,11 +46,15 @@ function Copy-RequiredFile {
         [Parameter(Mandatory)][string]$Source,
         [Parameter(Mandatory)][string]$Destination
     )
+
     if (-not (Test-Path -LiteralPath $Source -PathType Leaf)) {
         throw "Required source file not found: $Source"
     }
+
     $directory = Split-Path -Parent $Destination
-    if ($directory) { New-Item -ItemType Directory -Path $directory -Force | Out-Null }
+    if ($directory) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
     Copy-Item -LiteralPath $Source -Destination $Destination -Force
 }
 
@@ -69,7 +73,11 @@ function Replace-RequiredPattern {
         [Parameter(Mandatory)][string]$Replacement,
         [Parameter(Mandatory)][string]$Name
     )
-    $regex = [regex]::new($Pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)
+
+    $regex = New-Object System.Text.RegularExpressions.Regex(
+        $Pattern,
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
     if (-not $regex.IsMatch($Content)) {
         throw "Unable to locate upstream block: $Name"
     }
@@ -81,12 +89,17 @@ function Add-AsciiHookAfterFirstLine {
         [Parameter(Mandatory)][string]$Path,
         [Parameter(Mandatory)][string]$Hook
     )
+
     $content = [System.IO.File]::ReadAllText($Path)
-    if ($content -match 'NEXROUTE_PROFILE_BOOT') { return }
+    if ($content -match 'NEXROUTE_PROFILE_BOOT') {
+        return
+    }
+
     $match = [regex]::Match($content, '^(?<first>[^\r\n]*)(?<newline>\r?\n)')
     if (-not $match.Success) {
         throw "Strategy file has no first line: $Path"
     }
+
     $patched = $match.Groups['first'].Value + "`r`n" + $Hook + "`r`n" + $content.Substring($match.Length)
     [System.IO.File]::WriteAllText($Path, $patched, [System.Text.Encoding]::ASCII)
 }
@@ -97,7 +110,14 @@ try {
     Write-Step "Resolving Flowseal release $UpstreamVersion"
     $releaseUrl = "https://api.github.com/repos/Flowseal/zapret-discord-youtube/releases/tags/$UpstreamVersion"
     $release = Invoke-RestMethod -Uri $releaseUrl -Headers $headers -Method Get
-    $zipAssets = @($release.assets | Where-Object { $_.name -match '^zapret-discord-youtube.*\.zip$' -and $_.browser_download_url } | Sort-Object size -Descending)
+    $zipAssets = @(
+        $release.assets |
+            Where-Object {
+                $_.name -match '^zapret-discord-youtube.*\.zip$' -and
+                $_.browser_download_url
+            } |
+            Sort-Object -Property size -Descending
+    )
     if ($zipAssets.Count -eq 0) {
         throw "The Flowseal release $UpstreamVersion has no binary ZIP asset."
     }
@@ -111,7 +131,9 @@ try {
 
     Write-Step 'Extracting upstream archive'
     Expand-Archive -LiteralPath $downloadPath -DestinationPath $extractPath -Force
-    $serviceFile = Get-ChildItem -LiteralPath $extractPath -Filter 'service.bat' -File -Recurse | Where-Object { Test-Path -LiteralPath (Join-Path $_.Directory.FullName 'general.bat') } | Select-Object -First 1
+    $serviceFile = Get-ChildItem -LiteralPath $extractPath -Filter 'service.bat' -File -Recurse |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_.Directory.FullName 'general.bat') } |
+        Select-Object -First 1
     if (-not $serviceFile) {
         throw 'Unable to locate the Flowseal distribution root.'
     }
@@ -156,11 +178,28 @@ try {
 
     $servicePath = Join-Path $distributionPath 'service.bat'
     $serviceContent = [System.IO.File]::ReadAllText($servicePath)
-    $serviceContent = [regex]::Replace($serviceContent, 'set "LOCAL_VERSION=[^"]+"', ('set "LOCAL_VERSION={0}"' -f $Version), 1)
-    $serviceContent = $serviceContent.Replace('https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt', 'https://raw.githubusercontent.com/Onmaynec/NexRoute/main/.service/version.txt')
-    $serviceContent = $serviceContent.Replace('https://github.com/Flowseal/zapret-discord-youtube/releases/tag/', 'https://github.com/Onmaynec/NexRoute/releases/tag/')
-    $serviceContent = $serviceContent.Replace('https://github.com/Flowseal/zapret-discord-youtube/releases/latest', 'https://github.com/Onmaynec/NexRoute/releases/latest')
-    $serviceContent = $serviceContent.Replace('sc description %SRVCNAME% "Zapret DPI bypass software"', 'sc description %SRVCNAME% "NexRoute route control service"')
+    $serviceContent = [regex]::Replace(
+        $serviceContent,
+        'set "LOCAL_VERSION=[^"]+"',
+        ('set "LOCAL_VERSION={0}"' -f $Version),
+        1
+    )
+    $serviceContent = $serviceContent.Replace(
+        'https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt',
+        'https://raw.githubusercontent.com/Onmaynec/NexRoute/main/.service/version.txt'
+    )
+    $serviceContent = $serviceContent.Replace(
+        'https://github.com/Flowseal/zapret-discord-youtube/releases/tag/',
+        'https://github.com/Onmaynec/NexRoute/releases/tag/'
+    )
+    $serviceContent = $serviceContent.Replace(
+        'https://github.com/Flowseal/zapret-discord-youtube/releases/latest',
+        'https://github.com/Onmaynec/NexRoute/releases/latest'
+    )
+    $serviceContent = $serviceContent.Replace(
+        'sc description %SRVCNAME% "Zapret DPI bypass software"',
+        'sc description %SRVCNAME% "NexRoute route control service"'
+    )
 
     $menuBlock = @'
 :: MENU ================================
@@ -248,7 +287,11 @@ if "!menu_choice!"=="0" exit /b
 goto menu
 
 :nexroute_toggle_language
-if /I "!NEXROUTE_LANG!"=="RU" (>"!NEXROUTE_LANGUAGE_FILE!" echo EN) else (>"!NEXROUTE_LANGUAGE_FILE!" echo RU)
+if /I "!NEXROUTE_LANG!"=="RU" (
+    >"!NEXROUTE_LANGUAGE_FILE!" echo EN
+) else (
+    >"!NEXROUTE_LANGUAGE_FILE!" echo RU
+)
 goto menu
 
 :nexroute_action
@@ -264,10 +307,26 @@ goto menu
 '@
     $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':: MENU =+.*?:: LOAD USER LISTS =+' -Replacement $menuBlock -Name 'main menu'
 
-    $serviceContent = $serviceContent.Replace(
-        "if not exist \"%LISTS_PATH%list-exclude-user.txt\" (`r`n    echo domain.example.abc>\"%LISTS_PATH%list-exclude-user.txt\"`r`n)`r`n`r`nexit /b",
-        "if not exist \"%LISTS_PATH%list-exclude-user.txt\" (`r`n    echo domain.example.abc>\"%LISTS_PATH%list-exclude-user.txt\"`r`n)`r`n`r`nif exist \"%~dp0.service\nexroute-services.ps1\" powershell -NoProfile -ExecutionPolicy Bypass -File \"%~dp0.service\nexroute-services.ps1\" -Mode Apply -Root \"%~dp0\" >nul 2>&1`r`n`r`nexit /b"
-    )
+    $loadUserListsBlock = @'
+:load_user_lists
+set "LISTS_PATH=%~dp0lists\"
+
+if not exist "%LISTS_PATH%ipset-exclude-user.txt" (
+    echo 203.0.113.113/32>"%LISTS_PATH%ipset-exclude-user.txt"
+)
+if not exist "%LISTS_PATH%list-general-user.txt" (
+    echo # Never leave this file empty>"%LISTS_PATH%list-general-user.txt"
+    echo domain.example.abc>>"%LISTS_PATH%list-general-user.txt"
+)
+if not exist "%LISTS_PATH%list-exclude-user.txt" (
+    echo domain.example.abc>"%LISTS_PATH%list-exclude-user.txt"
+)
+
+if exist "%~dp0.service\nexroute-services.ps1" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0.service\nexroute-services.ps1" -Mode Apply -Root "%~dp0" >nul 2>&1
+exit /b
+
+'@
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':load_user_lists\r?\n.*?(?=:: TCP ENABLE)' -Replacement $loadUserListsBlock -Name 'user-list loader'
 
     $statusBlock = @'
 :service_status
@@ -308,12 +367,12 @@ set "file1=!selectedFile!"
 '@
     $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':: Searching for \.bat files.*?:: Args that should be followed by value' -Replacement $pickerBlock -Name 'strategy selector'
 
-    $serviceContent = [regex]::Replace(
-        $serviceContent,
-        '(reg add "HKLM\\System\\CurrentControlSet\\Services\\zapret" /v zapret-discord-youtube /t REG_SZ /d "!filename!" /f)\r?\n\r?\npause\r?\ngoto menu',
-        '$1' + "`r`nif exist \"!NEXROUTE_UI!\" powershell -NoProfile -ExecutionPolicy Bypass -File \"!NEXROUTE_UI!\" -Mode Status -Root \"%~dp0\" -LanguageFile \"!NEXROUTE_LANGUAGE_FILE!\"`r`ngoto menu",
-        1
-    )
+    $postInstallBlock = @'
+reg add "HKLM\System\CurrentControlSet\Services\zapret" /v zapret-discord-youtube /t REG_SZ /d "!filename!" /f
+if exist "!NEXROUTE_UI!" powershell -NoProfile -ExecutionPolicy Bypass -File "!NEXROUTE_UI!" -Mode Status -Root "%~dp0" -LanguageFile "!NEXROUTE_LANGUAGE_FILE!"
+goto menu
+'@
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern 'reg add "HKLM\\System\\CurrentControlSet\\Services\\zapret" /v zapret-discord-youtube /t REG_SZ /d "!filename!" /f\r?\n\r?\npause\r?\ngoto menu' -Replacement $postInstallBlock -Name 'post-install status'
 
     $payloadBlock = @'
 :: REPLACE ACTIVE FAKES =================
@@ -378,10 +437,12 @@ goto menu
 '@
     $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':run_tests\r?\n.*?:: Get strategy name' -Replacement $testsBlock -Name 'test launcher page'
 
-    $serviceContent = $serviceContent.Replace(
-        ":service_diagnostics`r`nchcp 437 > nul`r`ncls",
-        ":service_diagnostics`r`nchcp 65001 > nul`r`nif exist \"!NEXROUTE_UI!\" powershell -NoProfile -ExecutionPolicy Bypass -File \"!NEXROUTE_UI!\" -Mode Screen -ScreenId diagnostics -Root \"%~dp0\" -LanguageFile \"!NEXROUTE_LANGUAGE_FILE!\""
-    )
+    $diagnosticsHeader = @'
+:service_diagnostics
+chcp 65001 > nul
+if exist "!NEXROUTE_UI!" powershell -NoProfile -ExecutionPolicy Bypass -File "!NEXROUTE_UI!" -Mode Screen -ScreenId diagnostics -Root "%~dp0" -LanguageFile "!NEXROUTE_LANGUAGE_FILE!"
+'@
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':service_diagnostics\r?\nchcp 437 > nul\r?\ncls\r?\n' -Replacement $diagnosticsHeader -Name 'diagnostics header'
 
     Write-Utf8NoBom -Path $servicePath -Content $serviceContent
 
@@ -391,8 +452,14 @@ rem NEXROUTE_PROFILE_BOOT
 if exist "%~dp0.service\nexroute-services.ps1" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0.service\nexroute-services.ps1" -Mode Apply -Root "%~dp0" >nul 2>&1
 if exist "%~dp0.service\nexroute-ui.ps1" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0.service\nexroute-ui.ps1" -Mode Launch -Root "%~dp0" -Profile "%~n0" -LanguageFile "%~dp0.service\language.txt"
 '@ -replace "`n", "`r`n"
-    $strategyFiles = @(Get-ChildItem -LiteralPath $distributionPath -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') })
-    if ($strategyFiles.Count -eq 0) { throw 'No strategy BAT files were found.' }
+
+    $strategyFiles = @(
+        Get-ChildItem -LiteralPath $distributionPath -Filter '*.bat' -File |
+            Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') }
+    )
+    if ($strategyFiles.Count -eq 0) {
+        throw 'No strategy BAT files were found.'
+    }
     foreach ($strategyFile in $strategyFiles) {
         Add-AsciiHookAfterFirstLine -Path $strategyFile.FullName -Hook $strategyHook
     }
@@ -440,13 +507,17 @@ Source repository: https://github.com/Onmaynec/NexRoute
 
     $archiveName = "NexRoute-$Version-win-x64.zip"
     $archivePath = Join-Path $outputPath $archiveName
-    if (Test-Path -LiteralPath $archivePath) { Remove-Item -LiteralPath $archivePath -Force }
+    if (Test-Path -LiteralPath $archivePath) {
+        Remove-Item -LiteralPath $archivePath -Force
+    }
+
     Write-Step "Creating $archiveName"
     Compress-Archive -Path (Join-Path $distributionPath '*') -DestinationPath $archivePath -CompressionLevel Optimal
 
     $hash = Get-FileHash -LiteralPath $archivePath -Algorithm SHA256
     $checksumPath = "$archivePath.sha256"
-    Set-Content -LiteralPath $checksumPath -Value ("{0}  {1}" -f $hash.Hash.ToLowerInvariant(), $archiveName) -Encoding ascii
+    $checksumLine = "{0}  {1}" -f $hash.Hash.ToLowerInvariant(), $archiveName
+    Set-Content -LiteralPath $checksumPath -Value $checksumLine -Encoding ascii
 
     Write-Step "Build completed: $archivePath"
     Write-Step "SHA-256: $($hash.Hash.ToLowerInvariant())"
