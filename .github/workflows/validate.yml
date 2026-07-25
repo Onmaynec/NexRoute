@@ -18,10 +18,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Validate NexRoute repository
+        id: repository_validation
+        continue-on-error: true
         shell: pwsh
-        run: ./scripts/Test-Repository.ps1
+        run: ./scripts/Test-Repository.ps1 *>&1 | Tee-Object -FilePath validation.log
+
+      - name: Upload validation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-validation-log
+          path: validation.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Fail when repository validation failed
+        if: steps.repository_validation.outcome == 'failure'
+        shell: pwsh
+        run: throw 'Repository validation failed. See NexRoute-validation-log.'
 
       - name: Verify release builder help
         shell: pwsh
@@ -35,6 +53,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Build NexRoute smoke artifact
         shell: pwsh
