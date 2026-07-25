@@ -12,7 +12,7 @@ $serviceDir = Join-Path $Root '.service'
 $iconPath = Join-Path $serviceDir 'nexroute.ico'
 $shortcutPath = Join-Path $Root 'NexRoute.lnk'
 $serviceBat = Join-Path $Root 'service.bat'
-$encodedIconPath = Join-Path $Root 'assets\nexroute-icon-512.b64'
+$iconPartsPath = Join-Path $Root 'assets\nexroute-icon-parts'
 
 New-Item -ItemType Directory -Path $serviceDir -Force | Out-Null
 
@@ -100,11 +100,21 @@ function Write-NexRouteIco {
     }
 }
 
-if (-not (Test-Path -LiteralPath $encodedIconPath -PathType Leaf)) {
-    throw "NexRoute icon source was not found: $encodedIconPath"
+if (-not (Test-Path -LiteralPath $iconPartsPath -PathType Container)) {
+    throw "NexRoute icon source directory was not found: $iconPartsPath"
 }
 
-$encoded = (Get-Content -LiteralPath $encodedIconPath -Raw -Encoding ASCII).Trim()
+$partFiles = @(Get-ChildItem -LiteralPath $iconPartsPath -Filter '*.b64' -File | Sort-Object Name)
+if ($partFiles.Count -ne 10) {
+    throw "Expected 10 NexRoute icon source parts, got $($partFiles.Count)."
+}
+
+$builder = New-Object System.Text.StringBuilder
+foreach ($partFile in $partFiles) {
+    $part = (Get-Content -LiteralPath $partFile.FullName -Raw -Encoding ASCII).Trim()
+    [void]$builder.Append($part)
+}
+$encoded = $builder.ToString()
 $imageBytes = [Convert]::FromBase64String($encoded)
 $imageStream = New-Object System.IO.MemoryStream(,$imageBytes)
 $sourceImage = [System.Drawing.Image]::FromStream($imageStream)
@@ -127,5 +137,5 @@ if (Test-Path -LiteralPath $serviceBat -PathType Leaf) {
 }
 
 Write-Output ("Icon: {0}" -f $iconPath)
-Write-Output ("Icon source: {0}" -f $encodedIconPath)
+Write-Output ("Icon source parts: {0}" -f $partFiles.Count)
 Write-Output ("Sanitized BAT files: {0}" -f $sanitizedFiles)
