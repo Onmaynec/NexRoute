@@ -16,9 +16,9 @@ $required = @(
     '.service/nexroute-services-core.ps1',
     '.service/services-runtime.cmd',
     '.service/i18n/nexroute-pages-core.ps1',
-    '.service/i18n/nexroute-pages-network.ps1',
-    'assets/nexroute-icon-512.b64'
+    '.service/i18n/nexroute-pages-network.ps1'
 )
+$required += 0..9 | ForEach-Object { 'assets/nexroute-icon-parts/{0:00}.b64' -f $_ }
 foreach ($relativePath in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf)) {
         throw "NexRoute 0.2.2 package is missing $relativePath"
@@ -57,6 +57,11 @@ if ($testLab -notmatch '-Mode TestTargets') { throw 'Strategy Lab is not connect
 $iconPath = Join-Path $root '.service/nexroute.ico'
 $iconSize = (Get-Item -LiteralPath $iconPath).Length
 if ($iconSize -lt 20KB) { throw "Generated multi-resolution icon is unexpectedly small: $iconSize bytes" }
+
+$iconParts = @(Get-ChildItem -LiteralPath (Join-Path $root 'assets/nexroute-icon-parts') -Filter '*.b64' -File | Sort-Object Name)
+$iconBase64 = ($iconParts | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw -Encoding ASCII).Trim() }) -join ''
+$iconSourceBytes = [Convert]::FromBase64String($iconBase64)
+if ($iconSourceBytes.Length -lt 5KB) { throw 'Decoded icon source is unexpectedly small.' }
 
 $services = @((Get-Content -LiteralPath (Join-Path $root '.service/services.json') -Raw -Encoding UTF8 | ConvertFrom-Json).services)
 foreach ($service in $services) {
