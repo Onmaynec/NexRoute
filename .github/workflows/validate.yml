@@ -62,10 +62,25 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          ./scripts/Build-NexRoute.ps1 `
-            -Version $version `
-            -UpstreamVersion '1.10.0' `
-            -OutputDirectory ./artifacts *>&1 | Tee-Object -FilePath build.log
+          try {
+            ./scripts/Build-NexRoute.ps1 `
+              -Version $version `
+              -UpstreamVersion '1.10.0' `
+              -OutputDirectory ./artifacts *>&1 | Tee-Object -FilePath build.log
+          }
+          catch {
+            $details = @(
+              '',
+              '=== TERMINATING EXCEPTION ===',
+              ($_ | Out-String),
+              '=== EXCEPTION DETAILS ===',
+              ($_ | Format-List * -Force | Out-String),
+              '=== SCRIPT STACK TRACE ===',
+              $_.ScriptStackTrace
+            ) -join [Environment]::NewLine
+            $details | Tee-Object -FilePath build.log -Append
+            throw
+          }
 
       - name: Upload Windows build log
         if: always()
