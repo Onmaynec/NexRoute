@@ -41,12 +41,9 @@ function Header([string]$Title) {
     Write-Host ('  ' + $Title) -ForegroundColor White
     Rule '-'
 }
-
 if ($Mode -eq 'Action') {
     Header 'OPERATION BUS'
-    $labels = @{
-        deploy='Deploying selected strategy'; remove='Purging runtime services'; status='Reading runtime telemetry'; game='Switching game filter'; ipset='Switching IPSet mode'; updatecheck='Updating release watch'; payload='Opening payload vault'; syncipset='Synchronizing IPSet channels'; synchosts='Synchronizing hosts mappings'; releases='Querying release channel'; diagnostics='Starting diagnostic core'; tests='Starting strategy laboratory'; services='Opening service bypass matrix'
-    }
+    $labels = @{ deploy='Deploying selected strategy'; remove='Purging runtime services'; status='Reading runtime telemetry'; game='Switching game filter'; ipset='Switching IPSet mode'; updatecheck='Updating release watch'; payload='Opening payload vault'; syncipset='Synchronizing IPSet channels'; synchosts='Synchronizing hosts mappings'; releases='Querying release channel'; diagnostics='Starting diagnostic core'; tests='Starting strategy laboratory'; services='Opening service bypass matrix' }
     $label = if ($labels.ContainsKey($ActionId)) { $labels[$ActionId] } else { 'Executing system operation' }
     Progress $label Cyan 28
     Write-Host '  Control transferred to system module.' -ForegroundColor Green
@@ -63,8 +60,7 @@ if ($Mode -eq 'Launch') {
     Start-Sleep -Milliseconds 180
     exit 0
 }
-
-Header 'CONTROL NODE v' + $env:NEXROUTE_VERSION
+Header ('CONTROL NODE v' + $env:NEXROUTE_VERSION)
 if ($env:NEXROUTE_UI_ANIMATE -eq '1') {
     Progress 'Initializing terminal matrix' Cyan 18
     Progress 'Loading service telemetry' Magenta 18
