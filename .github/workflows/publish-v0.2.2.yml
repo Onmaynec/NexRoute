@@ -7,7 +7,7 @@ on:
     paths:
       - '.service/version.txt'
       - 'overlay/**'
-      - 'assets/nexroute-icon-512.b64'
+      - 'assets/nexroute-icon-parts/**'
       - 'scripts/Build-NexRoute-0.2.2.ps1'
       - 'scripts/Test-Package-0.2.2.ps1'
       - '.github/release-notes/v0.2.2.md'
