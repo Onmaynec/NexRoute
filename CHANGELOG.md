@@ -1,43 +1,58 @@
 # Changelog 📝
 
-Все заметные изменения NexRoute документируются в этом файле.
-
-Формат основан на Keep a Changelog, версии используют Semantic Versioning.
+Все заметные изменения NexRoute документируются в этом файле. Формат основан на Keep a Changelog, версии используют Semantic Versioning.
 
 ## [Unreleased]
 
 Пока нет изменений.
 
+## [0.2.0] - 2026-07-25
+
+### Added
+
+- единый PowerShell-renderer для главного меню и внутренних экранов;
+- оформленная телеметрия состояния `zapret`, WinDivert и `winws.exe`;
+- новый экран выбора стратегий с метками `STABLE`, `ADVANCED`, `EXPERIMENTAL`;
+- новый fake-payload vault;
+- анимированные экраны `SYNC IPSET` и `SYNC HOSTS`;
+- оформление запуска конфигурационных тестов и заголовок тестовой PowerShell-сессии;
+- Service Bypass Matrix с 15 переключаемыми профилями;
+- профили ChatGPT, FaceTime, Snapchat, Viber, Signal, X, Instagram, Facebook, Telegram, LinkedIn, TikTok, WhatsApp и CaseBattle;
+- управляемые блоки в `list-general-user.txt` и `list-exclude-user.txt`;
+- пользовательская клавиатурная навигация в матрице сервисов;
+- собственный SVG-значок NexRoute;
+- генерация Windows `.ico` и ярлыка `NexRoute.lnk` во время release-build;
+- RU/EN JSON-локализации интерфейса;
+- документация `docs/SERVICES.md`.
+
+### Changed
+
+- версия повышена с `0.1.1` до `0.2.0`;
+- переработаны страницы статуса, установки стратегии, IPSet mode, fake-payload и тестов;
+- все strategy BAT применяют сервисную матрицу перед запуском;
+- README и техническая документация обновлены под новую архитектуру;
+- CI проверяет 15 сервисных профилей, все UI-маршруты, иконку, ярлык и управляемые списки.
+
+### Compatibility
+
+- сохранён Flowseal baseline `1.10.0`;
+- сетевые аргументы upstream-стратегий не заменены новой реализацией;
+- Windows 10 x64 и Windows 11 x64;
+- пользовательские строки вне managed-блоков сохраняются.
+
+### Limitations
+
+- FaceTime, Signal, Viber и WhatsApp являются экспериментальными доменными профилями;
+- голосовые/видеосоединения могут требовать дополнительных UDP-портов и динамических медиареле;
+- фактическая эффективность зависит от провайдера и конфигурации DPI.
+
 ## [0.1.1] - 2026-07-25
 
 ### Fixed
 
-- устранено повреждение русских строк в `service.bat` из-за несовместимости UTF-8 и OEM-кодовых страниц CMD;
-- удалены прямые кириллические литералы из генерируемого BAT-меню;
-- добавлен ASCII fallback, если PowerShell renderer недоступен.
-
-### Added
-
-- отдельный терминальный renderer `.service/nexroute-ui.ps1`;
-- ASCII-логотип NexRoute и брендированный экран Control Node;
-- структурированные панели Service Control, Filter Matrix, Data Channels и System Toolkit;
-- цветовые статусы фильтров, языка и привилегий;
-- загрузочная анимация интерфейса;
-- анимация запуска каждой операции меню;
-- анимация запуска каждого strategy BAT файла;
-- проверка наличия `winws.exe` и `WinDivert64.sys` перед передачей управления стратегии;
-- Base64 UTF-8 локализация RU/EN в ASCII-safe PowerShell source;
-- расширенный Windows smoke-build с распаковкой и инспекцией Release ZIP;
-- CI-проверка отсутствия прямой кириллицы в `service.bat`;
-- CI-проверка launch-hook во всех стратегиях.
-
-### Compatibility
-
-- Windows 10 x64;
-- Windows 11 x64;
-- PowerShell 5.1+;
-- пользовательские списки Flowseal;
-- все стратегии и инструменты официального релиза Flowseal 1.10.0.
+- устранено повреждение русских строк в CMD;
+- визуальный слой вынесен в ASCII-safe PowerShell renderer;
+- добавлены анимации запуска стратегий и операций `service.bat`.
 
 ## [0.1.0] - 2026-07-25
 
@@ -47,14 +62,8 @@
 - pinned baseline Flowseal `1.10.0`;
 - воспроизводимый PowerShell release builder;
 - проверка отсутствия бинарников в Git;
-- первоначальное двуязычное RU/EN оформление `service.bat`;
-- обновление ссылок сервиса на Releases NexRoute;
+- двуязычное RU/EN оформление `service.bat`;
 - SHA-256 для release archive;
-- GitHub Actions для CI и публикации релиза;
+- GitHub Actions для CI и публикации релизов;
 - русская и английская документация;
-- правила совместимости со списками Flowseal;
 - third-party notices и security policy.
-
-### Known issue
-
-- прямой UTF-8 текст внутри BAT-файла мог отображаться повреждёнными символами в CMD/Windows Terminal в зависимости от кодовой страницы. Исправлено в `0.1.1`.
