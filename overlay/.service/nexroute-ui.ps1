@@ -37,6 +37,14 @@ function Repair-NexRouteEmbeddedArguments {
 }
 
 Repair-NexRouteEmbeddedArguments
+
+if ([string]::IsNullOrWhiteSpace($LanguageFile)) {
+    $LanguageFile = Join-Path $PSScriptRoot 'language.txt'
+}
+if (-not (Test-Path -LiteralPath $LanguageFile -PathType Leaf)) {
+    try { [System.IO.File]::WriteAllText($LanguageFile, "EN`r`n", [System.Text.Encoding]::ASCII) } catch { }
+}
+
 . (Join-Path $PSScriptRoot 'i18n\nexroute-theme.ps1')
 . (Join-Path $PSScriptRoot 'i18n\nexroute-pages.ps1')
 . (Join-Path $PSScriptRoot 'i18n\nexroute-services-ui.ps1')
