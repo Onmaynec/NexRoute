@@ -41,7 +41,6 @@ $required = @(
     '.github/workflows/validate.yml','.github/workflows/publish-v0.2.2.yml',
     '.github/release-notes/v0.2.2.md','docs/SERVICES.md'
 )
-$required += 0..9 | ForEach-Object { 'assets/nexroute-icon-parts/{0:00}.b64' -f $_ }
 foreach ($relativePath in $required) {
     Assert-True (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf) "Required file exists: $relativePath"
 }
@@ -51,7 +50,7 @@ Assert-True ($version -eq '0.2.2') 'Repository version is 0.2.2'
 
 $readme = Get-Content -LiteralPath (Join-Path $root 'README.md') -Raw
 Assert-True ($readme -match '0\.2\.2') 'README mentions 0.2.2'
-Assert-True ($readme -match '22') 'README documents all 22 strategies'
+Assert-True ($readme -match '21') 'README documents all 21 real Flowseal strategies'
 Assert-True ($readme -match 'Strategy Lab|Лаборатор') 'README documents Strategy Lab integration'
 
 $powerShellFiles = @(
@@ -104,20 +103,13 @@ Assert-True ($networkPages -match '\[string\]\$localText =') 'SYNC HOSTS is null
 Assert-True ($networkPages -match 'ipconfig\.exe /flushdns') 'SYNC HOSTS flushes DNS'
 
 $buildWrapper = Get-Content -LiteralPath (Join-Path $root 'scripts/Build-NexRoute-0.2.2.ps1') -Raw
-foreach ($token in @('Expected 22 strategy BAT files','NEXROUTE_SERVICE_FILTERS_V2','NEXROUTE_DYNAMIC_TARGETS_V2','NEXROUTE_REFRESH_MATRIX_V2')) {
+foreach ($token in @('Expected 21 real strategy BAT files','NEXROUTE_SERVICE_FILTERS_V2','NEXROUTE_DYNAMIC_TARGETS_V2','NEXROUTE_REFRESH_MATRIX_V2','nexroute.bat')) {
     Assert-True ($buildWrapper -match [regex]::Escape($token)) "0.2.2 builder contains $token"
 }
 
-$iconPartsPath = Join-Path $root 'assets/nexroute-icon-parts'
-$iconParts = @(Get-ChildItem -LiteralPath $iconPartsPath -Filter '*.b64' -File | Sort-Object Name)
-Assert-True ($iconParts.Count -eq 10) 'User-supplied icon source contains 10 ordered parts'
-try {
-    $iconBase64 = ($iconParts | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw -Encoding ASCII).Trim() }) -join ''
-    $iconBytes = [Convert]::FromBase64String($iconBase64)
-    Assert-True ($iconBytes.Length -gt 5KB) 'User-supplied icon source decodes successfully'
-}
-catch {
-    Assert-True $false 'User-supplied icon source is valid base64'
+$iconScript = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/New-NexRouteIcon.ps1') -Raw
+foreach ($token in @('New-NexRouteArtwork','New-RoundedRectanglePath','N E X R O U T E','Write-NexRouteIco','@(16, 20, 24, 32, 40, 48, 64, 128, 256)')) {
+    Assert-True ($iconScript -match [regex]::Escape($token)) "Icon generator contains $token"
 }
 
 $forbiddenExtensions = @('.exe','.dll','.sys','.bin','.zip','.rar','.7z','.ico','.lnk')
