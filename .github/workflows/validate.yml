@@ -46,7 +46,7 @@ jobs:
         run: Get-Help ./scripts/Build-NexRoute.ps1 -Full | Out-Null
 
   build-smoke:
-    name: Build Flowseal 1.10.0 based package
+    name: Build NexRoute 0.2.0 package
     needs: validate
     runs-on: windows-latest
 
@@ -65,7 +65,7 @@ jobs:
             -UpstreamVersion '1.10.0' `
             -OutputDirectory ./artifacts
 
-      - name: Verify package, UI overlay and checksum
+      - name: Verify package, pages, services, branding and checksum
         shell: pwsh
         run: |
           $zip = Get-ChildItem ./artifacts -Filter '*.zip' -File | Select-Object -First 1
@@ -75,9 +75,7 @@ jobs:
 
           $expectedHash = ((Get-Content $checksum.FullName -Raw) -split '\s+')[0].Trim().ToLowerInvariant()
           $actualHash = (Get-FileHash $zip.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($expectedHash -ne $actualHash) {
-            throw "SHA-256 mismatch: expected $expectedHash, got $actualHash"
-          }
+          if ($expectedHash -ne $actualHash) { throw "SHA-256 mismatch: expected $expectedHash, got $actualHash" }
 
           $extractPath = Join-Path $env:RUNNER_TEMP 'nexroute-smoke'
           if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
@@ -86,13 +84,22 @@ jobs:
           $required = @(
             'service.bat',
             'nexroute.bat',
+            'NexRoute.lnk',
             'general.bat',
             'bin/winws.exe',
             'bin/WinDivert.dll',
             'bin/WinDivert64.sys',
+            '.service/nexroute.ico',
             '.service/nexroute-ui.ps1',
+            '.service/nexroute-services.ps1',
+            '.service/services.json',
+            '.service/services-state.json',
+            '.service/i18n/ru.json',
+            '.service/i18n/en.json',
             '.service/language.txt',
             '.service/version.txt',
+            'assets/nexroute-mark.svg',
+            'docs/SERVICES.md',
             'NEXROUTE_BUILD_INFO.txt'
           )
           foreach ($relativePath in $required) {
@@ -103,19 +110,40 @@ jobs:
           }
 
           $service = Get-Content (Join-Path $extractPath 'service.bat') -Raw
-          if ($service -notmatch 'NEXROUTE_UI') { throw 'service.bat is not wired to the terminal UI.' }
-          if ($service -notmatch '-Mode Action') { throw 'service.bat is missing action animations.' }
+          foreach ($token in @('-Mode Status', '-Mode StrategyPicker', '-Mode PayloadManager', '-Mode IpSetSwitch', '-Mode SyncIpSet', '-Mode SyncHosts', '-Mode TestsIntro', '-Mode Services')) {
+            if ($service -notmatch [regex]::Escape($token)) { throw "service.bat is missing UI route: $token" }
+          }
           if ($service -match '[\u0400-\u04FF]') { throw 'service.bat contains direct Cyrillic literals and may break in CMD.' }
 
           $uiPath = Join-Path $extractPath '.service/nexroute-ui.ps1'
+          $serviceControllerPath = Join-Path $extractPath '.service/nexroute-services.ps1'
+          foreach ($scriptPath in @($uiPath, $serviceControllerPath)) {
+            $tokens = $null
+            $parseErrors = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$parseErrors)
+            if ($parseErrors.Count -ne 0) {
+              $parseErrors | ForEach-Object { Write-Host $_.Message -ForegroundColor Red }
+              throw "PowerShell parse errors in $scriptPath"
+            }
+          }
+
           $ui = Get-Content $uiPath -Raw
-          $tokens = $null
-          $parseErrors = $null
-          [void][System.Management.Automation.Language.Parser]::ParseFile($uiPath, [ref]$tokens, [ref]$parseErrors)
-          if ($parseErrors.Count -ne 0) { throw 'nexroute-ui.ps1 has PowerShell parse errors.' }
           if (@($ui.ToCharArray() | Where-Object { [int]$_ -gt 127 }).Count -ne 0) {
             throw 'nexroute-ui.ps1 source is not ASCII-safe.'
           }
+
+          $services = (Get-Content (Join-Path $extractPath '.service/services.json') -Raw -Encoding UTF8 | ConvertFrom-Json).services
+          if (@($services).Count -ne 15) { throw "Expected 15 services, got $(@($services).Count)." }
+
+          & (Join-Path $extractPath '.service/nexroute-services.ps1') -Mode Validate -Root $extractPath
+          & (Join-Path $extractPath '.service/nexroute-services.ps1') -Mode Apply -Root $extractPath
+
+          $generalUser = Get-Content (Join-Path $extractPath 'lists/list-general-user.txt') -Raw
+          $excludeUser = Get-Content (Join-Path $extractPath 'lists/list-exclude-user.txt') -Raw
+          if ($generalUser -notmatch 'NEXROUTE-SERVICES-BEGIN') { throw 'Managed enabled-service block was not created.' }
+          if ($excludeUser -notmatch 'NEXROUTE-DISABLED-SERVICES-BEGIN') { throw 'Managed disabled-service block was not created.' }
+          if ($generalUser -notmatch 'youtube\.com' -or $generalUser -notmatch 'discord\.com') { throw 'Default baseline services are not enabled.' }
+          if ($excludeUser -notmatch 'chatgpt\.com' -or $excludeUser -notmatch 'casebattle\.net') { throw 'Disabled service domains are not excluded.' }
 
           $strategyFiles = @(
             Get-ChildItem $extractPath -Filter '*.bat' -File |
@@ -124,36 +152,47 @@ jobs:
           if ($strategyFiles.Count -eq 0) { throw 'No strategy launchers were found.' }
           foreach ($strategyFile in $strategyFiles) {
             $content = Get-Content $strategyFile.FullName -Raw
-            if ($content -notmatch 'NEXROUTE_PROFILE_BOOT') {
-              throw "Strategy launcher has no animated boot hook: $($strategyFile.Name)"
-            }
+            if ($content -notmatch 'NEXROUTE_PROFILE_BOOT') { throw "No animated boot hook: $($strategyFile.Name)" }
+            if ($content -notmatch 'nexroute-services\.ps1') { throw "No service matrix apply hook: $($strategyFile.Name)" }
           }
 
+          $testScript = Get-Content (Join-Path $extractPath 'utils/test zapret.ps1') -Raw
+          if ($testScript -notmatch 'NEXROUTE_TEST_HEADER') { throw 'Test laboratory header was not injected.' }
+
           "NEXROUTE_EXTRACT_PATH=$extractPath" >> $env:GITHUB_ENV
-          Write-Host "Verified $($strategyFiles.Count) animated strategy launchers."
+          Write-Host "Verified $($strategyFiles.Count) launchers and $(@($services).Count) service profiles."
           Write-Host "SHA-256: $actualHash"
 
-      - name: Execute terminal renderer on Windows PowerShell 5.1
+      - name: Execute all non-interactive terminal pages on Windows PowerShell 5.1
         shell: pwsh
         run: |
-          $uiPath = Join-Path $env:NEXROUTE_EXTRACT_PATH '.service/nexroute-ui.ps1'
-          $languagePath = Join-Path $env:NEXROUTE_EXTRACT_PATH '.service/language.txt'
+          $root = $env:NEXROUTE_EXTRACT_PATH
+          $ui = Join-Path $root '.service/nexroute-ui.ps1'
+          $language = Join-Path $root '.service/language.txt'
 
-          Set-Content -LiteralPath $languagePath -Value 'RU' -Encoding ascii
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Action -ActionId status -LanguageFile $languagePath
-          if ($LASTEXITCODE -ne 0) { throw "RU action renderer failed with exit code $LASTEXITCODE" }
-
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Launch -Profile 'general (ALT)' -LanguageFile $languagePath
-          if ($LASTEXITCODE -ne 0) { throw "RU launch renderer failed with exit code $LASTEXITCODE" }
-
-          Set-Content -LiteralPath $languagePath -Value 'EN' -Encoding ascii
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Action -ActionId diagnostics -LanguageFile $languagePath
-          if ($LASTEXITCODE -ne 0) { throw "EN action renderer failed with exit code $LASTEXITCODE" }
+          foreach ($lang in @('RU', 'EN')) {
+            Set-Content -LiteralPath $language -Value $lang -Encoding ascii
+            $calls = @(
+              @('-Mode', 'Menu', '-NonInteractive'),
+              @('-Mode', 'Action', '-ActionId', 'deploy', '-NonInteractive'),
+              @('-Mode', 'Launch', '-Profile', 'general (ALT)', '-NonInteractive'),
+              @('-Mode', 'Status', '-NonInteractive'),
+              @('-Mode', 'StrategyPicker', '-NonInteractive'),
+              @('-Mode', 'PayloadManager', '-NonInteractive'),
+              @('-Mode', 'Services', '-NonInteractive'),
+              @('-Mode', 'TestsIntro', '-NonInteractive'),
+              @('-Mode', 'TestHeader', '-NonInteractive')
+            )
+            foreach ($arguments in $calls) {
+              & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ui -Root $root -LanguageFile $language @arguments
+              if ($LASTEXITCODE -ne 0) { throw "$lang renderer failed: $($arguments -join ' ')" }
+            }
+          }
 
       - name: Upload smoke artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NexRoute-smoke-package
+          name: NexRoute-0.2.0-smoke-package
           path: |
             artifacts/*.zip
             artifacts/*.sha256
