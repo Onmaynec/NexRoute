@@ -55,6 +55,7 @@ $requiredFiles = @(
     'overlay/.service/i18n/en.json',
     'assets/nexroute-mark.svg',
     'scripts/Build-NexRoute.ps1',
+    'scripts/Test-Package.ps1',
     '.github/workflows/validate.yml',
     '.github/workflows/release.yml',
     'docs/README_EN.md',
@@ -85,6 +86,7 @@ Assert-True -Condition ($license -match 'Copyright \(c\) 2026 Onmaynec') -Messag
 $powerShellFiles = @(
     'scripts/Build-NexRoute.ps1',
     'scripts/Test-Repository.ps1',
+    'scripts/Test-Package.ps1',
     'overlay/.service/nexroute-ui.ps1',
     'overlay/.service/nexroute-services.ps1',
     'overlay/.service/New-NexRouteIcon.ps1'
@@ -138,6 +140,15 @@ if (Test-Path -LiteralPath $buildScriptPath) {
     Assert-True -Condition ($buildScript -match 'Mode PayloadManager') -Message 'Builder patches the styled payload manager'
     Assert-True -Condition ($buildScript -match 'Mode SyncIpSet') -Message 'Builder patches animated IPSet sync'
     Assert-True -Condition ($buildScript -match 'Mode SyncHosts') -Message 'Builder patches animated hosts sync'
+}
+
+$packageTestPath = Join-Path $root 'scripts/Test-Package.ps1'
+if (Test-Path -LiteralPath $packageTestPath) {
+    $packageTest = Get-Content -LiteralPath $packageTestPath -Raw
+    Assert-True -Condition ($packageTest -match 'NexRoute\.lnk') -Message 'Package verifier checks the generated shortcut'
+    Assert-True -Condition ($packageTest -match 'nexroute\.ico') -Message 'Package verifier checks the generated icon'
+    Assert-True -Condition ($packageTest -match 'Expected 15 services') -Message 'Package verifier checks all service definitions'
+    Assert-True -Condition ($packageTest -match 'powershell\.exe') -Message 'Package verifier executes Windows PowerShell 5.1 smoke tests'
 }
 
 $forbiddenExtensions = @('.exe', '.dll', '.sys', '.bin', '.zip', '.rar', '.7z', '.ico', '.lnk')
