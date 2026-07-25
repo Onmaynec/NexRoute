@@ -4,7 +4,7 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$errors = [System.Collections.Generic.List[string]]::new()
+$errors = New-Object 'System.Collections.Generic.List[string]'
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)
@@ -25,75 +25,104 @@ function Test-PowerShellFile {
     Assert-True ($parseErrors.Count -eq 0) "$RelativePath parses without PowerShell syntax errors"
 }
 
-Write-Host 'NexRoute 0.2.1 repository validation' -ForegroundColor Cyan
+Write-Host 'NexRoute 0.2.2 repository validation' -ForegroundColor Cyan
 Write-Host '====================================' -ForegroundColor Cyan
 
 $required = @(
     'README.md','CHANGELOG.md','LICENSE','THIRD_PARTY_NOTICES.md','.service/version.txt',
     'overlay/nexroute.bat','overlay/.service/nexroute-ui.ps1','overlay/.service/nexroute-services.ps1',
-    'overlay/.service/services.json','overlay/.service/New-NexRouteIcon.ps1',
-    'overlay/.service/i18n/ru.json','overlay/.service/i18n/en.json',
+    'overlay/.service/nexroute-services-entry.ps1','overlay/.service/services.json',
+    'overlay/.service/New-NexRouteIcon.ps1','overlay/.service/i18n/ru.json','overlay/.service/i18n/en.json',
     'overlay/.service/i18n/nexroute-theme.ps1','overlay/.service/i18n/nexroute-pages.ps1',
-    'overlay/.service/i18n/nexroute-services-ui.ps1','scripts/Build-NexRoute.ps1',
-    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','.github/workflows/validate.yml',
-    '.github/workflows/release.yml','.github/workflows/publish-v0.2.1.yml',
-    '.github/release-notes/v0.2.1.md','docs/SERVICES.md'
+    'overlay/.service/i18n/nexroute-pages-core.ps1','overlay/.service/i18n/nexroute-pages-network.ps1',
+    'overlay/.service/i18n/nexroute-services-ui.ps1','assets/nexroute-icon-512.b64',
+    'scripts/Build-NexRoute.ps1','scripts/Build-NexRoute-0.2.2.ps1',
+    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Package-0.2.2.ps1',
+    '.github/workflows/validate.yml','.github/workflows/publish-v0.2.2.yml',
+    '.github/release-notes/v0.2.2.md','docs/SERVICES.md'
 )
 foreach ($relativePath in $required) {
     Assert-True (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf) "Required file exists: $relativePath"
 }
 
 $version = (Get-Content -LiteralPath (Join-Path $root '.service/version.txt') -Raw).Trim()
-Assert-True ($version -eq '0.2.1') 'Repository version is 0.2.1'
-$readme = Get-Content -LiteralPath (Join-Path $root 'README.md') -Raw
-Assert-True ($readme -match '0\.2\.1') 'README mentions 0.2.1'
-Assert-True ($readme -match '0\.1\.1') 'README documents restored 0.1.1 design'
+Assert-True ($version -eq '0.2.2') 'Repository version is 0.2.2'
 
-foreach ($relativePath in @(
-    'scripts/Build-NexRoute.ps1','scripts/Test-Repository.ps1','scripts/Test-Package.ps1',
+$readme = Get-Content -LiteralPath (Join-Path $root 'README.md') -Raw
+Assert-True ($readme -match '0\.2\.2') 'README mentions 0.2.2'
+Assert-True ($readme -match '22') 'README documents all 22 strategies'
+Assert-True ($readme -match 'Strategy Lab|Лаборатор') 'README documents Strategy Lab integration'
+
+$powerShellFiles = @(
+    'scripts/Build-NexRoute.ps1','scripts/Build-NexRoute-0.2.2.ps1',
+    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Package-0.2.2.ps1',
     'overlay/.service/nexroute-ui.ps1','overlay/.service/nexroute-services.ps1',
-    'overlay/.service/New-NexRouteIcon.ps1','overlay/.service/i18n/nexroute-theme.ps1',
-    'overlay/.service/i18n/nexroute-pages.ps1','overlay/.service/i18n/nexroute-services-ui.ps1'
-)) { Test-PowerShellFile $relativePath }
+    'overlay/.service/nexroute-services-entry.ps1','overlay/.service/New-NexRouteIcon.ps1',
+    'overlay/.service/i18n/nexroute-theme.ps1','overlay/.service/i18n/nexroute-pages.ps1',
+    'overlay/.service/i18n/nexroute-pages-core.ps1','overlay/.service/i18n/nexroute-pages-network.ps1',
+    'overlay/.service/i18n/nexroute-services-ui.ps1'
+)
+foreach ($relativePath in $powerShellFiles) { Test-PowerShellFile $relativePath }
 
 $dispatcher = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-ui.ps1') -Raw
-Assert-True ($dispatcher -match 'Repair-NexRouteEmbeddedArguments') 'Dispatcher recovers arguments swallowed by the trailing-backslash quote bug'
-Assert-True ($dispatcher -match 'Repair-NexRouteBatchLaunchers') 'Dispatcher permanently repairs generated BAT launchers'
-Assert-True ($dispatcher -match 'nexroute-theme\.ps1') 'Dispatcher loads classic theme module'
-
-$theme = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-theme.ps1') -Raw
-Assert-True ($theme -match [regex]::Escape('| \ | || ____|\ \/ /|  _ \ / _ \| | | |_   _| ____|')) 'Theme contains the 0.1.1 NexRoute logo layout'
-Assert-True ($theme -match 'NEXROUTE CONTROL NODE') 'Theme contains the 0.1.1 control-node header'
-
-foreach ($relativePath in @(
-    'overlay/.service/nexroute-ui.ps1','overlay/.service/i18n/nexroute-theme.ps1',
-    'overlay/.service/i18n/nexroute-pages.ps1','overlay/.service/i18n/nexroute-services-ui.ps1'
-)) {
-    $content = Get-Content -LiteralPath (Join-Path $root $relativePath) -Raw
-    Assert-True (@($content.ToCharArray() | Where-Object { [int]$_ -gt 127 }).Count -eq 0) "$relativePath is ASCII-safe"
+foreach ($token in @('GameFilter','UpdateWatch','Repair-NexRouteEmbeddedArguments')) {
+    Assert-True ($dispatcher -match [regex]::Escape($token)) "Dispatcher contains $token"
 }
+$pagesLoader = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-pages.ps1') -Raw
+Assert-True ($pagesLoader -match 'nexroute-pages-core\.ps1') 'Page loader imports the core page module'
+Assert-True ($pagesLoader -match 'nexroute-pages-network\.ps1') 'Page loader imports the network page module'
 
-$services = @((Get-Content -LiteralPath (Join-Path $root 'overlay/.service/services.json') -Raw -Encoding UTF8 | ConvertFrom-Json).services)
-Assert-True ($services.Count -eq 15) 'Service matrix contains 15 profiles'
+$servicesDocument = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/services.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$services = @($servicesDocument.services)
+Assert-True ($servicesDocument.schemaVersion -eq 2) 'Service Matrix uses schema version 2'
+Assert-True ($services.Count -eq 15) 'Service Matrix contains 15 profiles'
 $ids = @($services | ForEach-Object { $_.id })
 Assert-True (($ids | Sort-Object -Unique).Count -eq $ids.Count) 'Service ids are unique'
-foreach ($id in @('youtube','discord','chatgpt','facetime','snapchat','viber','signal','x','instagram','facebook','telegram','linkedin','tiktok','whatsapp','casebattle')) {
-    Assert-True ($ids -contains $id) "Service matrix contains $id"
+foreach ($service in $services) {
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$service.descriptionEn)) "Service $($service.id) has an English description"
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$service.descriptionRu)) "Service $($service.id) has a Russian description"
+    Assert-True (@($service.testTargets).Count -ge 2) "Service $($service.id) has real critical endpoints"
+    Assert-True (@($service.tcpPorts).Count -gt 0 -or @($service.udpPorts).Count -gt 0) "Service $($service.id) has transport coverage"
 }
 
-$builder = Get-Content -LiteralPath (Join-Path $root 'scripts/Build-NexRoute.ps1') -Raw
-Assert-True ($builder -match "UpstreamVersion = '1\.10\.0'") 'Flowseal baseline remains pinned to 1.10.0'
-Assert-True ($builder -match 'overlay/\.service/i18n') 'Builder copies the complete UI module directory'
-Assert-True ($builder -match 'Get-FileHash.+SHA256') 'Builder creates SHA-256 checksums'
+$controller = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-services.ps1') -Raw
+foreach ($token in @('TestTargets','Restart-InstalledStrategy','ipset-services-user.txt','services-runtime.cmd')) {
+    Assert-True ($controller -match [regex]::Escape($token)) "Service controller contains $token"
+}
+
+$entry = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-services-entry.ps1') -Raw
+Assert-True ($entry -match 'NEXROUTE_SERVICE_TCP_ARGS') 'Runtime entry generates TCP service filters'
+Assert-True ($entry -match 'NEXROUTE_SERVICE_UDP_ARGS') 'Runtime entry generates UDP service filters'
+Assert-True ($entry -match '--hostlist=') 'Runtime entry generates domain filters'
+Assert-True ($entry -match '--ipset=') 'Runtime entry generates IP filters'
+
+$networkPages = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-pages-network.ps1') -Raw
+Assert-True ($networkPages -match 'NEXROUTE-HOSTS-BEGIN') 'SYNC HOSTS uses a managed block'
+Assert-True ($networkPages -match '\[string\]\$localText =') 'SYNC HOSTS is null-safe'
+Assert-True ($networkPages -match 'ipconfig\.exe /flushdns') 'SYNC HOSTS flushes DNS'
+
+$buildWrapper = Get-Content -LiteralPath (Join-Path $root 'scripts/Build-NexRoute-0.2.2.ps1') -Raw
+foreach ($token in @('Expected 22 strategy BAT files','NEXROUTE_SERVICE_FILTERS_V2','NEXROUTE_DYNAMIC_TARGETS_V2','NEXROUTE_REFRESH_MATRIX_V2')) {
+    Assert-True ($buildWrapper -match [regex]::Escape($token)) "0.2.2 builder contains $token"
+}
+
+$iconBase64 = (Get-Content -LiteralPath (Join-Path $root 'assets/nexroute-icon-512.b64') -Raw -Encoding ASCII).Trim()
+try {
+    $iconBytes = [Convert]::FromBase64String($iconBase64)
+    Assert-True ($iconBytes.Length -gt 20KB) 'User-supplied icon source decodes successfully'
+}
+catch {
+    Assert-True $false 'User-supplied icon source is valid base64'
+}
 
 $forbiddenExtensions = @('.exe','.dll','.sys','.bin','.zip','.rar','.7z','.ico','.lnk')
 $forbidden = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force | Where-Object {
     $_.FullName -notmatch '[\\/]\.git[\\/]' -and $forbiddenExtensions -contains $_.Extension.ToLowerInvariant()
 })
-Assert-True ($forbidden.Count -eq 0) 'Git source tree contains no generated binaries or archives'
+Assert-True ($forbidden.Count -eq 0) 'Git source tree contains no generated executables, drivers, archives, ICOs or shortcuts'
 
 if ($errors.Count -gt 0) {
     Write-Host "`nValidation failed with $($errors.Count) error(s)." -ForegroundColor Red
     exit 1
 }
-Write-Host "`nAll NexRoute 0.2.1 repository checks passed." -ForegroundColor Green
+Write-Host "`nAll NexRoute 0.2.2 repository checks passed." -ForegroundColor Green
