@@ -326,7 +326,7 @@ if exist "%~dp0.service\nexroute-services.ps1" powershell -NoProfile -ExecutionP
 exit /b
 
 '@
-    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':load_user_lists\r?\n.*?(?=:: TCP ENABLE)' -Replacement $loadUserListsBlock -Name 'user-list loader'
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern '(?m)^:load_user_lists\r?\n.*?(?=^:: TCP ENABLE)' -Replacement $loadUserListsBlock -Name 'user-list loader'
 
     $statusBlock = @'
 :service_status
@@ -341,7 +341,7 @@ if exist "!NEXROUTE_UI!" (
 goto menu
 
 '@
-    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':service_status\r?\n.*?(?=:test_service)' -Replacement $statusBlock -Name 'status page'
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern '(?m)^:service_status\r?\n.*?(?=^:test_service)' -Replacement $statusBlock -Name 'status page'
 
     $pickerBlock = @'
 :: Searching for strategy launchers through NexRoute selector
@@ -395,7 +395,7 @@ goto menu
 
 :: IPSET UPDATE =======================
 '@
-    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':ipset_switch\r?\n.*?:: IPSET UPDATE =+' -Replacement $ipsetSwitchBlock -Name 'IPSet mode page'
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern '(?m)^:ipset_switch\r?\n.*?(?=^:: IPSET UPDATE)' -Replacement $ipsetSwitchBlock -Name 'IPSet mode page'
 
     $ipsetUpdateBlock = @'
 :ipset_update
@@ -406,7 +406,7 @@ goto menu
 
 :: HOSTS UPDATE =======================
 '@
-    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':ipset_update\r?\n.*?:: HOSTS UPDATE =+' -Replacement $ipsetUpdateBlock -Name 'IPSet synchronization page'
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern '(?m)^:ipset_update\r?\n.*?(?=^:: HOSTS UPDATE)' -Replacement $ipsetUpdateBlock -Name 'IPSet synchronization page'
 
     $hostsBlock = @'
 :hosts_update
@@ -417,7 +417,7 @@ goto menu
 
 :: RUN TESTS =============================
 '@
-    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':hosts_update\r?\n.*?:: RUN TESTS =+' -Replacement $hostsBlock -Name 'hosts synchronization page'
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern '(?m)^:hosts_update\r?\n.*?(?=^:: RUN TESTS)' -Replacement $hostsBlock -Name 'hosts synchronization page'
 
     $testsBlock = @'
 :run_tests
@@ -435,14 +435,24 @@ goto menu
 
 :: Get strategy name
 '@
-    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':run_tests\r?\n.*?:: Get strategy name' -Replacement $testsBlock -Name 'test launcher page'
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern '(?m)^:run_tests\r?\n.*?(?=^:: Get strategy name)' -Replacement $testsBlock -Name 'test launcher page'
 
     $diagnosticsHeader = @'
 :service_diagnostics
 chcp 65001 > nul
 if exist "!NEXROUTE_UI!" powershell -NoProfile -ExecutionPolicy Bypass -File "!NEXROUTE_UI!" -Mode Screen -ScreenId diagnostics -Root "%~dp0" -LanguageFile "!NEXROUTE_LANGUAGE_FILE!"
 '@
-    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern ':service_diagnostics\r?\nchcp 437 > nul\r?\ncls\r?\n' -Replacement $diagnosticsHeader -Name 'diagnostics header'
+    $serviceContent = Replace-RequiredPattern -Content $serviceContent -Pattern '(?m)^:service_diagnostics\r?\nchcp 437 > nul\r?\ncls\r?\n' -Replacement $diagnosticsHeader -Name 'diagnostics header'
+
+    foreach ($requiredToken in @(
+        'if "!menu_choice!"=="14" goto nexroute_services_matrix',
+        ':nexroute_services_matrix',
+        '-Mode Services'
+    )) {
+        if (-not $serviceContent.Contains($requiredToken)) {
+            throw "Generated service.bat is missing required matrix route token: $requiredToken"
+        }
+    }
 
     Write-Utf8NoBom -Path $servicePath -Content $serviceContent
 
