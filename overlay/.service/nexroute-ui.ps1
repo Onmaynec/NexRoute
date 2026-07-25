@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Menu', 'Action', 'Launch', 'Status', 'StrategyPicker', 'PayloadManager', 'IpSetSwitch', 'SyncIpSet', 'SyncHosts', 'TestsIntro', 'TestHeader', 'Services', 'Screen')]
+    [ValidateSet('Menu', 'Action', 'Launch', 'Status', 'StrategyPicker', 'PayloadManager', 'IpSetSwitch', 'SyncIpSet', 'SyncHosts', 'GameFilter', 'UpdateWatch', 'TestsIntro', 'TestHeader', 'Services', 'Screen')]
     [string]$Mode = 'Menu',
     [string]$ChoiceFile,
     [string]$LanguageFile,
@@ -28,7 +28,6 @@ function Repair-NexRouteEmbeddedArguments {
     $raw = $script:Root
     $marker = [regex]::Match($raw, '(?is)"?\s+-(ChoiceFile|LanguageFile|ActionId|Profile|ScreenId)\b')
     if (-not $marker.Success) { return }
-
     if ([string]::IsNullOrWhiteSpace($script:ChoiceFile)) { $script:ChoiceFile = Get-EmbeddedNexRouteArgument -Source $raw -Name 'ChoiceFile' }
     if ([string]::IsNullOrWhiteSpace($script:LanguageFile)) { $script:LanguageFile = Get-EmbeddedNexRouteArgument -Source $raw -Name 'LanguageFile' }
     if ([string]::IsNullOrWhiteSpace($script:ActionId)) { $script:ActionId = Get-EmbeddedNexRouteArgument -Source $raw -Name 'ActionId' }
@@ -38,7 +37,6 @@ function Repair-NexRouteEmbeddedArguments {
 }
 
 Repair-NexRouteEmbeddedArguments
-
 . (Join-Path $PSScriptRoot 'i18n\nexroute-theme.ps1')
 . (Join-Path $PSScriptRoot 'i18n\nexroute-pages.ps1')
 . (Join-Path $PSScriptRoot 'i18n\nexroute-services-ui.ps1')
@@ -52,9 +50,7 @@ function Repair-NexRouteBatchLaunchers {
             $fixed = $content -replace '\s+-Root\s+"%~dp0"', ''
             [System.IO.File]::WriteAllText($file.FullName, $fixed, [System.Text.Encoding]::ASCII)
         }
-    }
-    catch {
-    }
+    } catch { }
 }
 
 Repair-NexRouteBatchLaunchers
@@ -70,6 +66,8 @@ switch ($Mode) {
     'IpSetSwitch' { Invoke-NexRouteIpsetSwitch }
     'SyncIpSet' { Invoke-NexRouteSyncIpSet }
     'SyncHosts' { Invoke-NexRouteSyncHosts }
+    'GameFilter' { Show-NexRouteGameFilter }
+    'UpdateWatch' { Invoke-NexRouteUpdateWatch }
     'TestsIntro' { Show-NexRouteTestsIntro }
     'TestHeader' { Show-NexRouteTestHeader }
     'Services' { Show-NexRouteServices }
