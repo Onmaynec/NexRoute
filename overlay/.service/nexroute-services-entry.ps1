@@ -92,5 +92,7 @@ if ($Mode -in @('Apply', 'Reset')) {
     exit 0
 }
 
+# PowerShell script invocation does not set $LASTEXITCODE. With
+# ErrorActionPreference=Stop, any core failure is already terminating.
 & $corePath -Mode $Mode -Root $Root
-exit $LASTEXITCODE
+exit 0
