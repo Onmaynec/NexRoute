@@ -1,0 +1,28 @@
+name: Validate repository
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate source tree
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate NexRoute repository
+        shell: pwsh
+        run: ./scripts/Test-Repository.ps1
+
+      - name: Verify release builder help
+        shell: pwsh
+        run: Get-Help ./scripts/Build-NexRoute.ps1 -Full | Out-Null
