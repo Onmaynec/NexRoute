@@ -15,6 +15,20 @@ $serviceBat = Join-Path $Root 'service.bat'
 
 New-Item -ItemType Directory -Path $serviceDir -Force | Out-Null
 
+# `%~dp0` always ends with a backslash. Passing it as a quoted native
+# PowerShell argument can swallow all following parameters on Windows.
+# Every NexRoute script already resolves the distribution root relative to
+# its own location, so the explicit Root argument is unnecessary.
+$sanitizedFiles = 0
+foreach ($batFile in @(Get-ChildItem -LiteralPath $Root -Filter '*.bat' -File)) {
+    $content = [System.IO.File]::ReadAllText($batFile.FullName)
+    $fixed = $content -replace '\s+-Root\s+"%~dp0"', ''
+    if ($fixed -ne $content) {
+        [System.IO.File]::WriteAllText($batFile.FullName, $fixed, [System.Text.Encoding]::ASCII)
+        $sanitizedFiles++
+    }
+}
+
 $size = 64
 $bitmap = New-Object System.Drawing.Bitmap($size, $size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
 $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
@@ -91,4 +105,5 @@ if (Test-Path -LiteralPath $serviceBat -PathType Leaf) {
     $shortcut.Save()
 }
 
-Write-Output $iconPath
+Write-Output ("Icon: {0}" -f $iconPath)
+Write-Output ("Sanitized BAT files: {0}" -f $sanitizedFiles)
