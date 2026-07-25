@@ -36,6 +36,14 @@ foreach ($relativePath in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $extractPath $relativePath) -PathType Leaf)) { throw "Built package is missing $relativePath" }
 }
 
+$allBatchFiles = @(Get-ChildItem -LiteralPath $extractPath -Filter '*.bat' -File)
+foreach ($batchFile in $allBatchFiles) {
+    $batchContent = Get-Content -LiteralPath $batchFile.FullName -Raw
+    if ($batchContent -match '-Root\s+"%~dp0"') {
+        throw "Published archive contains an unsafe Root argument: $($batchFile.Name)"
+    }
+}
+
 $servicePath = Join-Path $extractPath 'service.bat'
 $service = Get-Content -LiteralPath $servicePath -Raw
 if ($service -notmatch 'if "!menu_choice!"=="14" goto nexroute_services_matrix') { throw 'service.bat is missing option 14.' }
@@ -55,7 +63,7 @@ if ($services.Count -ne 15) { throw "Expected 15 services, got $($services.Count
 & $controllerPath -Mode Validate -Root $extractPath
 & $controllerPath -Mode Apply -Root $extractPath
 
-$strategyFiles = @(Get-ChildItem -LiteralPath $extractPath -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat','nexroute.bat') })
+$strategyFiles = @($allBatchFiles | Where-Object { $_.Name -notin @('service.bat','nexroute.bat') })
 if ($strategyFiles.Count -eq 0) { throw 'No strategy files were found.' }
 foreach ($strategyFile in $strategyFiles) {
     $content = Get-Content -LiteralPath $strategyFile.FullName -Raw
@@ -67,12 +75,11 @@ if (-not $SkipRuntime) {
     $languagePath = Join-Path $extractPath '.service/language.txt'
     Set-Content -LiteralPath $languagePath -Value 'RU' -Encoding ascii
 
+    # Regression guard for already-downloaded 0.2.0 packages: the dispatcher must
+    # still recover a command line where the trailing slash swallowed arguments.
     $malformed = $extractPath + '\" -ActionId "deploy" -LanguageFile "' + $languagePath + '"'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Action -Root $malformed -NonInteractive
     if ($LASTEXITCODE -ne 0) { throw 'Renderer failed to recover the malformed Root argument shown in user reports.' }
-
-    $serviceAfterRepair = Get-Content -LiteralPath $servicePath -Raw
-    if ($serviceAfterRepair -match '-Root\s+"%~dp0"') { throw 'UI did not permanently repair unsafe Root arguments in service.bat.' }
 
     foreach ($language in @('RU','EN')) {
         Set-Content -LiteralPath $languagePath -Value $language -Encoding ascii
