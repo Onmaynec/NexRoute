@@ -152,7 +152,10 @@ exit /b
     [IO.File]::WriteAllText($servicePath,$service,[Text.UTF8Encoding]::new($false))
 
     Step 'Injecting animated profile boot'
-    $strategyHook="rem NEXROUTE_PROFILE_BOOT`r`nif exist \"%~dp0.service\nexroute-console.ps1\" powershell -NoProfile -ExecutionPolicy Bypass -File \"%~dp0.service\nexroute-console.ps1\" -Mode Launch -Profile \"%~n0\" -LanguageFile \"%~dp0.service\language.txt\"`r`n"
+    $strategyHook = @'
+rem NEXROUTE_PROFILE_BOOT
+if exist "%~dp0.service\nexroute-console.ps1" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0.service\nexroute-console.ps1" -Mode Launch -Profile "%~n0" -LanguageFile "%~dp0.service\language.txt"
+'@ -replace "`n","`r`n"
     $strategyFiles=@(Get-ChildItem $distributionPath -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat','nexroute.bat') })
     foreach ($file in $strategyFiles) { Add-StrategyHook $file.FullName $strategyHook }
 
