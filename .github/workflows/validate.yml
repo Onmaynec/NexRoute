@@ -94,16 +94,54 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Upload built package for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-0.2.2-pretest-package
+          path: |
+            artifacts/NexRoute-0.2.2-win-x64.zip
+            artifacts/NexRoute-0.2.2-win-x64.zip.sha256
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Inspect package and Windows runtime
         shell: pwsh
         run: |
-          $result = ./scripts/Test-Package-0.2.2.ps1 `
-            -ArtifactsDirectory ./artifacts `
-            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-0.2.2-test')
-          "NEXROUTE_SHA256=$($result.Sha256)" >> $env:GITHUB_ENV
-          "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
-          "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
-          "NEXROUTE_ICON_BYTES=$($result.IconBytes)" >> $env:GITHUB_ENV
+          try {
+            $result = ./scripts/Test-Package-0.2.2.ps1 `
+              -ArtifactsDirectory ./artifacts `
+              -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-0.2.2-test') *>&1 |
+              Tee-Object -FilePath package-test.log
+            $result = $result | Select-Object -Last 1
+            "NEXROUTE_SHA256=$($result.Sha256)" >> $env:GITHUB_ENV
+            "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
+            "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
+            "NEXROUTE_ICON_BYTES=$($result.IconBytes)" >> $env:GITHUB_ENV
+          }
+          catch {
+            @(
+              '',
+              '=== TERMINATING EXCEPTION ===',
+              ($_ | Out-String),
+              '=== EXCEPTION DETAILS ===',
+              ($_ | Format-List * -Force | Out-String),
+              '=== SCRIPT STACK TRACE ===',
+              $_.ScriptStackTrace
+            ) -join [Environment]::NewLine | Tee-Object -FilePath package-test.log -Append
+            Write-Host '=== PACKAGE TEST LOG TAIL ===' -ForegroundColor Yellow
+            Get-Content package-test.log -Tail 100
+            throw
+          }
+
+      - name: Upload package test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-0.2.2-package-test-log
+          path: package-test.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Upload smoke package
         uses: actions/upload-artifact@v4
