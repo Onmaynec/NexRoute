@@ -26,3 +26,40 @@ jobs:
       - name: Verify release builder help
         shell: pwsh
         run: Get-Help ./scripts/Build-NexRoute.ps1 -Full | Out-Null
+
+  build-smoke:
+    name: Build Flowseal 1.10.0 based package
+    needs: validate
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build NexRoute smoke artifact
+        shell: pwsh
+        run: |
+          $version = (Get-Content ./.service/version.txt -Raw).Trim()
+          ./scripts/Build-NexRoute.ps1 `
+            -Version $version `
+            -UpstreamVersion '1.10.0' `
+            -OutputDirectory ./artifacts
+
+      - name: Verify package and checksum
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem ./artifacts -Filter '*.zip' -File | Select-Object -First 1
+          $checksum = Get-ChildItem ./artifacts -Filter '*.sha256' -File | Select-Object -First 1
+          if (-not $zip -or -not $checksum) { throw 'Build output is incomplete.' }
+          if ($zip.Length -lt 1MB) { throw 'Release archive is unexpectedly small.' }
+          Get-Content $checksum.FullName
+
+      - name: Upload smoke artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-smoke-package
+          path: |
+            artifacts/*.zip
+            artifacts/*.sha256
+          if-no-files-found: error
+          retention-days: 7
