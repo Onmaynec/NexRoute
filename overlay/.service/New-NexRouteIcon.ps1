@@ -12,7 +12,7 @@ $serviceDir = Join-Path $Root '.service'
 $iconPath = Join-Path $serviceDir 'nexroute.ico'
 $shortcutPath = Join-Path $Root 'NexRoute.lnk'
 $serviceBat = Join-Path $Root 'service.bat'
-$iconPartsPath = Join-Path $Root 'assets\nexroute-icon-parts'
+$iconPartsPath = Join-Path $Root 'assets\nexroute-icon-compact'
 
 New-Item -ItemType Directory -Path $serviceDir -Force | Out-Null
 
@@ -105,8 +105,8 @@ if (-not (Test-Path -LiteralPath $iconPartsPath -PathType Container)) {
 }
 
 $partFiles = @(Get-ChildItem -LiteralPath $iconPartsPath -Filter '*.b64' -File | Sort-Object Name)
-if ($partFiles.Count -ne 10) {
-    throw "Expected 10 NexRoute icon source parts, got $($partFiles.Count)."
+if ($partFiles.Count -ne 2) {
+    throw "Expected 2 NexRoute icon source parts, got $($partFiles.Count)."
 }
 
 $builder = New-Object System.Text.StringBuilder
