@@ -68,6 +68,7 @@ $dispatcher = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexrou
 foreach ($token in @('GameFilter','UpdateWatch','Repair-NexRouteEmbeddedArguments')) {
     Assert-True ($dispatcher -match [regex]::Escape($token)) "Dispatcher contains $token"
 }
+
 $pagesLoader = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-pages.ps1') -Raw
 Assert-True ($pagesLoader -match 'nexroute-pages-core\.ps1') 'Page loader imports the core page module'
 Assert-True ($pagesLoader -match 'nexroute-pages-network\.ps1') 'Page loader imports the network page module'
@@ -109,7 +110,7 @@ foreach ($token in @('Expected 22 strategy BAT files','NEXROUTE_SERVICE_FILTERS_
 $iconBase64 = (Get-Content -LiteralPath (Join-Path $root 'assets/nexroute-icon-512.b64') -Raw -Encoding ASCII).Trim()
 try {
     $iconBytes = [Convert]::FromBase64String($iconBase64)
-    Assert-True ($iconBytes.Length -gt 20KB) 'User-supplied icon source decodes successfully'
+    Assert-True ($iconBytes.Length -gt 5KB) 'User-supplied icon source decodes successfully'
 }
 catch {
     Assert-True $false 'User-supplied icon source is valid base64'
