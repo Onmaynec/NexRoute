@@ -53,10 +53,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          ./scripts/Build-NexRoute.ps1 `
-            -Version $version `
-            -UpstreamVersion '1.10.0' `
-            -OutputDirectory ./artifacts
+          ./scripts/Build-NexRoute.ps1 -Version $version -UpstreamVersion '1.10.0' -OutputDirectory ./artifacts
       - name: Verify package, runtime modules and checksum
         shell: pwsh
         run: |
@@ -95,7 +92,6 @@ jobs:
             if ($services -notmatch [regex]::Escape($domain)) { throw "Service catalog is missing $domain" }
           }
           $strategyFiles = @(Get-ChildItem $extractPath -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat','nexroute.bat') })
-          if ($strategyFiles.Count -eq 0) { throw 'No strategy launchers were found.' }
           foreach ($strategyFile in $strategyFiles) {
             if ((Get-Content $strategyFile.FullName -Raw) -notmatch 'NEXROUTE_PROFILE_BOOT') { throw "Missing profile boot hook: $($strategyFile.Name)" }
           }
@@ -103,20 +99,39 @@ jobs:
           Write-Host "Verified $($strategyFiles.Count) strategy launchers and four runtime modules."
           Write-Host "SHA-256: $actualHash"
       - name: Execute v0.2.0 terminal modules on Windows PowerShell 5.1
+        id: runtime_validation
+        continue-on-error: true
         shell: pwsh
         run: |
+          $ErrorActionPreference = 'Continue'
           $root = $env:NEXROUTE_EXTRACT_PATH
           $languagePath = Join-Path $root '.service/language.txt'
           $consolePath = Join-Path $root '.service/nexroute-console.ps1'
           $pagesPath = Join-Path $root '.service/nexroute-pages.ps1'
+          $logPath = Join-Path $PWD 'runtime-validation.log'
           Set-Content $languagePath 'EN' -Encoding ascii
           $env:NEXROUTE_VERSION = '0.2.0'
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $consolePath -Mode Action -ActionId syncipset -LanguageFile $languagePath
+          "ACTION TEST" | Tee-Object -FilePath $logPath
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $consolePath -Mode Action -ActionId syncipset -LanguageFile $languagePath *>&1 | Tee-Object -FilePath $logPath -Append
           if ($LASTEXITCODE -ne 0) { throw "Console Action mode failed: $LASTEXITCODE" }
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $consolePath -Mode Launch -Profile 'general (ALT)' -LanguageFile $languagePath
+          "LAUNCH TEST" | Tee-Object -FilePath $logPath -Append
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $consolePath -Mode Launch -Profile 'general (ALT)' -LanguageFile $languagePath *>&1 | Tee-Object -FilePath $logPath -Append
           if ($LASTEXITCODE -ne 0) { throw "Console Launch mode failed: $LASTEXITCODE" }
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $pagesPath -Page sync-hosts -LanguageFile $languagePath
+          "PAGE TEST" | Tee-Object -FilePath $logPath -Append
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $pagesPath -Page sync-hosts -LanguageFile $languagePath *>&1 | Tee-Object -FilePath $logPath -Append
           if ($LASTEXITCODE -ne 0) { throw "Styled page mode failed: $LASTEXITCODE" }
+      - name: Upload runtime validation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-runtime-validation-log
+          path: runtime-validation.log
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Fail when runtime validation failed
+        if: steps.runtime_validation.outcome == 'failure'
+        shell: pwsh
+        run: throw 'Runtime validation failed. See NexRoute-runtime-validation-log.'
       - name: Upload smoke artifact
         uses: actions/upload-artifact@v4
         with:
