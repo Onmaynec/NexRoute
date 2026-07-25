@@ -61,6 +61,52 @@ function Copy-RequiredFile {
     Copy-Item -LiteralPath $Source -Destination $Destination -Force
 }
 
+function Add-AsciiHookAfterFirstLine {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Hook
+    )
+
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    if ($bytes.Length -eq 0) {
+        throw "Cannot inject launcher into empty strategy file: $Path"
+    }
+
+    $probeLength = [Math]::Min(128, $bytes.Length)
+    $probe = [System.Text.Encoding]::ASCII.GetString($bytes, 0, $probeLength)
+    if ($probe -notmatch '(?im)^\s*@echo\s+off\s*$') {
+        throw "Strategy file does not start with @echo off: $Path"
+    }
+
+    if ($probe -match 'NEXROUTE_PROFILE_BOOT') {
+        return
+    }
+
+    $insertAt = -1
+    for ($i = 0; $i -lt $bytes.Length; $i++) {
+        if ($bytes[$i] -eq 10) {
+            $insertAt = $i + 1
+            break
+        }
+    }
+
+    if ($insertAt -lt 0) {
+        throw "Cannot locate first line ending in strategy file: $Path"
+    }
+
+    $hookBytes = [System.Text.Encoding]::ASCII.GetBytes($Hook)
+    $stream = [System.IO.MemoryStream]::new()
+    try {
+        $stream.Write($bytes, 0, $insertAt)
+        $stream.Write($hookBytes, 0, $hookBytes.Length)
+        $stream.Write($bytes, $insertAt, $bytes.Length - $insertAt)
+        [System.IO.File]::WriteAllBytes($Path, $stream.ToArray())
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
+
 try {
     New-Item -ItemType Directory -Path $tempPath, $extractPath, $outputPath -Force | Out-Null
 
@@ -130,7 +176,17 @@ try {
         Move-Item -LiteralPath $upstreamLicense -Destination (Join-Path $licensesPath 'FLOWSEAL-MIT.txt') -Force
     }
 
-    Write-Step 'Applying NexRoute branding and bilingual service menu'
+    Write-Step 'Installing terminal UI runtime'
+    $distributionServiceDirectory = Join-Path $distributionPath '.service'
+    New-Item -ItemType Directory -Path $distributionServiceDirectory -Force | Out-Null
+    Copy-RequiredFile `
+        -Source (Join-Path $repositoryRoot 'overlay/.service/nexroute-ui.ps1') `
+        -Destination (Join-Path $distributionServiceDirectory 'nexroute-ui.ps1')
+
+    Set-Content -LiteralPath (Join-Path $distributionServiceDirectory 'language.txt') -Value 'RU' -Encoding ascii
+    Set-Content -LiteralPath (Join-Path $distributionServiceDirectory 'version.txt') -Value $Version -Encoding ascii
+
+    Write-Step 'Applying NexRoute service control panel'
     $servicePath = Join-Path $distributionPath 'service.bat'
     $serviceContent = [System.IO.File]::ReadAllText($servicePath)
 
@@ -138,7 +194,7 @@ try {
         $serviceContent,
         'set "LOCAL_VERSION=[^"]+"',
         ('set "LOCAL_VERSION={0}"' -f $Version),
-        1
+        [System.Text.RegularExpressions.RegexOptions]::None
     )
 
     $serviceContent = $serviceContent.Replace(
@@ -159,7 +215,8 @@ try {
     )
 
     $menuPattern = '(?s):: MENU =+.*?:: LOAD USER LISTS =+'
-    if (-not [regex]::IsMatch($serviceContent, $menuPattern)) {
+    $menuRegex = [regex]::new($menuPattern)
+    if (-not $menuRegex.IsMatch($serviceContent)) {
         throw 'Unable to locate the upstream service menu block. The pinned upstream format may have changed.'
     }
 
@@ -167,135 +224,171 @@ try {
 :: MENU ================================
 setlocal EnableDelayedExpansion
 set "NEXROUTE_LANGUAGE_FILE=%~dp0.service\language.txt"
-set "NEXROUTE_LANG=RU"
-if exist "!NEXROUTE_LANGUAGE_FILE!" set /p NEXROUTE_LANG=<"!NEXROUTE_LANGUAGE_FILE!"
-if /I not "!NEXROUTE_LANG!"=="RU" if /I not "!NEXROUTE_LANG!"=="EN" set "NEXROUTE_LANG=RU"
-
-title NexRoute Control Center v!LOCAL_VERSION!
+set "NEXROUTE_UI=%~dp0.service\nexroute-ui.ps1"
+title NexRoute // Control Node v!LOCAL_VERSION!
 
 :menu
-cls
 chcp 65001 > nul
-color 0B
 
 call :ipset_switch_status
 call :game_switch_status
 call :check_updates_switch_status
 call :get_strategy_name
 
-set "menu_choice=null"
+set "NEXROUTE_LANG=RU"
+if exist "!NEXROUTE_LANGUAGE_FILE!" set /p NEXROUTE_LANG=<"!NEXROUTE_LANGUAGE_FILE!"
+if /I not "!NEXROUTE_LANG!"=="RU" if /I not "!NEXROUTE_LANG!"=="EN" set "NEXROUTE_LANG=RU"
 
-echo.
-echo  ============================================================================
-echo                         N E X R O U T E
-echo                      CONTROL CENTER v!LOCAL_VERSION!
-echo  ============================================================================
-echo   Flowseal baseline: 1.10.0
-echo   !CurrentStrategy!
-echo  ----------------------------------------------------------------------------
-echo.
+set "NEXROUTE_VERSION=!LOCAL_VERSION!"
+set "NEXROUTE_BASELINE=1.10.0"
+set "NEXROUTE_STRATEGY=!CurrentStrategy!"
+set "NEXROUTE_GAME_STATUS=!GameFilterStatus!"
+set "NEXROUTE_IPSET_STATUS=!IPsetStatus!"
+set "NEXROUTE_UPDATE_STATUS=!CheckUpdatesStatus!"
+set "NEXROUTE_UI_ANIMATE=0"
+if not defined NEXROUTE_UI_BOOTED set "NEXROUTE_UI_ANIMATE=1"
 
-if /I "!NEXROUTE_LANG!"=="EN" goto menu_en
+set "menu_choice="
+set "NEXROUTE_MENU_CHOICE_FILE=%TEMP%\nexroute-choice-!RANDOM!-!RANDOM!.txt"
+if exist "!NEXROUTE_MENU_CHOICE_FILE!" del /q "!NEXROUTE_MENU_CHOICE_FILE!" >nul 2>&1
 
-:menu_ru
-echo   СЛУЖБА
-echo      [1] Установить выбранную стратегию как службу
-echo      [2] Удалить службы NexRoute / WinDivert
-echo      [3] Проверить состояние
-echo.
-echo   НАСТРОЙКИ
-echo      [4] Игровой фильтр          [!GameFilterStatus!]
-echo      [5] IPSet-фильтр            [!IPsetStatus!]
-echo      [6] Проверка обновлений     [!CheckUpdatesStatus!]
-echo      [7] Заменить активные fake-payload
-echo.
-echo   ОБНОВЛЕНИЯ
-echo      [8] Обновить IPSet
-echo      [9] Обновить hosts
-echo     [10] Проверить релизы NexRoute
-echo.
-echo   ИНСТРУМЕНТЫ
-echo     [11] Запустить диагностику
-echo     [12] Запустить тесты
-echo     [13] Switch language: English
-echo.
-echo      [0] Выход
-echo.
-set /p menu_choice=   Выберите пункт [0-13]: 
-goto menu_dispatch
+if exist "!NEXROUTE_UI!" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "!NEXROUTE_UI!" -Mode Menu -ChoiceFile "!NEXROUTE_MENU_CHOICE_FILE!" -LanguageFile "!NEXROUTE_LANGUAGE_FILE!"
+    set "NEXROUTE_UI_BOOTED=1"
+)
 
-:menu_en
-echo   SERVICE
-echo      [1] Install selected strategy as a service
-echo      [2] Remove NexRoute / WinDivert services
-echo      [3] Check status
-echo.
-echo   SETTINGS
-echo      [4] Game Filter             [!GameFilterStatus!]
-echo      [5] IPSet Filter            [!IPsetStatus!]
-echo      [6] Update Check            [!CheckUpdatesStatus!]
-echo      [7] Replace active fake payloads
-echo.
-echo   UPDATES
-echo      [8] Update IPSet
-echo      [9] Update hosts
-echo     [10] Check NexRoute releases
-echo.
-echo   TOOLS
-echo     [11] Run diagnostics
-echo     [12] Run tests
-echo     [13] Переключить язык: Русский
-echo.
-echo      [0] Exit
-echo.
-set /p menu_choice=   Select option [0-13]: 
+if exist "!NEXROUTE_MENU_CHOICE_FILE!" (
+    set /p menu_choice=<"!NEXROUTE_MENU_CHOICE_FILE!"
+    del /q "!NEXROUTE_MENU_CHOICE_FILE!" >nul 2>&1
+)
 
-:menu_dispatch
-if "!menu_choice!"=="1" goto service_install
-if "!menu_choice!"=="2" goto service_remove
-if "!menu_choice!"=="3" goto service_status
-if "!menu_choice!"=="4" goto game_switch
-if "!menu_choice!"=="5" goto ipset_switch
-if "!menu_choice!"=="6" goto check_updates_switch
-if "!menu_choice!"=="7" goto replace_active_fakes
-if "!menu_choice!"=="8" goto ipset_update
-if "!menu_choice!"=="9" goto hosts_update
-if "!menu_choice!"=="10" goto service_check_updates
-if "!menu_choice!"=="11" goto service_diagnostics
-if "!menu_choice!"=="12" goto run_tests
+if not defined menu_choice (
+    cls
+    color 0B
+    echo.
+    echo  +============================================================================+
+    echo  ^|                         NEXROUTE CONTROL NODE                              ^|
+    echo  +============================================================================+
+    echo  ^| [01] Deploy selected strategy as service                                  ^|
+    echo  ^| [02] Remove NexRoute and WinDivert services                               ^|
+    echo  ^| [03] Check system status                                                  ^|
+    echo  ^| [04] Toggle Game Filter                                                   ^|
+    echo  ^| [05] Switch IPSet Filter                                                  ^|
+    echo  ^| [06] Toggle update checks                                                 ^|
+    echo  ^| [07] Replace active fake payloads                                         ^|
+    echo  ^| [08] Update IPSet                                                         ^|
+    echo  ^| [09] Update hosts                                                         ^|
+    echo  ^| [10] Check NexRoute releases                                              ^|
+    echo  ^| [11] Run diagnostics                                                      ^|
+    echo  ^| [12] Run tests                                                            ^|
+    echo  ^| [13] Switch language                                                      ^|
+    echo  ^| [00] Exit                                                                 ^|
+    echo  +============================================================================+
+    echo.
+    set /p "menu_choice=  Enter command [0-13]: "
+)
+
+if "!menu_choice!"=="1" (
+    call :nexroute_action deploy
+    goto service_install
+)
+if "!menu_choice!"=="2" (
+    call :nexroute_action remove
+    goto service_remove
+)
+if "!menu_choice!"=="3" (
+    call :nexroute_action status
+    goto service_status
+)
+if "!menu_choice!"=="4" (
+    call :nexroute_action game
+    goto game_switch
+)
+if "!menu_choice!"=="5" (
+    call :nexroute_action ipset
+    goto ipset_switch
+)
+if "!menu_choice!"=="6" (
+    call :nexroute_action updatecheck
+    goto check_updates_switch
+)
+if "!menu_choice!"=="7" (
+    call :nexroute_action payload
+    goto replace_active_fakes
+)
+if "!menu_choice!"=="8" (
+    call :nexroute_action syncipset
+    goto ipset_update
+)
+if "!menu_choice!"=="9" (
+    call :nexroute_action synchosts
+    goto hosts_update
+)
+if "!menu_choice!"=="10" (
+    call :nexroute_action releases
+    goto service_check_updates
+)
+if "!menu_choice!"=="11" (
+    call :nexroute_action diagnostics
+    goto service_diagnostics
+)
+if "!menu_choice!"=="12" (
+    call :nexroute_action tests
+    goto run_tests
+)
 if "!menu_choice!"=="13" goto nexroute_toggle_language
 if "!menu_choice!"=="0" exit /b
 goto menu
 
 :nexroute_toggle_language
 if /I "!NEXROUTE_LANG!"=="RU" (
-    set "NEXROUTE_LANG=EN"
+    >"!NEXROUTE_LANGUAGE_FILE!" echo EN
 ) else (
-    set "NEXROUTE_LANG=RU"
+    >"!NEXROUTE_LANGUAGE_FILE!" echo RU
 )
->"!NEXROUTE_LANGUAGE_FILE!" echo !NEXROUTE_LANG!
 goto menu
+
+:nexroute_action
+if exist "!NEXROUTE_UI!" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "!NEXROUTE_UI!" -Mode Action -ActionId "%~1" -LanguageFile "!NEXROUTE_LANGUAGE_FILE!"
+)
+exit /b
 
 
 :: LOAD USER LISTS =====================
 '@
 
-    $serviceContent = [regex]::Replace($serviceContent, $menuPattern, $menuBlock, 1)
+    $serviceContent = $menuRegex.Replace($serviceContent, $menuBlock, 1)
     [System.IO.File]::WriteAllText(
         $servicePath,
         $serviceContent,
         [System.Text.UTF8Encoding]::new($false)
     )
 
+    Write-Step 'Injecting animated profile boot into strategy launchers'
+    $strategyHook = @'
+rem NEXROUTE_PROFILE_BOOT
+if exist "%~dp0.service\nexroute-ui.ps1" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0.service\nexroute-ui.ps1" -Mode Launch -Profile "%~n0" -LanguageFile "%~dp0.service\language.txt"
+'@ -replace "`n", "`r`n"
+
+    $strategyFiles = @(
+        Get-ChildItem -LiteralPath $distributionPath -Filter '*.bat' -File |
+            Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') }
+    )
+
+    if ($strategyFiles.Count -eq 0) {
+        throw 'No strategy BAT files were found for terminal boot injection.'
+    }
+
+    foreach ($strategyFile in $strategyFiles) {
+        Add-AsciiHookAfterFirstLine -Path $strategyFile.FullName -Hook $strategyHook
+    }
+
     Write-Step 'Adding NexRoute documentation and metadata'
     Copy-RequiredFile -Source (Join-Path $repositoryRoot 'README.md') -Destination (Join-Path $distributionPath 'README.md')
     Copy-RequiredFile -Source (Join-Path $repositoryRoot 'LICENSE') -Destination (Join-Path $distributionPath 'LICENSE')
     Copy-RequiredFile -Source (Join-Path $repositoryRoot 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $distributionPath 'THIRD_PARTY_NOTICES.md')
     Copy-RequiredFile -Source (Join-Path $repositoryRoot 'overlay/nexroute.bat') -Destination (Join-Path $distributionPath 'nexroute.bat')
-
-    $distributionServiceDirectory = Join-Path $distributionPath '.service'
-    New-Item -ItemType Directory -Path $distributionServiceDirectory -Force | Out-Null
-    Set-Content -LiteralPath (Join-Path $distributionServiceDirectory 'version.txt') -Value $Version -Encoding ascii
 
     $docsSource = Join-Path $repositoryRoot 'docs'
     if (Test-Path -LiteralPath $docsSource -PathType Container) {
@@ -307,6 +400,8 @@ NexRoute version: $Version
 Flowseal baseline: $UpstreamVersion
 Flowseal release id: $($release.id)
 Flowseal asset: $($asset.name)
+Terminal UI: PowerShell console renderer with ASCII-safe source
+Animated strategy launchers: $($strategyFiles.Count)
 Build UTC: $([DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ'))
 Source repository: https://github.com/Onmaynec/NexRoute
 "@
@@ -333,6 +428,7 @@ Source repository: https://github.com/Onmaynec/NexRoute
         Version         = $Version
         UpstreamVersion = $UpstreamVersion
         UpstreamAsset   = $asset.name
+        StrategyCount   = $strategyFiles.Count
         Archive         = $archivePath
         Checksum        = $checksumPath
         Sha256          = $hash.Hash.ToLowerInvariant()
