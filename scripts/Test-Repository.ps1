@@ -22,6 +22,23 @@ function Assert-True {
     }
 }
 
+function Test-PowerShellFile {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$DisplayName
+    )
+
+    $tokens = $null
+    $parseErrors = $null
+    [void][System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) {
+        foreach ($parseError in $parseErrors) {
+            Write-Host ("       {0}:{1} {2}" -f $parseError.Extent.StartLineNumber, $parseError.Extent.StartColumnNumber, $parseError.Message) -ForegroundColor Yellow
+        }
+    }
+    Assert-True -Condition ($parseErrors.Count -eq 0) -Message "$DisplayName parses without PowerShell syntax errors"
+}
+
 Write-Host 'NexRoute repository validation' -ForegroundColor Cyan
 Write-Host '================================' -ForegroundColor Cyan
 
@@ -33,6 +50,7 @@ $requiredFiles = @(
     'SECURITY.md',
     '.service/version.txt',
     'overlay/nexroute.bat',
+    'overlay/.service/nexroute-ui.ps1',
     'scripts/Build-NexRoute.ps1',
     '.github/workflows/validate.yml',
     '.github/workflows/release.yml',
@@ -66,24 +84,33 @@ if (Test-Path -LiteralPath $licensePath) {
 
 $buildScriptPath = Join-Path $root 'scripts/Build-NexRoute.ps1'
 if (Test-Path -LiteralPath $buildScriptPath) {
-    $tokens = $null
-    $parseErrors = $null
-    [void][System.Management.Automation.Language.Parser]::ParseFile($buildScriptPath, [ref]$tokens, [ref]$parseErrors)
-    Assert-True -Condition ($parseErrors.Count -eq 0) -Message 'Build-NexRoute.ps1 parses without PowerShell syntax errors'
+    Test-PowerShellFile -Path $buildScriptPath -DisplayName 'Build-NexRoute.ps1'
 
     $buildScript = Get-Content -LiteralPath $buildScriptPath -Raw
     Assert-True -Condition ($buildScript -match "UpstreamVersion = '1\.10\.0'") -Message 'Flowseal baseline is pinned to 1.10.0'
     Assert-True -Condition ($buildScript -match 'releases/tags/\$UpstreamVersion') -Message 'Builder resolves an immutable upstream release tag'
     Assert-True -Condition ($buildScript -match 'Get-FileHash.+SHA256') -Message 'Release builder generates SHA-256'
-    Assert-True -Condition ($buildScript -match 'bin/winws\.exe') -Message 'Builder validates winws.exe in the upstream package'
-    Assert-True -Condition ($buildScript -match 'bin/WinDivert64\.sys') -Message 'Builder validates the WinDivert driver in the upstream package'
+    Assert-True -Condition ($buildScript -match 'overlay/\.service/nexroute-ui\.ps1') -Message 'Builder installs the terminal UI renderer'
+    Assert-True -Condition ($buildScript -match 'NEXROUTE_PROFILE_BOOT') -Message 'Builder injects profile boot animation hooks'
+    Assert-True -Condition ($buildScript -match '-Mode Action') -Message 'Builder wires action animations into service.bat'
+    Assert-True -Condition ($buildScript -notmatch '[\u0400-\u04FF]') -Message 'Generated BAT overlay source contains no direct Cyrillic literals'
+}
+
+$uiScriptPath = Join-Path $root 'overlay/.service/nexroute-ui.ps1'
+if (Test-Path -LiteralPath $uiScriptPath) {
+    Test-PowerShellFile -Path $uiScriptPath -DisplayName 'nexroute-ui.ps1'
+
+    $uiScript = Get-Content -LiteralPath $uiScriptPath -Raw
+    $nonAsciiCharacters = @($uiScript.ToCharArray() | Where-Object { [int]$_ -gt 127 })
+    Assert-True -Condition ($nonAsciiCharacters.Count -eq 0) -Message 'Terminal UI source is ASCII-safe for Windows PowerShell 5.1'
+    Assert-True -Condition ($uiScript -match 'FromBase64String') -Message 'Russian translations are decoded explicitly as UTF-8'
+    Assert-True -Condition ($uiScript -match 'NEXROUTE CONTROL NODE') -Message 'Terminal UI contains branded control-node header'
+    Assert-True -Condition ($uiScript -match 'Write-ProgressLine') -Message 'Terminal UI implements animated progress bars'
+    Assert-True -Condition ($uiScript -match "'Launch'") -Message 'Terminal UI implements strategy launch mode'
 }
 
 $testScriptPath = Join-Path $root 'scripts/Test-Repository.ps1'
-$testTokens = $null
-$testParseErrors = $null
-[void][System.Management.Automation.Language.Parser]::ParseFile($testScriptPath, [ref]$testTokens, [ref]$testParseErrors)
-Assert-True -Condition ($testParseErrors.Count -eq 0) -Message 'Test-Repository.ps1 parses without PowerShell syntax errors'
+Test-PowerShellFile -Path $testScriptPath -DisplayName 'Test-Repository.ps1'
 
 $forbiddenExtensions = @('.exe', '.dll', '.sys', '.bin', '.zip', '.rar', '.7z')
 $forbiddenFiles = @(

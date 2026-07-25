@@ -18,10 +18,28 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Validate NexRoute repository
+        id: repository_validation
+        continue-on-error: true
         shell: pwsh
-        run: ./scripts/Test-Repository.ps1
+        run: ./scripts/Test-Repository.ps1 *>&1 | Tee-Object -FilePath validation.log
+
+      - name: Upload validation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-validation-log
+          path: validation.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Fail when repository validation failed
+        if: steps.repository_validation.outcome == 'failure'
+        shell: pwsh
+        run: throw 'Repository validation failed. See NexRoute-validation-log.'
 
       - name: Verify release builder help
         shell: pwsh
@@ -35,6 +53,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Build NexRoute smoke artifact
         shell: pwsh
@@ -45,14 +65,90 @@ jobs:
             -UpstreamVersion '1.10.0' `
             -OutputDirectory ./artifacts
 
-      - name: Verify package and checksum
+      - name: Verify package, UI overlay and checksum
         shell: pwsh
         run: |
           $zip = Get-ChildItem ./artifacts -Filter '*.zip' -File | Select-Object -First 1
           $checksum = Get-ChildItem ./artifacts -Filter '*.sha256' -File | Select-Object -First 1
           if (-not $zip -or -not $checksum) { throw 'Build output is incomplete.' }
           if ($zip.Length -lt 1MB) { throw 'Release archive is unexpectedly small.' }
-          Get-Content $checksum.FullName
+
+          $expectedHash = ((Get-Content $checksum.FullName -Raw) -split '\s+')[0].Trim().ToLowerInvariant()
+          $actualHash = (Get-FileHash $zip.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($expectedHash -ne $actualHash) {
+            throw "SHA-256 mismatch: expected $expectedHash, got $actualHash"
+          }
+
+          $extractPath = Join-Path $env:RUNNER_TEMP 'nexroute-smoke'
+          if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath $extractPath -Force
+
+          $required = @(
+            'service.bat',
+            'nexroute.bat',
+            'general.bat',
+            'bin/winws.exe',
+            'bin/WinDivert.dll',
+            'bin/WinDivert64.sys',
+            '.service/nexroute-ui.ps1',
+            '.service/language.txt',
+            '.service/version.txt',
+            'NEXROUTE_BUILD_INFO.txt'
+          )
+          foreach ($relativePath in $required) {
+            $candidate = Join-Path $extractPath $relativePath
+            if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+              throw "Built package is missing $relativePath"
+            }
+          }
+
+          $service = Get-Content (Join-Path $extractPath 'service.bat') -Raw
+          if ($service -notmatch 'NEXROUTE_UI') { throw 'service.bat is not wired to the terminal UI.' }
+          if ($service -notmatch '-Mode Action') { throw 'service.bat is missing action animations.' }
+          if ($service -match '[\u0400-\u04FF]') { throw 'service.bat contains direct Cyrillic literals and may break in CMD.' }
+
+          $uiPath = Join-Path $extractPath '.service/nexroute-ui.ps1'
+          $ui = Get-Content $uiPath -Raw
+          $tokens = $null
+          $parseErrors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($uiPath, [ref]$tokens, [ref]$parseErrors)
+          if ($parseErrors.Count -ne 0) { throw 'nexroute-ui.ps1 has PowerShell parse errors.' }
+          if (@($ui.ToCharArray() | Where-Object { [int]$_ -gt 127 }).Count -ne 0) {
+            throw 'nexroute-ui.ps1 source is not ASCII-safe.'
+          }
+
+          $strategyFiles = @(
+            Get-ChildItem $extractPath -Filter '*.bat' -File |
+              Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') }
+          )
+          if ($strategyFiles.Count -eq 0) { throw 'No strategy launchers were found.' }
+          foreach ($strategyFile in $strategyFiles) {
+            $content = Get-Content $strategyFile.FullName -Raw
+            if ($content -notmatch 'NEXROUTE_PROFILE_BOOT') {
+              throw "Strategy launcher has no animated boot hook: $($strategyFile.Name)"
+            }
+          }
+
+          "NEXROUTE_EXTRACT_PATH=$extractPath" >> $env:GITHUB_ENV
+          Write-Host "Verified $($strategyFiles.Count) animated strategy launchers."
+          Write-Host "SHA-256: $actualHash"
+
+      - name: Execute terminal renderer on Windows PowerShell 5.1
+        shell: pwsh
+        run: |
+          $uiPath = Join-Path $env:NEXROUTE_EXTRACT_PATH '.service/nexroute-ui.ps1'
+          $languagePath = Join-Path $env:NEXROUTE_EXTRACT_PATH '.service/language.txt'
+
+          Set-Content -LiteralPath $languagePath -Value 'RU' -Encoding ascii
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Action -ActionId status -LanguageFile $languagePath
+          if ($LASTEXITCODE -ne 0) { throw "RU action renderer failed with exit code $LASTEXITCODE" }
+
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Launch -Profile 'general (ALT)' -LanguageFile $languagePath
+          if ($LASTEXITCODE -ne 0) { throw "RU launch renderer failed with exit code $LASTEXITCODE" }
+
+          Set-Content -LiteralPath $languagePath -Value 'EN' -Encoding ascii
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Action -ActionId diagnostics -LanguageFile $languagePath
+          if ($LASTEXITCODE -ne 0) { throw "EN action renderer failed with exit code $LASTEXITCODE" }
 
       - name: Upload smoke artifact
         uses: actions/upload-artifact@v4
