@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">NexRoute emblem</title>
+  <desc id="desc">A neon route shaped like the letter N with network nodes and a directional arrow.</desc>
+  <rect width="256" height="256" rx="48" fill="#070c12"/>
+  <circle cx="128" cy="128" r="108" fill="#0a141c" stroke="#24e1d6" stroke-width="8"/>
+  <circle cx="128" cy="128" r="92" fill="none" stroke="#0e5a62" stroke-width="3"/>
+  <path d="M66 184V72l62 78 62-78v112" fill="none" stroke="#003a40" stroke-width="18" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M66 184V72l62 78 62-78v112" fill="none" stroke="#24e1d6" stroke-width="11" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M66 184V72l62 78 62-78v112" fill="none" stroke="#befffa" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  <g fill="#061218" stroke="#46ffea" stroke-width="5">
+    <circle cx="66" cy="184" r="10"/>
+    <circle cx="66" cy="72" r="10"/>
+    <circle cx="128" cy="150" r="10"/>
+    <circle cx="190" cy="72" r="10"/>
+    <circle cx="190" cy="184" r="10"/>
+  </g>
+  <path d="M190 204l-17-25h34z" fill="#24e1d6"/>
+</svg>

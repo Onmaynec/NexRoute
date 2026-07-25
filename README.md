@@ -1,146 +1,158 @@
 <div align="center">
 
+<img src="assets/nexroute-mark.svg" width="150" alt="NexRoute emblem">
+
 # NexRoute 🧭
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Upstream](https://img.shields.io/badge/Flowseal%20baseline-1.10.0-6f42c1)](docs/UPSTREAM.md)
-[![Release](https://img.shields.io/badge/version-0.1.1-cyan)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.2.0-24e1d6)](.service/version.txt)
 
-**Консольный набор для управления стратегиями обхода DPI в Windows 10 и Windows 11.**
+**Консольная система управления стратегиями обхода DPI для Windows 10 и Windows 11.**
 
-[English documentation](docs/README_EN.md) · [Архитектура](docs/ARCHITECTURE.md) · [Сборка релиза](docs/RELEASES.md) · [Безопасность](SECURITY.md)
+[English](docs/README_EN.md) · [Сервисы](docs/SERVICES.md) · [Архитектура](docs/ARCHITECTURE.md) · [Сборка](docs/RELEASES.md) · [Безопасность](SECURITY.md)
 
 </div>
 
 > [!IMPORTANT]
-> NexRoute не является VPN или прокси, не изменяет публичный IP-адрес и не обеспечивает анонимность. Проект локально управляет `winws` и WinDivert, применяя стратегии только к выбранному трафику.
+> NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет стратегии к выбранному трафику.
 
 > [!WARNING]
-> WinDivert является системным драйвером перехвата трафика и может определяться антивирусами как RiskTool/PUA. Загружайте готовые архивы только из официального раздела **Releases** данного репозитория и проверяйте SHA-256.
+> WinDivert является системным драйвером перехвата трафика и может определяться защитным ПО как RiskTool/PUA. Загружайте архивы только из официального раздела **Releases** и проверяйте SHA-256.
 
 ## 🎯 О проекте
 
-NexRoute создаётся как функциональный форк `Flowseal/zapret-discord-youtube`. Версия `0.1.1` использует официальный релиз Flowseal **1.10.0** как зафиксированную функциональную основу и сохраняет совместимость с его стратегиями, списками доменов/IP, пользовательскими файлами и диагностическими инструментами.
+NexRoute — функциональный консольный форк `Flowseal/zapret-discord-youtube`. Версия `0.2.0` использует официальный релиз Flowseal **1.10.0** как закреплённую сетевую основу, сохраняет upstream-стратегии и добавляет собственный интерфейс, сервисную матрицу, анимации, брендинг и воспроизводимый release-процесс.
 
-Главные отличия NexRoute:
+## ✨ Возможности версии 0.2.0
 
-- отдельный терминальный интерфейс вместо прямого вывода кириллицы из BAT;
-- устойчивое отображение русского и английского текста в Windows Terminal и стандартном CMD;
-- ASCII-логотип и структурированные панели управления;
-- цветовые статусы фильтров и службы;
-- анимация загрузки Control Node;
-- анимация выполнения каждого действия меню;
-- анимация запуска каждого файла стратегии;
-- воспроизводимая сборка Release ZIP;
-- документированное происхождение бинарных компонентов;
-- отсутствие бинарных файлов в Git-истории.
-
-## ✨ Возможности версии 0.1.1
-
-- ✅ Функциональный baseline Flowseal `1.10.0`
+- ✅ Полный baseline Flowseal `1.10.0`
 - ✅ Все штатные стратегии `general*.bat`, включая `ALT`, `FAKE`, `SIMPLE FAKE` и `EXP`
-- ✅ Обработка TCP, UDP и QUIC для поддерживаемых upstream-сценариев
-- ✅ Поддержка Discord Web/CDN/Voice и YouTube
+- ✅ Поддержка TCP, UDP и QUIC в рамках upstream-стратегий
+- ✅ Discord Web/CDN/Voice и YouTube
 - ✅ Game Filter и IPSet Filter
 - ✅ Установка выбранной стратегии как службы Windows
-- ✅ Проверка состояния `zapret`, `winws.exe` и WinDivert
-- ✅ Замена активных fake-payload файлов
-- ✅ Обновление IPSet и hosts
-- ✅ Диагностика конфликтующих служб, DNS, прокси и системных компонентов
-- ✅ Тестирование стратегий и DPI
-- ✅ Совместимость с пользовательскими списками Flowseal
-- ✅ Терминальный интерфейс на русском и английском языках
-- ✅ ASCII-safe PowerShell renderer без повреждения кириллицы
-- ✅ Анимации Control Node, операций и запуска профилей
-- ✅ Release ZIP с SHA-256; бинарники публикуются только в Releases
+- ✅ Полностью переработанный RU/EN консольный интерфейс
+- ✅ Единый дизайн главного меню, статуса, выбора стратегии, fake-payload, IPSet/hosts и тестов
+- ✅ Анимации запуска профиля, установки, удаления, синхронизации и диагностики
+- ✅ **Service Bypass Matrix** с 15 переключаемыми сервисами
+- ✅ Сохранение пользовательских строк вне управляемых блоков
+- ✅ Собственный значок NexRoute и ярлык `NexRoute.lnk`
+- ✅ Release ZIP с SHA-256; исполняемые компоненты публикуются только в Releases
 
-## 🖥️ Терминальный интерфейс
+## 🌐 Матрица обхода сервисов
 
-Меню `service.bat` сохраняет upstream-логику, но отображается отдельным PowerShell-renderer:
+Пункт **[14] Матрица сервисов** позволяет включать и выключать:
 
-```text
- _   _  _____ __  __ ____   ___  _   _ _____ _____
-| \ | || ____|\ \/ /|  _ \ / _ \| | | |_   _| ____|
-|  \| ||  _|   \  / | |_) | | | | | | | | | |  _|
-| |\  || |___  /  \ |  _ <| |_| | |_| | | | | |___
-|_| \_||_____|/_/\_\|_| \_\\___/ \___/  |_| |_____|
+- YouTube
+- Discord
+- ChatGPT
+- FaceTime
+- Snapchat
+- Viber
+- Signal
+- X (Twitter)
+- Instagram
+- Facebook
+- Telegram
+- LinkedIn
+- TikTok
+- WhatsApp
+- Кейс батл (`casebattle.net`)
 
-+======================================================================================+
-| NEXROUTE CONTROL NODE  v0.1.1  //  FLOWSEAL 1.10.0                                  |
-+======================================================================================+
-| PROFILE: general (ALT)                 ENGINE: READY   LANGUAGE: RU   PRIVILEGE: ADMIN|
-+--[ УПРАВЛЕНИЕ СЛУЖБОЙ ]--------------------------------------------------------------+
-| [01] РАЗВЕРНУТЬ ПРОФИЛЬ                                                          |
-| [02] УДАЛИТЬ СЛУЖБЫ                                                             |
-| [03] СОСТОЯНИЕ СИСТЕМЫ                                                         |
-+--[ МАТРИЦА ФИЛЬТРОВ ]---------------------------------------------------------------+
-| [04] ИГРОВОЙ ФИЛЬТР                                                   [DISABLED] |
-| [05] IPSET-ФИЛЬТР                                                        [NONE] |
-| [06] КОНТРОЛЬ ОБНОВЛЕНИЙ                                              [ENABLED] |
-+======================================================================================+
-```
+Управление выполняется клавишами `↑`, `↓`, `SPACE`, `A`, `N`, `ENTER` и `ESC`.
 
-В BAT-файлах не хранится прямой русский текст. Русские строки декодируются renderer-ом явно как UTF-8, поэтому интерфейс не зависит от того, как `cmd.exe` интерпретирует кодировку самого BAT-файла.
+Подробности и ограничения: [docs/SERVICES.md](docs/SERVICES.md).
 
 ## 🚀 Быстрый старт
 
-1. Откройте раздел **Releases** и скачайте архив `NexRoute-0.1.1-win-x64.zip`.
-2. Скачайте соответствующий файл `.sha256` и проверьте контрольную сумму.
-3. Откройте свойства ZIP и нажмите **Разблокировать**, если такая опция отображается.
-4. Распакуйте архив в отдельную папку, например:
+1. Откройте раздел **Releases**.
+2. Скачайте:
+
+   ```text
+   NexRoute-0.2.0-win-x64.zip
+   NexRoute-0.2.0-win-x64.zip.sha256
+   ```
+
+3. Проверьте SHA-256.
+4. В свойствах ZIP нажмите **Разблокировать**, если Windows показывает такую кнопку.
+5. Полностью распакуйте архив, например в:
 
    ```text
    C:\NexRoute
    ```
 
-5. Запустите `nexroute.bat` или `service.bat`.
-6. Подтвердите запрос прав администратора.
-7. Выберите стратегию и проверьте её работу.
-8. Установите рабочую стратегию как службу Windows.
+6. Запустите `NexRoute.lnk`, `nexroute.bat` или `service.bat` от имени администратора.
+7. Откройте **Лабораторию стратегий**, выберите рабочий профиль и установите его как службу.
+8. Настройте **Матрицу сервисов**.
 
-Не запускайте BAT-файлы непосредственно из ZIP-архива — сначала полностью распакуйте дистрибутив.
+Не запускайте BAT-файлы непосредственно из ZIP.
 
-Для ручной проверки можно запускать любой файл стратегии напрямую. Перед передачей управления `winws.exe` NexRoute покажет краткую анимацию и проверит наличие движка и драйвера WinDivert.
+## 🖥️ Системные требования
 
-## 🧰 Основные функции service.bat
+- Windows 10 x64
+- Windows 11 x64
+- Windows PowerShell 5.1+
+- права администратора для установки службы и WinDivert
+
+Windows 7/8, x86 и ARM64 официально не поддерживаются.
+
+## 🧰 Интерфейс Control Node
+
+Главная панель разделена на блоки:
 
 | Раздел | Возможности |
 |---|---|
-| Service Control | установка, удаление и проверка службы |
-| Filter Matrix | Game Filter, IPSet Filter, проверка обновлений, fake-payload |
-| Data Channels | обновление IPSet, hosts и проверка Releases |
-| System Toolkit | диагностика, стандартные тесты и DPI-checkers |
-| Language | переключение RU/EN с сохранением выбора |
+| Service Control | установка, удаление и телеметрия службы |
+| Filter Matrix | Game Filter, IPSet и проверка обновлений |
+| Data Channels | SYNC IPSET, SYNC HOSTS, release channel |
+| Other Service Bypass | управление 15 доменными профилями |
+| System Toolkit | диагностика, тесты и смена языка |
+
+Все ключевые операции используют единый PowerShell-renderer с цветными состояниями, ASCII-логотипом и progress-анимациями.
 
 ## 📂 Структура репозитория
 
 ```text
 NexRoute/
 ├── .github/
-│   ├── ISSUE_TEMPLATE/            # Формы Issues
-│   ├── release-notes/             # Заметки релизов
-│   └── workflows/                 # Проверка, сборка и публикация
+│   ├── ISSUE_TEMPLATE/
+│   ├── release-notes/
+│   └── workflows/
 ├── .service/
-│   └── version.txt                # Версия NexRoute
-├── docs/                          # Документация проекта
+│   └── version.txt
+├── assets/
+│   └── nexroute-mark.svg
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── COMPATIBILITY.md
+│   ├── README_EN.md
+│   ├── RELEASES.md
+│   ├── SERVICES.md
+│   └── UPSTREAM.md
 ├── overlay/
-│   ├── .service/
-│   │   └── nexroute-ui.ps1        # Терминальный renderer и анимации
-│   └── nexroute.bat               # Основная точка входа
+│   ├── nexroute.bat
+│   └── .service/
+│       ├── i18n/
+│       ├── New-NexRouteIcon.ps1
+│       ├── nexroute-services.ps1
+│       ├── nexroute-ui.ps1
+│       └── services.json
 ├── scripts/
-│   ├── Build-NexRoute.ps1         # Воспроизводимая сборка Release ZIP
-│   └── Test-Repository.ps1        # Проверка структуры и конфигурации
-├── LICENSE                        # Лицензия собственного кода NexRoute
-├── THIRD_PARTY_NOTICES.md         # Сторонние компоненты и авторство
+│   ├── Build-NexRoute.ps1
+│   └── Test-Repository.ps1
+├── CHANGELOG.md
+├── LICENSE
+├── THIRD_PARTY_NOTICES.md
 └── README.md
 ```
 
-Бинарные файлы `winws.exe`, WinDivert и payload-файлы **не хранятся в репозитории**. Release workflow загружает официальный архив upstream-релиза, применяет контролируемые изменения NexRoute и создаёт итоговый дистрибутив.
+`winws.exe`, WinDivert, payload-файлы и готовые архивы не хранятся в Git. Release workflow получает официальный asset Flowseal `1.10.0`, применяет overlay NexRoute и создаёт итоговый пакет.
 
 ## 🔄 Совместимость с Flowseal
 
-NexRoute `0.1.1` совместим со следующими пользовательскими файлами:
+Сохраняются пользовательские файлы:
 
 ```text
 lists/list-general-user.txt
@@ -149,71 +161,70 @@ lists/ipset-exclude-user.txt
 lists/ipset-all.txt
 ```
 
-При миграции рекомендуется сначала удалить службы старой сборки через её `service.bat`, затем скопировать пользовательские списки в NexRoute и установить стратегию заново.
+NexRoute добавляет только блоки между маркерами `NEXROUTE-SERVICES-BEGIN/END` и `NEXROUTE-DISABLED-SERVICES-BEGIN/END`. Остальные пользовательские строки не удаляются.
 
-## 🛠️ Сборка
-
-Требования:
-
-- Windows 10/11 или Windows runner GitHub Actions;
-- PowerShell 5.1+;
-- доступ к GitHub API и Releases.
+## 🛠️ Локальная сборка
 
 ```powershell
+pwsh ./scripts/Test-Repository.ps1
+
 pwsh ./scripts/Build-NexRoute.ps1 `
-  -Version 0.1.1 `
+  -Version 0.2.0 `
   -UpstreamVersion 1.10.0 `
   -OutputDirectory ./artifacts
 ```
 
-Скрипт автоматически:
+Результат:
 
-1. выбирает официальный ZIP-asset Flowseal;
-2. проверяет обязательные бинарники и списки;
-3. устанавливает терминальный UI runtime;
-4. заменяет только блок меню `service.bat`;
-5. добавляет анимацию запуска в файлы стратегий;
-6. создаёт ZIP и SHA-256.
+```text
+artifacts/
+├── NexRoute-0.2.0-win-x64.zip
+└── NexRoute-0.2.0-win-x64.zip.sha256
+```
 
 ## 🧪 Проверки
 
-```powershell
-pwsh ./scripts/Test-Repository.ps1
-```
+CI проверяет:
 
-CI дополнительно распаковывает готовый архив и проверяет:
+- PowerShell AST всех собственных скриптов;
+- 15 определений сервисов и уникальность идентификаторов;
+- ASCII-safe исходник терминального renderer-а;
+- отсутствие бинарников в Git;
+- патчи всех экранов `service.bat`;
+- сборку и распаковку Release ZIP;
+- наличие `winws.exe`, WinDivert, иконки и ярлыка;
+- управляемые блоки hostlist/exclude-list;
+- запуск неинтерактивных режимов UI через Windows PowerShell 5.1;
+- SHA-256 итогового архива.
 
-- PowerShell-синтаксис renderer-а;
-- ASCII-safe исходный код UI;
-- отсутствие прямой кириллицы в сгенерированном `service.bat`;
-- подключение action-анимаций;
-- launch-hook во всех стратегиях;
-- наличие `winws.exe` и WinDivert;
-- соответствие SHA-256.
+## ⚠️ Ограничения
+
+Результат сетевого обхода зависит от провайдера, региона, конфигурации DPI, DNS и выбранной стратегии.
+
+FaceTime, Signal, Viber и WhatsApp используют динамические адреса, UDP и медиареле. Их профили помечены как experimental: доменные соединения могут работать отдельно от голосовых и видеозвонков.
 
 ## 🐛 Сообщения об ошибках
 
 Перед созданием Issue:
 
-1. Запустите `service.bat` → **Diagnostic Core**.
-2. Убедитесь, что Secure DNS настроен.
+1. Запустите **Diagnostic Core**.
+2. Удалите конфликтующие WinDivert-службы.
 3. Проверьте несколько стратегий.
-4. Укажите Windows 10/11, провайдера, выбранную стратегию и точный текст ошибки.
-5. Для проблем отображения приложите скриншот и укажите, используется ли Windows Terminal или классический CMD.
+4. Укажите Windows 10/11, провайдера, стратегию и точный текст ошибки.
 
 ## 🤝 Вклад в проект
 
 1. Создайте Fork.
 2. Создайте ветку `feature/<name>` или `fix/<name>`.
-3. Не добавляйте бинарники, архивы и пользовательские списки.
+3. Не добавляйте исполняемые бинарники и архивы.
 4. Запустите `scripts/Test-Repository.ps1`.
-5. Откройте Pull Request с описанием изменений и проверки.
+5. Откройте Pull Request с результатами проверок.
 
 Подробности: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## ⚖️ Лицензирование
 
-Собственный код и документация NexRoute распространяются по лицензии MIT. Компоненты Flowseal, zapret и WinDivert сохраняют свои лицензии, copyright-уведомления и условия распространения. См. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Собственный код, документация и branding NexRoute распространяются по MIT. Flowseal, zapret и WinDivert сохраняют собственные лицензии и copyright-уведомления. См. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## 👤 Автор
 
@@ -223,11 +234,11 @@ CI дополнительно распаковывает готовый архи
 
 ## 🙏 Благодарности
 
-- `bol-van/zapret` — оригинальный проект и `winws`;
-- `Flowseal/zapret-discord-youtube` — Windows-сборка, стратегии, списки и сервисный менеджер;
-- WinDivert contributors — драйвер и библиотека перехвата пакетов;
-- участники upstream-проектов и авторы стратегий/payload-файлов.
+- `bol-van/zapret` — оригинальный сетевой движок и `winws`
+- `Flowseal/zapret-discord-youtube` — Windows baseline, стратегии и списки
+- WinDivert contributors — драйвер и библиотека перехвата пакетов
+- авторы upstream-диагностики и DPI-checkers
 
 ---
 
-**NexRoute 0.1.1** · Upstream baseline: **Flowseal 1.10.0** · Windows 10/11 x64
+**NexRoute 0.2.0** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64

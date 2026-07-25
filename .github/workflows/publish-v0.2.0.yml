@@ -1,0 +1,137 @@
+name: Publish NexRoute 0.2.0
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/publish-v0.2.0.yml'
+      - '.github/release-notes/v0.2.0.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    name: Build and publish v0.2.0
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Validate source tree
+        shell: pwsh
+        run: ./scripts/Test-Repository.ps1
+
+      - name: Build release package
+        shell: pwsh
+        run: |
+          $version = (Get-Content ./.service/version.txt -Raw).Trim()
+          if ($version -ne '0.2.0') { throw "This workflow only publishes 0.2.0, repository version is $version." }
+          ./scripts/Build-NexRoute.ps1 `
+            -Version $version `
+            -UpstreamVersion '1.10.0' `
+            -OutputDirectory ./artifacts
+
+      - name: Inspect service matrix package
+        shell: pwsh
+        run: |
+          $archive = Get-ChildItem ./artifacts -Filter 'NexRoute-0.2.0-win-x64.zip' -File | Select-Object -First 1
+          $checksum = Get-ChildItem ./artifacts -Filter 'NexRoute-0.2.0-win-x64.zip.sha256' -File | Select-Object -First 1
+          if (-not $archive -or -not $checksum) { throw 'Release output is incomplete.' }
+          if ($archive.Length -lt 1MB) { throw 'Release archive is unexpectedly small.' }
+
+          $expectedHash = ((Get-Content $checksum.FullName -Raw) -split '\s+')[0].Trim().ToLowerInvariant()
+          $actualHash = (Get-FileHash $archive.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($expectedHash -ne $actualHash) { throw "SHA-256 mismatch: expected $expectedHash, got $actualHash" }
+
+          $extractPath = Join-Path $env:RUNNER_TEMP 'nexroute-release-0.2.0'
+          if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
+          Expand-Archive -LiteralPath $archive.FullName -DestinationPath $extractPath -Force
+
+          $required = @(
+            'service.bat',
+            'NexRoute.lnk',
+            '.service/nexroute.ico',
+            '.service/nexroute-ui.ps1',
+            '.service/nexroute-services.ps1',
+            '.service/services.json',
+            '.service/services-state.json',
+            'docs/SERVICES.md'
+          )
+          foreach ($relativePath in $required) {
+            if (-not (Test-Path -LiteralPath (Join-Path $extractPath $relativePath) -PathType Leaf)) { throw "Missing $relativePath" }
+          }
+
+          $services = @((Get-Content (Join-Path $extractPath '.service/services.json') -Raw -Encoding UTF8 | ConvertFrom-Json).services)
+          if ($services.Count -ne 15) { throw "Expected 15 services, got $($services.Count)." }
+          & (Join-Path $extractPath '.service/nexroute-services.ps1') -Mode Validate -Root $extractPath
+          & (Join-Path $extractPath '.service/nexroute-services.ps1') -Mode Apply -Root $extractPath
+
+          $service = Get-Content (Join-Path $extractPath 'service.bat') -Raw
+          foreach ($token in @('-Mode Status', '-Mode StrategyPicker', '-Mode PayloadManager', '-Mode SyncIpSet', '-Mode SyncHosts', '-Mode Services')) {
+            if ($service -notmatch [regex]::Escape($token)) { throw "Missing service UI route: $token" }
+          }
+          if ($service -match '[\u0400-\u04FF]') { throw 'Generated service.bat contains direct Cyrillic literals.' }
+
+          $language = Join-Path $extractPath '.service/language.txt'
+          $ui = Join-Path $extractPath '.service/nexroute-ui.ps1'
+          Set-Content -LiteralPath $language -Value 'RU' -Encoding ascii
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ui -Mode Services -Root $extractPath -LanguageFile $language -NonInteractive
+          if ($LASTEXITCODE -ne 0) { throw 'RU Service Matrix renderer failed.' }
+          Set-Content -LiteralPath $language -Value 'EN' -Encoding ascii
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ui -Mode Status -Root $extractPath -LanguageFile $language -NonInteractive
+          if ($LASTEXITCODE -ne 0) { throw 'EN Status renderer failed.' }
+
+          $strategyFiles = @(Get-ChildItem $extractPath -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') })
+          foreach ($strategyFile in $strategyFiles) {
+            $content = Get-Content $strategyFile.FullName -Raw
+            if ($content -notmatch 'NEXROUTE_PROFILE_BOOT' -or $content -notmatch 'nexroute-services\.ps1') { throw "Incomplete launcher hooks: $($strategyFile.Name)" }
+          }
+
+          "release_sha256=$actualHash" >> $env:GITHUB_ENV
+          "strategy_count=$($strategyFiles.Count)" >> $env:GITHUB_ENV
+          "service_count=$($services.Count)" >> $env:GITHUB_ENV
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-0.2.0-win-x64
+          path: |
+            artifacts/NexRoute-0.2.0-win-x64.zip
+            artifacts/NexRoute-0.2.0-win-x64.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'v0.2.0'
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists; no action is required."
+            exit 0
+          }
+
+          $archive = (Get-ChildItem ./artifacts -Filter 'NexRoute-0.2.0-win-x64.zip' -File | Select-Object -First 1).FullName
+          $checksum = (Get-ChildItem ./artifacts -Filter 'NexRoute-0.2.0-win-x64.zip.sha256' -File | Select-Object -First 1).FullName
+
+          gh release create $tag `
+            $archive `
+            $checksum `
+            --target $env:GITHUB_SHA `
+            --title 'NexRoute 0.2.0 — Service Matrix & Terminal OS' `
+            --notes-file './.github/release-notes/v0.2.0.md' `
+            --latest
+
+          if ($LASTEXITCODE -ne 0) { throw "Failed to create release $tag." }
+          Write-Host "Published $tag"
+          Write-Host "Strategies: $env:strategy_count"
+          Write-Host "Services: $env:service_count"
+          Write-Host "SHA-256: $env:release_sha256"

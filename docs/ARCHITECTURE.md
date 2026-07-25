@@ -2,99 +2,131 @@
 
 ## 🎯 Принцип
 
-NexRoute не переписывает сетевой движок `zapret`. Проект создаёт контролируемый Windows-дистрибутив поверх зафиксированного upstream-релиза Flowseal и изменяет только собственные слои: терминальный интерфейс, брендинг, ссылки обновления, документацию и release automation.
+NexRoute не переписывает сетевой движок `zapret`. Проект создаёт контролируемый Windows-дистрибутив поверх закреплённого релиза Flowseal `1.10.0` и добавляет собственные слои управления.
 
 ```text
-Flowseal release 1.10.0
+Flowseal 1.10.0 Release ZIP
         │
-        ├── strategies / lists / utils
         ├── winws + WinDivert + payloads
+        ├── general*.bat
+        ├── lists / utils
         └── upstream service.bat
-                │
-                ▼
-      Build-NexRoute.ps1
-        ├── validates upstream archive
-        ├── preserves upstream functionality
-        ├── installs nexroute-ui.ps1
-        ├── replaces only the service menu block
-        ├── injects profile boot hooks into strategy BAT files
-        ├── replaces NexRoute update endpoints
-        ├── adds notices and documentation
-        └── generates ZIP + SHA-256
+                  │
+                  ▼
+        Build-NexRoute.ps1
+          ├── validates upstream package
+          ├── copies the functional baseline
+          ├── patches service.bat routes
+          ├── injects animated strategy hooks
+          ├── adds unified terminal runtime
+          ├── adds service domain matrix
+          ├── brands the test laboratory
+          ├── generates icon + shortcut
+          └── creates ZIP + SHA-256
 ```
+
+## 🧩 Компоненты версии 0.2.0
+
+| Компонент | Ответственность |
+|---|---|
+| `overlay/.service/nexroute-ui.ps1` | визуализация главного меню и внутренних экранов |
+| `overlay/.service/nexroute-services.ps1` | состояние сервисов и managed-блоки доменных списков |
+| `overlay/.service/services.json` | 15 определений сервисов и доменные пакеты |
+| `overlay/.service/i18n/*.json` | русская и английская локализации |
+| `overlay/.service/New-NexRouteIcon.ps1` | генерация `.ico` и `NexRoute.lnk` |
+| `assets/nexroute-mark.svg` | исходный векторный знак бренда |
+| `scripts/Build-NexRoute.ps1` | reproducible release assembly |
+| `scripts/Test-Repository.ps1` | структура, версии, JSON, PowerShell и policy checks |
 
 ## 🖥️ Терминальный слой
 
-В версии `0.1.1` отображение меню вынесено из BAT в отдельный файл:
+`service.bat` остаётся точкой системной интеграции и хранит upstream-операции. Отрисовка вынесена в PowerShell, чтобы:
+
+- не зависеть от OEM-кодировки CMD;
+- корректно выводить RU/EN;
+- использовать цвета, progress bars и keyboard navigation;
+- оформлять все экраны в одном стиле;
+- тестировать страницы отдельно от сетевой логики.
+
+Поддерживаемые режимы renderer-а:
 
 ```text
-overlay/.service/nexroute-ui.ps1
+Menu
+Action
+Launch
+Status
+StrategyPicker
+PayloadManager
+IpSetSwitch
+SyncIpSet
+SyncHosts
+TestsIntro
+TestHeader
+Services
+Screen
 ```
 
-`service.bat` продолжает отвечать за:
+## 🌐 Матрица сервисов
 
-- запрос прав администратора;
-- чтение статусов;
-- установку и удаление службы;
-- Game Filter и IPSet Filter;
-- диагностику;
-- обновления;
-- запуск upstream-инструментов.
-
-`nexroute-ui.ps1` отвечает только за:
-
-- ASCII-логотип;
-- панели меню;
-- цветовые статусы;
-- переключение RU/EN;
-- анимацию загрузки;
-- анимацию операций;
-- анимацию запуска профилей;
-- получение пользовательского выбора через временный файл.
-
-Такое разделение не меняет сетевые аргументы `winws` и не вмешивается в алгоритмы обхода.
-
-## 🔤 Модель кодировок
-
-Источник `nexroute-ui.ps1` состоит только из ASCII-символов. Русские строки хранятся в Base64 как UTF-8 и декодируются во время выполнения:
+Матрица хранит состояние в:
 
 ```text
-Base64 UTF-8 → System.Text.Encoding.UTF8 → Console output
+.service/services-state.json
 ```
 
-В сгенерированном `service.bat` нет прямых кириллических литералов. Поэтому CMD не может ошибочно интерпретировать русский UTF-8 текст как OEM-кодировку и превратить его в повреждённые символы.
+При применении создаются управляемые блоки:
 
-Если PowerShell renderer отсутствует или завершается ошибкой, `service.bat` показывает минимальное английское ASCII-меню, сохраняя доступ к функциям.
+```text
+lists/list-general-user.txt
+  # NEXROUTE-SERVICES-BEGIN
+  ...enabled domains...
+  # NEXROUTE-SERVICES-END
 
-## 🚀 Запуск стратегий
-
-Сборщик добавляет после первой строки каждого корневого strategy BAT файла ASCII-hook:
-
-```bat
-rem NEXROUTE_PROFILE_BOOT
-if exist "%~dp0.service\nexroute-ui.ps1" powershell ... -Mode Launch ...
+lists/list-exclude-user.txt
+  # NEXROUTE-DISABLED-SERVICES-BEGIN
+  ...disabled domains...
+  # NEXROUTE-DISABLED-SERVICES-END
 ```
 
-Hook:
+Строки пользователя вне маркеров сохраняются. Перед каждым ручным запуском стратегии матрица применяется повторно, поэтому состояние и hostlist остаются синхронизированными.
 
-1. показывает профиль и анимацию загрузки;
-2. проверяет наличие `bin\winws.exe`;
-3. проверяет наличие `bin\WinDivert64.sys`;
-4. возвращает управление неизменённому upstream BAT-файлу.
+## 🎬 Поток запуска стратегии
 
-Оригинальные команды `winws` не переписываются.
+```text
+user starts general*.bat
+        │
+        ├── apply service matrix
+        ├── render PROFILE BOOT animation
+        ├── validate winws.exe
+        ├── validate WinDivert64.sys
+        └── continue original Flowseal launcher
+```
 
-## 📦 Разделение исходников и дистрибутива
+Сетевые параметры стратегии не генерируются UI-слоем.
+
+## 🎨 Брендинг
+
+В Git хранится только SVG-источник. Во время Windows release-build скрипт `New-NexRouteIcon.ps1` создаёт:
+
+```text
+.service/nexroute.ico
+NexRoute.lnk
+```
+
+Ярлык указывает на `service.bat`, использует рабочий каталог дистрибутива и собственный значок NexRoute.
+
+## 📦 Разделение исходников и Release
 
 ### Git-репозиторий
 
-Содержит только:
+Содержит:
 
-- PowerShell-скрипты сборки и проверки;
-- overlay-файлы NexRoute;
-- GitHub Actions;
+- PowerShell/BAT overlay;
+- JSON-конфигурации;
+- SVG branding;
 - документацию;
-- лицензии и уведомления.
+- CI/CD;
+- лицензии.
 
 ### GitHub Release
 
@@ -102,54 +134,24 @@ Hook:
 
 - `winws.exe`;
 - WinDivert DLL/driver;
-- `.bin` payload-файлы;
-- стратегии `general*.bat`;
-- списки и upstream-утилиты;
-- `.service/nexroute-ui.ps1`;
-- `.service/language.txt`.
-
-Это исключает бинарники из Git-истории и позволяет точно фиксировать их происхождение.
-
-## 🧩 Компоненты
-
-| Компонент | Ответственность |
-|---|---|
-| `scripts/Build-NexRoute.ps1` | получение upstream asset, проверка, overlay, упаковка |
-| `scripts/Test-Repository.ps1` | политика репозитория, версии, синтаксис, UI и отсутствие бинарников |
-| `overlay/nexroute.bat` | основная точка входа в консольный менеджер |
-| `overlay/.service/nexroute-ui.ps1` | интерфейс, локализация и анимации |
-| patched `service.bat` | маршрутизация меню и полная upstream-логика |
-| strategy BAT hooks | анимированный запуск профиля без изменения `winws`-аргументов |
-| `.service/version.txt` | единый источник версии NexRoute |
-| GitHub Actions | CI, artifact build и публикация Release |
+- payload `.bin`;
+- стратегии Flowseal;
+- сгенерированные `.ico` и `.lnk`;
+- итоговый ZIP и SHA-256.
 
 ## 🔐 Граница доверия
 
-Сборщик принимает только asset официального GitHub Release `Flowseal/zapret-discord-youtube`. Перед упаковкой проверяется наличие основных файлов: `service.bat`, `general.bat`, `winws.exe`, WinDivert и ключевых списков.
-
-SHA-256 итогового NexRoute ZIP публикуется отдельным файлом. Это подтверждает целостность NexRoute-архива после сборки, но не является цифровой подписью автора.
-
-## 🧪 Контроль сборки
-
-Windows smoke-build распаковывает итоговый ZIP и проверяет:
-
-- наличие UI runtime;
-- PowerShell-синтаксис UI;
-- ASCII-only исходник renderer-а;
-- отсутствие кириллицы в сгенерированном `service.bat`;
-- подключение `-Mode Action`;
-- наличие `NEXROUTE_PROFILE_BOOT` во всех strategy BAT;
-- наличие движка и драйвера;
-- соответствие SHA-256.
+Сборщик принимает ZIP-asset официального GitHub Release Flowseal `1.10.0` и проверяет обязательные компоненты до применения overlay. Итоговый SHA-256 подтверждает целостность опубликованного NexRoute ZIP, но не является цифровой подписью.
 
 ## 🔄 Обновление upstream
 
-Переход на новую версию Flowseal должен выполняться отдельным Pull Request:
+Переход на новую версию Flowseal выполняется отдельным Pull Request:
 
-1. изменить pinned upstream version;
-2. изучить changelog и diff upstream;
-3. проверить, что regex-патч меню всё ещё применим;
-4. проверить, что все strategy BAT начинаются с `@echo off`;
-5. собрать Release artifact;
-6. проверить интерфейс и служебные операции на Windows 10/11;
-7. обновить `docs/UPSTREAM.md` и changelog NexRoute.
+1. изучить release notes и diff upstream;
+2. изменить pinned version;
+3. проверить все regex-патчи `service.bat`;
+4. собрать и распаковать Release artifact;
+5. выполнить Windows PowerShell 5.1 smoke tests;
+6. проверить service matrix и пользовательские списки;
+7. протестировать Windows 10/11 и основные сетевые сценарии;
+8. обновить changelog и документацию.

@@ -2,9 +2,9 @@
 
 ## 🎯 Политика
 
-Бинарные компоненты NexRoute публикуются только в GitHub Releases. В Git-репозитории запрещены файлы `.exe`, `.dll`, `.sys`, `.bin` и архивы.
+Исполняемые компоненты NexRoute публикуются только в GitHub Releases. В Git запрещены `.exe`, `.dll`, `.sys`, `.bin`, `.ico`, `.lnk` и архивы.
 
-Каждый Release должен собираться заново из `main`, а не копироваться из локальной папки разработчика.
+Каждый Release собирается заново из `main`. Значок и ярлык также генерируются во время сборки.
 
 ## 🛠️ Локальная сборка
 
@@ -12,7 +12,7 @@
 pwsh ./scripts/Test-Repository.ps1
 
 pwsh ./scripts/Build-NexRoute.ps1 `
-  -Version 0.1.1 `
+  -Version 0.2.0 `
   -UpstreamVersion 1.10.0 `
   -OutputDirectory ./artifacts
 ```
@@ -21,92 +21,72 @@ pwsh ./scripts/Build-NexRoute.ps1 `
 
 ```text
 artifacts/
-├── NexRoute-0.1.1-win-x64.zip
-└── NexRoute-0.1.1-win-x64.zip.sha256
+├── NexRoute-0.2.0-win-x64.zip
+└── NexRoute-0.2.0-win-x64.zip.sha256
 ```
 
 ## 🔎 Что проверяет сборка
 
-Сборщик и CI должны подтвердить:
-
-- официальный upstream asset Flowseal найден по закреплённому тегу;
-- присутствуют `winws.exe`, `WinDivert.dll` и `WinDivert64.sys`;
-- установлен `.service/nexroute-ui.ps1`;
-- UI source состоит только из ASCII-символов;
-- `service.bat` подключён к renderer-у и action-анимациям;
-- `service.bat` не содержит прямых кириллических литералов;
-- каждый strategy BAT содержит `NEXROUTE_PROFILE_BOOT`;
-- итоговый ZIP имеет ожидаемый размер;
-- SHA-256 из файла совпадает с независимо вычисленным значением.
+- официальный Flowseal asset получен по тегу `1.10.0`;
+- присутствуют `winws.exe`, `WinDivert.dll`, `WinDivert64.sys`;
+- установлены UI, service controller, i18n и `services.json`;
+- `service.bat` подключён к Status, StrategyPicker, PayloadManager, IPSet/hosts sync, Tests и Services;
+- `service.bat` не содержит прямой кириллицы;
+- все strategy BAT содержат animation + service-matrix hooks;
+- создано ровно 15 сервисных профилей;
+- managed-блоки добавлены без удаления пользовательских строк;
+- сгенерированы `.service/nexroute.ico` и `NexRoute.lnk`;
+- test laboratory содержит NexRoute header;
+- ZIP распаковывается и имеет ожидаемый размер;
+- SHA-256 совпадает с независимо вычисленным значением.
 
 ## 🤖 GitHub Actions
-
-### Проверка Pull Request
 
 Workflow `Validate repository` выполняет:
 
 1. проверку структуры и документации;
 2. PowerShell AST parsing;
-3. проверку ASCII-safe UI;
+3. валидацию JSON/i18n/service definitions;
 4. Windows smoke-build;
-5. распаковку итогового ZIP;
-6. инспекцию `service.bat`, UI runtime и strategy hooks;
-7. загрузку временного artifact.
+5. распаковку и инспекцию Release ZIP;
+6. запуск неинтерактивных RU/EN экранов через Windows PowerShell 5.1;
+7. проверку managed hostlist/exclude blocks;
+8. проверку иконки, ярлыка и strategy hooks;
+9. загрузку временного artifact.
 
-### Ручная проверка сборки
-
-1. Откройте **Actions**.
-2. Выберите `Build and publish release`.
-3. Нажмите **Run workflow**.
-4. Укажите версию только при необходимости.
-5. Скачайте artifact после завершения workflow.
-
-Ручной запуск стандартного workflow не создаёт публичный Release без тега.
-
-### Публичный Release
-
-Стандартный процесс:
+## 🚀 Публичный Release
 
 1. обновить `.service/version.txt`, README и CHANGELOG;
-2. добавить release notes;
-3. слить подготовленный PR в `main`;
-4. создать аннотированный тег, совпадающий с версией:
+2. добавить `.github/release-notes/vX.Y.Z.md`;
+3. слить PR в `main`;
+4. создать тег:
 
    ```bash
-   git tag -a v0.1.1 -m "NexRoute 0.1.1"
-   git push origin v0.1.1
+   git tag -a v0.2.0 -m "NexRoute 0.2.0"
+   git push origin v0.2.0
    ```
 
-5. workflow проверит соответствие тега файлу версии;
-6. после успешной сборки GitHub CLI создаст Release и прикрепит ZIP + SHA-256.
+5. release workflow повторно соберёт пакет из `main`;
+6. GitHub Release получает ZIP и `.sha256`.
 
-Для bootstrap-релизов допускается одноразовый workflow `publish-vX.Y.Z.yml`, который после merge самостоятельно создаёт тег и Release. Такой workflow должен быть идемпотентным и безопасно завершаться, если Release уже существует.
+Для автоматической первой публикации версии допускается одноразовый workflow `publish-v0.2.0.yml`, который должен безопасно завершаться, если тег или Release уже существуют.
 
 ## ✅ Release checklist
 
-- [ ] `scripts/Test-Repository.ps1` проходит
-- [ ] pinned Flowseal version проверена
-- [ ] changelog upstream изучен
-- [ ] PowerShell UI parsing проходит
-- [ ] UI source состоит только из ASCII
-- [ ] сгенерированный `service.bat` не содержит кириллицу
-- [ ] action-анимации подключены
-- [ ] все strategy BAT содержат launch-hook
+- [ ] repository validation проходит
+- [ ] PowerShell 5.1 runtime tests проходят
+- [ ] 15 сервисов присутствуют и имеют домены
+- [ ] RU/EN интерфейс запускается
+- [ ] Status/Strategy/Payload/IPSet/Hosts/Tests/Services страницы проверены
+- [ ] icon и shortcut созданы
+- [ ] managed-блоки не удаляют пользовательские строки
 - [ ] Windows smoke-build проходит
-- [ ] установка и удаление службы работают
-- [ ] ручной запуск strategy BAT работает
-- [ ] Discord Web/CDN/Voice проверены на реальной сети
-- [ ] YouTube Web/Video проверены на реальной сети
-- [ ] Game Filter и IPSet Filter проверены
-- [ ] переключение RU/EN сохраняется
+- [ ] установка/удаление службы проверены вручную
+- [ ] YouTube и Discord проверены на реальной сети
+- [ ] experimental-сервисы не заявлены как гарантированно рабочие
 - [ ] SHA-256 опубликован
 - [ ] THIRD_PARTY_NOTICES присутствует в архиве
 
 ## 🔙 Откат
 
-GitHub Releases являются неизменяемыми артефактами версии. При критической ошибке:
-
-1. пометьте релиз как pre-release или удалите ошибочный asset;
-2. создайте исправление с новой patch-версией;
-3. не заменяйте содержимое уже опубликованного ZIP без изменения версии;
-4. временно укажите предыдущую стабильную версию в README.
+Не заменяйте содержимое уже опубликованного ZIP без изменения версии. При критической ошибке создайте новую patch-версию и временно пометьте проблемный Release как pre-release или удалите его assets.
