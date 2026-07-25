@@ -1,0 +1,17 @@
+# NexRoute build output
+artifacts/
+build/
+dist/
+*.zip
+*.sha256
+
+# Runtime files
+logs/
+*.log
+lists/*-user.txt
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
