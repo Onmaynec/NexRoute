@@ -57,13 +57,29 @@ jobs:
           show-progress: false
 
       - name: Build NexRoute smoke artifact
+        id: package_build
+        continue-on-error: true
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
           ./scripts/Build-NexRoute.ps1 `
             -Version $version `
             -UpstreamVersion '1.10.0' `
-            -OutputDirectory ./artifacts
+            -OutputDirectory ./artifacts *>&1 | Tee-Object -FilePath build.log
+
+      - name: Upload Windows build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-windows-build-log
+          path: build.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Fail when package build failed
+        if: steps.package_build.outcome == 'failure'
+        shell: pwsh
+        run: throw 'Windows package build failed. See NexRoute-windows-build-log.'
 
       - name: Verify package, pages, services, branding and checksum
         shell: pwsh
