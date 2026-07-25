@@ -8,8 +8,8 @@ try {
 catch {
 }
 
-$script:ServiceDirectory = $PSScriptRoot
-$rootCandidate = if ([string]::IsNullOrWhiteSpace($Root)) { Split-Path -Parent $PSScriptRoot } else { $Root }
+$script:ServiceDirectory = Split-Path -Parent $PSScriptRoot
+$rootCandidate = if ([string]::IsNullOrWhiteSpace($Root)) { Split-Path -Parent $script:ServiceDirectory } else { $Root }
 $rootCandidate = $rootCandidate.Trim().Trim('"').Trim("'")
 while ($rootCandidate.Length -gt 3 -and ($rootCandidate.EndsWith('\') -or $rootCandidate.EndsWith('/'))) {
     $rootCandidate = $rootCandidate.Substring(0, $rootCandidate.Length - 1)
@@ -18,7 +18,7 @@ try {
     $script:Root = [System.IO.Path]::GetFullPath($rootCandidate)
 }
 catch {
-    $script:Root = Split-Path -Parent $PSScriptRoot
+    $script:Root = Split-Path -Parent $script:ServiceDirectory
 }
 
 $script:LanguageFile = if ([string]::IsNullOrWhiteSpace($LanguageFile)) {
