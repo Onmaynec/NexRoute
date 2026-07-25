@@ -23,7 +23,7 @@ $ru=@{
 $en=@{ control='CONTROL NODE'; runtime='RUNTIME'; strategy='Strategy'; game='Game filter'; ipset='IPSet'; update='Update watch'; service='SERVICE CONTROL'; deploy='DEPLOY PROFILE'; purge='PURGE SERVICES'; telemetry='RUNTIME TELEMETRY'; filters='FILTER MATRIX'; gamef='GAME FILTER'; ipsetf='IPSET FILTER'; updatew='UPDATE WATCH'; payload='PAYLOAD VAULT'; data='DATA CHANNELS'; syncip='SYNC IPSET'; synchost='SYNC HOSTS'; release='RELEASE CHANNEL'; tools='SYSTEM TOOLKIT'; diag='DIAGNOSTIC CORE'; lab='STRATEGY LAB'; lang='SWITCH LANGUAGE'; other='OTHER SERVICE BYPASS'; matrix='SERVICE MATRIX'; exit='DISCONNECT / EXIT'; prompt='Enter command [0-14]'; action='OPERATION BUS' }
 $text=if ((Get-Language) -eq 'EN') { $en } else { $ru }
 $width=92
-function Rule([char]$Fill='=') { Write-Host ($Fill*$width) -ForegroundColor DarkCyan }
+function Rule([string]$Fill='=') { Write-Host ($Fill*$width) -ForegroundColor DarkCyan }
 function Pad([string]$Value,[int]$Length) { if ($Value.Length -gt $Length) { return $Value.Substring(0,[Math]::Max(0,$Length-3))+'...' }; $Value+(' '*($Length-$Value.Length)) }
 function Progress([string]$Label,[ConsoleColor]$Color=[ConsoleColor]::Cyan,[int]$Delay=22) {
     for($p=0;$p -le 100;$p+=10){$filled=[int]($p/5);Write-Host ("`r  {0,-34} [{1}] {2,3}%" -f $Label,(('#'*$filled)+('-'*(20-$filled))),$p) -NoNewline -ForegroundColor $Color;Start-Sleep -Milliseconds $Delay};Write-Host
