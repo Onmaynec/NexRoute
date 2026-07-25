@@ -46,7 +46,7 @@ jobs:
         run: Get-Help ./scripts/Build-NexRoute.ps1 -Full | Out-Null
 
   build-smoke:
-    name: Build NexRoute 0.2.0 package
+    name: Build and inspect NexRoute 0.2.0
     needs: validate
     runs-on: windows-latest
 
@@ -69,7 +69,7 @@ jobs:
               -OutputDirectory ./artifacts *>&1 | Tee-Object -FilePath build.log
           }
           catch {
-            $details = @(
+            @(
               '',
               '=== TERMINATING EXCEPTION ===',
               ($_ | Out-String),
@@ -77,8 +77,7 @@ jobs:
               ($_ | Format-List * -Force | Out-String),
               '=== SCRIPT STACK TRACE ===',
               $_.ScriptStackTrace
-            ) -join [Environment]::NewLine
-            $details | Tee-Object -FilePath build.log -Append
+            ) -join [Environment]::NewLine | Tee-Object -FilePath build.log -Append
             throw
           }
 
@@ -96,129 +95,43 @@ jobs:
         shell: pwsh
         run: throw 'Windows package build failed. See NexRoute-windows-build-log.'
 
-      - name: Verify package, pages, services, branding and checksum
+      - name: Verify package and execute terminal pages
+        id: package_verification
+        continue-on-error: true
         shell: pwsh
         run: |
-          $zip = Get-ChildItem ./artifacts -Filter '*.zip' -File | Select-Object -First 1
-          $checksum = Get-ChildItem ./artifacts -Filter '*.sha256' -File | Select-Object -First 1
-          if (-not $zip -or -not $checksum) { throw 'Build output is incomplete.' }
-          if ($zip.Length -lt 1MB) { throw 'Release archive is unexpectedly small.' }
-
-          $expectedHash = ((Get-Content $checksum.FullName -Raw) -split '\s+')[0].Trim().ToLowerInvariant()
-          $actualHash = (Get-FileHash $zip.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($expectedHash -ne $actualHash) { throw "SHA-256 mismatch: expected $expectedHash, got $actualHash" }
-
-          $extractPath = Join-Path $env:RUNNER_TEMP 'nexroute-smoke'
-          if (Test-Path $extractPath) { Remove-Item $extractPath -Recurse -Force }
-          Expand-Archive -LiteralPath $zip.FullName -DestinationPath $extractPath -Force
-
-          $required = @(
-            'service.bat',
-            'nexroute.bat',
-            'NexRoute.lnk',
-            'general.bat',
-            'bin/winws.exe',
-            'bin/WinDivert.dll',
-            'bin/WinDivert64.sys',
-            '.service/nexroute.ico',
-            '.service/nexroute-ui.ps1',
-            '.service/nexroute-services.ps1',
-            '.service/services.json',
-            '.service/services-state.json',
-            '.service/i18n/ru.json',
-            '.service/i18n/en.json',
-            '.service/language.txt',
-            '.service/version.txt',
-            'assets/nexroute-mark.svg',
-            'docs/SERVICES.md',
-            'NEXROUTE_BUILD_INFO.txt'
-          )
-          foreach ($relativePath in $required) {
-            $candidate = Join-Path $extractPath $relativePath
-            if (-not (Test-Path -LiteralPath $candidate -PathType Leaf)) {
-              throw "Built package is missing $relativePath"
-            }
+          try {
+            ./scripts/Test-Package.ps1 `
+              -ArtifactsDirectory ./artifacts `
+              -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-smoke') *>&1 |
+              Tee-Object -FilePath package-test.log
+          }
+          catch {
+            @(
+              '',
+              '=== TERMINATING EXCEPTION ===',
+              ($_ | Out-String),
+              '=== EXCEPTION DETAILS ===',
+              ($_ | Format-List * -Force | Out-String),
+              '=== SCRIPT STACK TRACE ===',
+              $_.ScriptStackTrace
+            ) -join [Environment]::NewLine | Tee-Object -FilePath package-test.log -Append
+            throw
           }
 
-          $service = Get-Content (Join-Path $extractPath 'service.bat') -Raw
-          foreach ($token in @('-Mode Status', '-Mode StrategyPicker', '-Mode PayloadManager', '-Mode IpSetSwitch', '-Mode SyncIpSet', '-Mode SyncHosts', '-Mode TestsIntro', '-Mode Services')) {
-            if ($service -notmatch [regex]::Escape($token)) { throw "service.bat is missing UI route: $token" }
-          }
-          if ($service -match '[\u0400-\u04FF]') { throw 'service.bat contains direct Cyrillic literals and may break in CMD.' }
+      - name: Upload package verification log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-package-test-log
+          path: package-test.log
+          if-no-files-found: warn
+          retention-days: 7
 
-          $uiPath = Join-Path $extractPath '.service/nexroute-ui.ps1'
-          $serviceControllerPath = Join-Path $extractPath '.service/nexroute-services.ps1'
-          foreach ($scriptPath in @($uiPath, $serviceControllerPath)) {
-            $tokens = $null
-            $parseErrors = $null
-            [void][System.Management.Automation.Language.Parser]::ParseFile($scriptPath, [ref]$tokens, [ref]$parseErrors)
-            if ($parseErrors.Count -ne 0) {
-              $parseErrors | ForEach-Object { Write-Host $_.Message -ForegroundColor Red }
-              throw "PowerShell parse errors in $scriptPath"
-            }
-          }
-
-          $ui = Get-Content $uiPath -Raw
-          if (@($ui.ToCharArray() | Where-Object { [int]$_ -gt 127 }).Count -ne 0) {
-            throw 'nexroute-ui.ps1 source is not ASCII-safe.'
-          }
-
-          $services = (Get-Content (Join-Path $extractPath '.service/services.json') -Raw -Encoding UTF8 | ConvertFrom-Json).services
-          if (@($services).Count -ne 15) { throw "Expected 15 services, got $(@($services).Count)." }
-
-          & (Join-Path $extractPath '.service/nexroute-services.ps1') -Mode Validate -Root $extractPath
-          & (Join-Path $extractPath '.service/nexroute-services.ps1') -Mode Apply -Root $extractPath
-
-          $generalUser = Get-Content (Join-Path $extractPath 'lists/list-general-user.txt') -Raw
-          $excludeUser = Get-Content (Join-Path $extractPath 'lists/list-exclude-user.txt') -Raw
-          if ($generalUser -notmatch 'NEXROUTE-SERVICES-BEGIN') { throw 'Managed enabled-service block was not created.' }
-          if ($excludeUser -notmatch 'NEXROUTE-DISABLED-SERVICES-BEGIN') { throw 'Managed disabled-service block was not created.' }
-          if ($generalUser -notmatch 'youtube\.com' -or $generalUser -notmatch 'discord\.com') { throw 'Default baseline services are not enabled.' }
-          if ($excludeUser -notmatch 'chatgpt\.com' -or $excludeUser -notmatch 'casebattle\.net') { throw 'Disabled service domains are not excluded.' }
-
-          $strategyFiles = @(
-            Get-ChildItem $extractPath -Filter '*.bat' -File |
-              Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') }
-          )
-          if ($strategyFiles.Count -eq 0) { throw 'No strategy launchers were found.' }
-          foreach ($strategyFile in $strategyFiles) {
-            $content = Get-Content $strategyFile.FullName -Raw
-            if ($content -notmatch 'NEXROUTE_PROFILE_BOOT') { throw "No animated boot hook: $($strategyFile.Name)" }
-            if ($content -notmatch 'nexroute-services\.ps1') { throw "No service matrix apply hook: $($strategyFile.Name)" }
-          }
-
-          $testScript = Get-Content (Join-Path $extractPath 'utils/test zapret.ps1') -Raw
-          if ($testScript -notmatch 'NEXROUTE_TEST_HEADER') { throw 'Test laboratory header was not injected.' }
-
-          "NEXROUTE_EXTRACT_PATH=$extractPath" >> $env:GITHUB_ENV
-          Write-Host "Verified $($strategyFiles.Count) launchers and $(@($services).Count) service profiles."
-          Write-Host "SHA-256: $actualHash"
-
-      - name: Execute all non-interactive terminal pages on Windows PowerShell 5.1
+      - name: Fail when package verification failed
+        if: steps.package_verification.outcome == 'failure'
         shell: pwsh
-        run: |
-          $root = $env:NEXROUTE_EXTRACT_PATH
-          $ui = Join-Path $root '.service/nexroute-ui.ps1'
-          $language = Join-Path $root '.service/language.txt'
-
-          foreach ($lang in @('RU', 'EN')) {
-            Set-Content -LiteralPath $language -Value $lang -Encoding ascii
-            $calls = @(
-              @('-Mode', 'Menu', '-NonInteractive'),
-              @('-Mode', 'Action', '-ActionId', 'deploy', '-NonInteractive'),
-              @('-Mode', 'Launch', '-Profile', 'general (ALT)', '-NonInteractive'),
-              @('-Mode', 'Status', '-NonInteractive'),
-              @('-Mode', 'StrategyPicker', '-NonInteractive'),
-              @('-Mode', 'PayloadManager', '-NonInteractive'),
-              @('-Mode', 'Services', '-NonInteractive'),
-              @('-Mode', 'TestsIntro', '-NonInteractive'),
-              @('-Mode', 'TestHeader', '-NonInteractive')
-            )
-            foreach ($arguments in $calls) {
-              & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $ui -Root $root -LanguageFile $language @arguments
-              if ($LASTEXITCODE -ne 0) { throw "$lang renderer failed: $($arguments -join ' ')" }
-            }
-          }
+        run: throw 'Package verification failed. See NexRoute-package-test-log.'
 
       - name: Upload smoke artifact
         uses: actions/upload-artifact@v4
