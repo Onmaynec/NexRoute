@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">NexRoute mark</title>
+  <desc id="desc">A custom angular route glyph formed from an N, directional path and packet node.</desc>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#26f7ff"/>
+      <stop offset="0.52" stop-color="#20b8ff"/>
+      <stop offset="1" stop-color="#b83cff"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="#070a10" stroke="#20344a" stroke-width="16"/>
+  <path d="M128 368V144l128 144V144h72v224L200 224v144z" fill="none" stroke="url(#g)" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M330 112h76v76" fill="none" stroke="#26f7ff" stroke-width="28" stroke-linecap="round"/>
+  <path d="M404 114L292 226" fill="none" stroke="#26f7ff" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="128" cy="368" r="24" fill="#b83cff"/>
+  <circle cx="404" cy="114" r="24" fill="#26f7ff"/>
+</svg>
