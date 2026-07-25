@@ -13,7 +13,7 @@ permissions:
 jobs:
   validate:
     name: Validate source tree
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
