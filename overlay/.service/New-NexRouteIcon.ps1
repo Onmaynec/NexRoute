@@ -24,6 +24,7 @@ $graphics.Clear([System.Drawing.Color]::FromArgb(7, 12, 18))
 $cyan = [System.Drawing.Color]::FromArgb(36, 225, 214)
 $light = [System.Drawing.Color]::FromArgb(190, 255, 250)
 $dark = [System.Drawing.Color]::FromArgb(10, 20, 28)
+$backgroundBrush = New-Object System.Drawing.SolidBrush($dark)
 $ring = New-Object System.Drawing.Pen($cyan, 3)
 $innerRing = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(14, 90, 98), 1)
 $route = New-Object System.Drawing.Pen($cyan, 4)
@@ -33,16 +34,16 @@ $nodeBrush = New-Object System.Drawing.SolidBrush($dark)
 $nodePen = New-Object System.Drawing.Pen([System.Drawing.Color]::FromArgb(70, 255, 234), 2)
 $arrowBrush = New-Object System.Drawing.SolidBrush($cyan)
 
-$graphics.FillEllipse((New-Object System.Drawing.SolidBrush($dark)), 5, 5, 54, 54)
+$graphics.FillEllipse($backgroundBrush, 5, 5, 54, 54)
 $graphics.DrawEllipse($ring, 5, 5, 54, 54)
 $graphics.DrawEllipse($innerRing, 10, 10, 44, 44)
 
-$points = @(
-    (New-Object System.Drawing.PointF(17, 47)),
-    (New-Object System.Drawing.PointF(17, 18)),
-    (New-Object System.Drawing.PointF(32, 38)),
-    (New-Object System.Drawing.PointF(47, 18)),
-    (New-Object System.Drawing.PointF(47, 46))
+[System.Drawing.Point[]]$points = @(
+    (New-Object System.Drawing.Point(17, 47)),
+    (New-Object System.Drawing.Point(17, 18)),
+    (New-Object System.Drawing.Point(32, 38)),
+    (New-Object System.Drawing.Point(47, 18)),
+    (New-Object System.Drawing.Point(47, 46))
 )
 $graphics.DrawLines($route, $points)
 $graphics.DrawLines($highlight, $points)
@@ -52,10 +53,10 @@ foreach ($point in $points) {
     $graphics.DrawEllipse($nodePen, $point.X - 3, $point.Y - 3, 6, 6)
 }
 
-$arrow = @(
-    (New-Object System.Drawing.PointF(47, 55)),
-    (New-Object System.Drawing.PointF(42, 46)),
-    (New-Object System.Drawing.PointF(52, 46))
+[System.Drawing.Point[]]$arrow = @(
+    (New-Object System.Drawing.Point(47, 55)),
+    (New-Object System.Drawing.Point(42, 46)),
+    (New-Object System.Drawing.Point(52, 46))
 )
 $graphics.FillPolygon($arrowBrush, $arrow)
 
@@ -70,6 +71,7 @@ finally {
     $icon.Dispose()
     $graphics.Dispose()
     $bitmap.Dispose()
+    $backgroundBrush.Dispose()
     $ring.Dispose()
     $innerRing.Dispose()
     $route.Dispose()
