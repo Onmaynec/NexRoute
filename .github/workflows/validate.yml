@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate source tree
+    name: Validate NexRoute 0.2.2 sources
     runs-on: ubuntu-latest
 
     steps:
@@ -21,12 +21,12 @@ jobs:
         with:
           show-progress: false
 
-      - name: Validate NexRoute sources
+      - name: Validate source tree
         shell: pwsh
         run: ./scripts/Test-Repository.ps1
 
   build-smoke:
-    name: Build and test NexRoute 0.2.1
+    name: Build and test NexRoute 0.2.2
     needs: validate
     runs-on: windows-latest
 
@@ -40,28 +40,30 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          ./scripts/Build-NexRoute.ps1 `
+          if ($version -ne '0.2.2') { throw "Expected 0.2.2, got $version" }
+          ./scripts/Build-NexRoute-0.2.2.ps1 `
             -Version $version `
             -UpstreamVersion '1.10.0' `
             -OutputDirectory ./artifacts
 
-      - name: Inspect package and reproduce Root bug
+      - name: Inspect package and Windows runtime
         shell: pwsh
         run: |
-          $result = ./scripts/Test-Package.ps1 `
+          $result = ./scripts/Test-Package-0.2.2.ps1 `
             -ArtifactsDirectory ./artifacts `
-            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-0.2.1-test')
+            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-0.2.2-test')
           "NEXROUTE_SHA256=$($result.Sha256)" >> $env:GITHUB_ENV
           "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
           "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
+          "NEXROUTE_ICON_BYTES=$($result.IconBytes)" >> $env:GITHUB_ENV
 
       - name: Upload smoke package
         uses: actions/upload-artifact@v4
         with:
-          name: NexRoute-0.2.1-smoke-package
+          name: NexRoute-0.2.2-smoke-package
           path: |
-            artifacts/NexRoute-0.2.1-win-x64.zip
-            artifacts/NexRoute-0.2.1-win-x64.zip.sha256
+            artifacts/NexRoute-0.2.2-win-x64.zip
+            artifacts/NexRoute-0.2.2-win-x64.zip.sha256
           if-no-files-found: error
           retention-days: 7
 
@@ -70,4 +72,5 @@ jobs:
         run: |
           Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
           Write-Host "Services: $env:NEXROUTE_SERVICES"
+          Write-Host "Icon bytes: $env:NEXROUTE_ICON_BYTES"
           Write-Host "SHA-256: $env:NEXROUTE_SHA256"
