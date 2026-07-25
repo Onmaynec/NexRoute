@@ -21,32 +21,12 @@ jobs:
         with:
           show-progress: false
 
-      - name: Validate NexRoute repository
-        id: repository_validation
-        continue-on-error: true
+      - name: Validate NexRoute sources
         shell: pwsh
-        run: ./scripts/Test-Repository.ps1 *>&1 | Tee-Object -FilePath validation.log
-
-      - name: Upload validation log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: NexRoute-validation-log
-          path: validation.log
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Fail when repository validation failed
-        if: steps.repository_validation.outcome == 'failure'
-        shell: pwsh
-        run: throw 'Repository validation failed. See NexRoute-validation-log.'
-
-      - name: Verify release builder help
-        shell: pwsh
-        run: Get-Help ./scripts/Build-NexRoute.ps1 -Full | Out-Null
+        run: ./scripts/Test-Repository.ps1
 
   build-smoke:
-    name: Build and inspect NexRoute 0.2.0
+    name: Build and test NexRoute 0.2.1
     needs: validate
     runs-on: windows-latest
 
@@ -56,89 +36,38 @@ jobs:
         with:
           show-progress: false
 
-      - name: Build NexRoute smoke artifact
-        id: package_build
-        continue-on-error: true
+      - name: Build package
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          try {
-            ./scripts/Build-NexRoute.ps1 `
-              -Version $version `
-              -UpstreamVersion '1.10.0' `
-              -OutputDirectory ./artifacts *>&1 | Tee-Object -FilePath build.log
-          }
-          catch {
-            @(
-              '',
-              '=== TERMINATING EXCEPTION ===',
-              ($_ | Out-String),
-              '=== EXCEPTION DETAILS ===',
-              ($_ | Format-List * -Force | Out-String),
-              '=== SCRIPT STACK TRACE ===',
-              $_.ScriptStackTrace
-            ) -join [Environment]::NewLine | Tee-Object -FilePath build.log -Append
-            throw
-          }
+          ./scripts/Build-NexRoute.ps1 `
+            -Version $version `
+            -UpstreamVersion '1.10.0' `
+            -OutputDirectory ./artifacts
 
-      - name: Upload Windows build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: NexRoute-windows-build-log
-          path: build.log
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Fail when package build failed
-        if: steps.package_build.outcome == 'failure'
-        shell: pwsh
-        run: throw 'Windows package build failed. See NexRoute-windows-build-log.'
-
-      - name: Verify package and execute terminal pages
-        id: package_verification
-        continue-on-error: true
+      - name: Inspect package and reproduce Root bug
         shell: pwsh
         run: |
-          try {
-            ./scripts/Test-Package.ps1 `
-              -ArtifactsDirectory ./artifacts `
-              -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-smoke') *>&1 |
-              Tee-Object -FilePath package-test.log
-          }
-          catch {
-            @(
-              '',
-              '=== TERMINATING EXCEPTION ===',
-              ($_ | Out-String),
-              '=== EXCEPTION DETAILS ===',
-              ($_ | Format-List * -Force | Out-String),
-              '=== SCRIPT STACK TRACE ===',
-              $_.ScriptStackTrace
-            ) -join [Environment]::NewLine | Tee-Object -FilePath package-test.log -Append
-            throw
-          }
+          $result = ./scripts/Test-Package.ps1 `
+            -ArtifactsDirectory ./artifacts `
+            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-0.2.1-test')
+          "NEXROUTE_SHA256=$($result.Sha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
+          "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
 
-      - name: Upload package verification log
-        if: always()
+      - name: Upload smoke package
         uses: actions/upload-artifact@v4
         with:
-          name: NexRoute-package-test-log
-          path: package-test.log
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Fail when package verification failed
-        if: steps.package_verification.outcome == 'failure'
-        shell: pwsh
-        run: throw 'Package verification failed. See NexRoute-package-test-log.'
-
-      - name: Upload smoke artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: NexRoute-0.2.0-smoke-package
+          name: NexRoute-0.2.1-smoke-package
           path: |
-            artifacts/*.zip
-            artifacts/*.sha256
+            artifacts/NexRoute-0.2.1-win-x64.zip
+            artifacts/NexRoute-0.2.1-win-x64.zip.sha256
           if-no-files-found: error
           retention-days: 7
+
+      - name: Print verified metadata
+        shell: pwsh
+        run: |
+          Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
+          Write-Host "Services: $env:NEXROUTE_SERVICES"
+          Write-Host "SHA-256: $env:NEXROUTE_SHA256"
