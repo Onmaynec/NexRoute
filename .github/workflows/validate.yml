@@ -129,8 +129,26 @@ jobs:
             }
           }
 
+          "NEXROUTE_EXTRACT_PATH=$extractPath" >> $env:GITHUB_ENV
           Write-Host "Verified $($strategyFiles.Count) animated strategy launchers."
           Write-Host "SHA-256: $actualHash"
+
+      - name: Execute terminal renderer on Windows PowerShell 5.1
+        shell: pwsh
+        run: |
+          $uiPath = Join-Path $env:NEXROUTE_EXTRACT_PATH '.service/nexroute-ui.ps1'
+          $languagePath = Join-Path $env:NEXROUTE_EXTRACT_PATH '.service/language.txt'
+
+          Set-Content -LiteralPath $languagePath -Value 'RU' -Encoding ascii
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Action -ActionId status -LanguageFile $languagePath
+          if ($LASTEXITCODE -ne 0) { throw "RU action renderer failed with exit code $LASTEXITCODE" }
+
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Launch -Profile 'general (ALT)' -LanguageFile $languagePath
+          if ($LASTEXITCODE -ne 0) { throw "RU launch renderer failed with exit code $LASTEXITCODE" }
+
+          Set-Content -LiteralPath $languagePath -Value 'EN' -Encoding ascii
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Action -ActionId diagnostics -LanguageFile $languagePath
+          if ($LASTEXITCODE -ne 0) { throw "EN action renderer failed with exit code $LASTEXITCODE" }
 
       - name: Upload smoke artifact
         uses: actions/upload-artifact@v4
