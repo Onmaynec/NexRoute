@@ -31,6 +31,11 @@ function Test-PowerShellFile {
     $tokens = $null
     $parseErrors = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) {
+        foreach ($parseError in $parseErrors) {
+            Write-Host ("       {0}:{1} {2}" -f $parseError.Extent.StartLineNumber, $parseError.Extent.StartColumnNumber, $parseError.Message) -ForegroundColor Yellow
+        }
+    }
     Assert-True -Condition ($parseErrors.Count -eq 0) -Message "$DisplayName parses without PowerShell syntax errors"
 }
 
