@@ -23,7 +23,29 @@ jobs:
 
       - name: Validate source tree
         shell: pwsh
-        run: ./scripts/Test-Repository.ps1
+        run: |
+          ./scripts/Test-Repository.ps1 *> validation.log
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) {
+            Write-Host '=== VALIDATION FAILURE SUMMARY ===' -ForegroundColor Red
+            Select-String -Path validation.log -Pattern '\[FAIL\]|parse|Parser|At .+\.ps1:|Validation failed|Exception' -Context 1,2 |
+              ForEach-Object { $_.ToString() } |
+              Select-Object -Unique |
+              Write-Host
+            Write-Host '=== VALIDATION LOG TAIL ===' -ForegroundColor Yellow
+            Get-Content validation.log -Tail 40
+            exit $exitCode
+          }
+          Get-Content validation.log -Tail 20
+
+      - name: Upload validation log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: NexRoute-0.2.2-validation-log
+          path: validation.log
+          if-no-files-found: warn
+          retention-days: 7
 
   build-smoke:
     name: Build and test NexRoute 0.2.2
