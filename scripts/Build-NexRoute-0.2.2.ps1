@@ -152,6 +152,14 @@ if (Test-Path -LiteralPath $nrLanguagePath -PathType Leaf) {
     else {
         $content = $languageBootstrap + $content
     }
+
+    # Upstream counted nexroute.bat as a 22nd configuration even though it is only
+    # a launcher. Strategy Lab must test the 21 actual Flowseal strategy BAT files.
+    $content = $content.Replace(
+        'Where-Object { $_.Name -notlike "service*" }',
+        'Where-Object { $_.Name -notlike "service*" -and $_.Name -ne "nexroute.bat" }'
+    )
+
     $block = @'
     # NEXROUTE_DYNAMIC_TARGETS_V2
     $nrServiceRoot = Split-Path $PSScriptRoot
@@ -216,7 +224,7 @@ try {
     & $controller -Mode Apply -Root $packageRoot | Out-Null
 
     $strategyFiles = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') })
-    if ($strategyFiles.Count -ne 22) { throw "Expected 22 strategy BAT files, got $($strategyFiles.Count)." }
+    if ($strategyFiles.Count -ne 21) { throw "Expected 21 real strategy BAT files, got $($strategyFiles.Count)." }
     foreach ($strategyFile in $strategyFiles) { Patch-NexRouteStrategy -File $strategyFile }
 
     Write-Step 'Patching service reinstall, styled settings and Strategy Lab targets'
@@ -229,11 +237,12 @@ try {
     $buildInfoPath = Join-Path $packageRoot 'NEXROUTE_BUILD_INFO.txt'
     Add-Content -LiteralPath $buildInfoPath -Value @(
         'Service Matrix schema: 2',
-        'Strategy integration: 22/22 BAT profiles',
+        'Strategy integration: 21/21 real Flowseal BAT profiles',
+        'Strategy Lab launcher exclusion: nexroute.bat',
         'Dynamic filters: domain + resolved IPv4/IP source + TCP/UDP ports',
         'Strategy Lab: enabled-service web/API/CDN/media/gateway targets',
         'Default language: EN',
-        'Icon: user-supplied NexRoute artwork, multi-resolution ICO'
+        'Icon: NexRoute supplied artwork motif, multi-resolution ICO'
     ) -Encoding UTF8
 
     Write-Step 'Repacking verified 0.2.2 artifact'
