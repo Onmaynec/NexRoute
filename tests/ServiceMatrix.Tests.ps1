@@ -89,7 +89,7 @@ Describe 'NexRoute Service Matrix 0.2.3' {
         $exclude = Get-Content -LiteralPath (Join-Path $listsRoot 'list-exclude-user.txt') -Raw -Encoding UTF8
         $exclude | Should -Match 'manual-exclude\.example'
         $exclude | Should -Match 'beta\.example'
-        $exclude | Should -Not -Match '(?m)^shared\.example$'
+        $exclude | Should -Not -Match '(?m)^shared\.example\r?$'
     }
 
     It 'writes isolated runtime filters for enabled services' {
@@ -110,7 +110,7 @@ Describe 'NexRoute Service Matrix 0.2.3' {
         & $script:invokeMatrix | Out-Null
 
         $exclude = Get-Content -LiteralPath (Join-Path $listsRoot 'list-exclude-user.txt') -Raw -Encoding UTF8
-        $exclude | Should -Match '(?m)^shared\.example$'
+        $exclude | Should -Match '(?m)^shared\.example\r?$'
     }
 
     It 'rejects invalid ports and IPv4 CIDR values' {
