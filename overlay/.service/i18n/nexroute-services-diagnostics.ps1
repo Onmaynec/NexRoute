@@ -27,8 +27,12 @@ function Get-FileSha256Safe {
 function Export-NexRouteDiagnostics {
     param([Parameter(Mandatory)][array]$Definitions, [Parameter(Mandatory)]$State)
     $version = if (Test-Path -LiteralPath $versionPath -PathType Leaf) { (Get-Content -LiteralPath $versionPath -Raw).Trim() } else { 'unknown' }
-    $enabledIds = @($Definitions | Where-Object { [bool]$State[$_.id] } | ForEach-Object { [string]$_.id })
-    $sourceStatuses = if (Test-Path -LiteralPath $sourceStatusPath -PathType Leaf) { @(Read-JsonFile -Path $sourceStatusPath) } else { @() }
+    $enabledIds = [string[]]@($Definitions | Where-Object { [bool]$State[$_.id] } | ForEach-Object { [string]$_.id })
+    $sourceStatuses = [object[]]@()
+    if (Test-Path -LiteralPath $sourceStatusPath -PathType Leaf) {
+        $loadedStatuses = Read-JsonFile -Path $sourceStatusPath
+        if ($null -ne $loadedStatuses) { $sourceStatuses = [object[]]@($loadedStatuses) }
+    }
     $zapret = $null
     if (Get-Command Get-Service -ErrorAction SilentlyContinue) {
         try { $zapret = Get-Service -Name 'zapret' -ErrorAction SilentlyContinue } catch { }
