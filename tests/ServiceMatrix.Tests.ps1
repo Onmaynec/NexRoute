@@ -63,18 +63,17 @@ Describe 'NexRoute Service Matrix 0.2.3' {
         "# user line`r`nmanual.example`r`n" | Set-Content -LiteralPath (Join-Path $listsRoot 'list-general-user.txt') -Encoding UTF8
         "# user exclude`r`nmanual-exclude.example`r`n" | Set-Content -LiteralPath (Join-Path $listsRoot 'list-exclude-user.txt') -Encoding UTF8
         $script:controller = Join-Path $serviceRoot 'nexroute-services.ps1'
-    }
-
-    function Invoke-Matrix {
-        param([string]$Mode = 'Apply', [string]$DiagnosticsPath)
-        if ($DiagnosticsPath) {
-            return & $script:controller -Mode $Mode -Root $script:packageRoot -DiagnosticsPath $DiagnosticsPath | Select-Object -Last 1
+        $script:invokeMatrix = {
+            param([string]$Mode = 'Apply', [string]$DiagnosticsPath)
+            if ($DiagnosticsPath) {
+                return & $script:controller -Mode $Mode -Root $script:packageRoot -DiagnosticsPath $DiagnosticsPath | Select-Object -Last 1
+            }
+            return & $script:controller -Mode $Mode -Root $script:packageRoot | Select-Object -Last 1
         }
-        return & $script:controller -Mode $Mode -Root $script:packageRoot | Select-Object -Last 1
     }
 
     It 'migrates legacy state and preserves user-managed lines' {
-        Invoke-Matrix | Out-Null
+        & $script:invokeMatrix | Out-Null
 
         Test-Path -LiteralPath (Join-Path $serviceRoot 'services-state.v1.backup.json') | Should -BeTrue
         $state = Get-Content -LiteralPath (Join-Path $serviceRoot 'services-state.json') -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -94,7 +93,7 @@ Describe 'NexRoute Service Matrix 0.2.3' {
     }
 
     It 'writes isolated runtime filters for enabled services' {
-        Invoke-Matrix | Out-Null
+        & $script:invokeMatrix | Out-Null
         $runtime = Get-Content -LiteralPath (Join-Path $serviceRoot 'services-runtime.cmd') -Raw -Encoding ASCII
 
         $runtime | Should -Match 'list-service-alpha\.txt'
@@ -108,7 +107,7 @@ Describe 'NexRoute Service Matrix 0.2.3' {
     It 'excludes a shared domain only when all owners are disabled' {
         $state = [ordered]@{ schemaVersion = 2; updatedAtUtc = [DateTime]::UtcNow.ToString('o'); services = [ordered]@{ alpha = $false; beta = $false } }
         $state | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $serviceRoot 'services-state.json') -Encoding UTF8
-        Invoke-Matrix | Out-Null
+        & $script:invokeMatrix | Out-Null
 
         $exclude = Get-Content -LiteralPath (Join-Path $listsRoot 'list-exclude-user.txt') -Raw -Encoding UTF8
         $exclude | Should -Match '(?m)^shared\.example$'
@@ -120,19 +119,19 @@ Describe 'NexRoute Service Matrix 0.2.3' {
         $document.services[0].ipCidrs = @('999.1.1.1/33')
         $document | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $serviceRoot 'services.json') -Encoding UTF8
 
-        { Invoke-Matrix -Mode Validate } | Should -Throw
+        { & $script:invokeMatrix -Mode Validate } | Should -Throw
     }
 
     It 'backs up and replaces corrupt state' {
         '{broken json' | Set-Content -LiteralPath (Join-Path $serviceRoot 'services-state.json') -Encoding UTF8
-        Invoke-Matrix | Out-Null
+        & $script:invokeMatrix | Out-Null
 
         Test-Path -LiteralPath (Join-Path $serviceRoot 'services-state.invalid.backup.json') | Should -BeTrue
         { Get-Content -LiteralPath (Join-Path $serviceRoot 'services-state.json') -Raw -Encoding UTF8 | ConvertFrom-Json } | Should -Not -Throw
     }
 
     It 'is idempotent after state migration' {
-        Invoke-Matrix | Out-Null
+        & $script:invokeMatrix | Out-Null
         $paths = @(
             (Join-Path $serviceRoot 'services-runtime.cmd'),
             (Join-Path $listsRoot 'list-general-user.txt'),
@@ -143,16 +142,16 @@ Describe 'NexRoute Service Matrix 0.2.3' {
         $before = @{}
         foreach ($path in $paths) { $before[$path] = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash }
 
-        Invoke-Matrix | Out-Null
+        & $script:invokeMatrix | Out-Null
         foreach ($path in $paths) {
             (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash | Should -Be $before[$path]
         }
     }
 
     It 'exports a privacy-safe diagnostics report' {
-        Invoke-Matrix | Out-Null
+        & $script:invokeMatrix | Out-Null
         $diagnosticsPath = Join-Path $packageRoot 'diagnostics.json'
-        Invoke-Matrix -Mode Diagnostics -DiagnosticsPath $diagnosticsPath | Out-Null
+        & $script:invokeMatrix -Mode Diagnostics -DiagnosticsPath $diagnosticsPath | Out-Null
 
         Test-Path -LiteralPath $diagnosticsPath | Should -BeTrue
         $report = Get-Content -LiteralPath $diagnosticsPath -Raw -Encoding UTF8 | ConvertFrom-Json
