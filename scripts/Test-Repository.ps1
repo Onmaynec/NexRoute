@@ -37,6 +37,10 @@ $required = @(
     'overlay/.service/i18n/nexroute-theme.ps1','overlay/.service/i18n/nexroute-pages.ps1',
     'overlay/.service/i18n/nexroute-pages-core.ps1','overlay/.service/i18n/nexroute-pages-network.ps1',
     'overlay/.service/i18n/nexroute-services-ui.ps1',
+    'overlay/.service/i18n/nexroute-services-state.ps1',
+    'overlay/.service/i18n/nexroute-services-network.ps1',
+    'overlay/.service/i18n/nexroute-services-runtime.ps1',
+    'overlay/.service/i18n/nexroute-services-diagnostics.ps1',
     'scripts/Build-NexRoute.ps1','scripts/Build-Release.ps1',
     'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1',
     'tests/ServiceMatrix.Tests.ps1',
@@ -75,13 +79,21 @@ foreach ($service in $services) {
 }
 
 $controllerPath = Join-Path $root 'overlay/.service/nexroute-services.ps1'
-$controller = Get-Content -LiteralPath $controllerPath -Raw
+$controllerFiles = @(
+    $controllerPath,
+    (Join-Path $root 'overlay/.service/i18n/nexroute-services-state.ps1'),
+    (Join-Path $root 'overlay/.service/i18n/nexroute-services-network.ps1'),
+    (Join-Path $root 'overlay/.service/i18n/nexroute-services-runtime.ps1'),
+    (Join-Path $root 'overlay/.service/i18n/nexroute-services-diagnostics.ps1')
+)
+$controller = (($controllerFiles | ForEach-Object { Get-Content -LiteralPath $_ -Raw }) -join [Environment]::NewLine)
 foreach ($token in @(
     'Diagnostics','services-state.v1.backup.json','services-state.invalid.backup.json',
     'ConvertTo-ValidatedIpv4Cidr','ConvertTo-ValidatedPort','sourceCacheMaxAgeDays = 14',
-    'list-service-{0}.txt','ipset-service-{0}.txt','allDomains','enabledDomains.Contains'
+    'list-service-{0}.txt','ipset-service-{0}.txt','allDomains','enabledDomains.Contains',
+    'AllowEmptyCollection'
 )) {
-    Assert-True ($controller -match [regex]::Escape($token)) "Service controller contains $token"
+    Assert-True ($controller -match [regex]::Escape($token)) "Service controller modules contain $token"
 }
 
 try {
