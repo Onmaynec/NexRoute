@@ -85,11 +85,12 @@ function Apply-ServiceMatrix {
         }
     }
 
-    $disabledDomains = @($allDomains | Where-Object { -not $enabledDomains.Contains($_) } | Sort-Object)
-    Set-ManagedBlock -Path $generalUserPath -BeginMarker $generalBegin -EndMarker $generalEnd -Values @($enabledDomains)
+    $disabledDomains = [string[]]@($allDomains | Where-Object { -not $enabledDomains.Contains($_) } | Sort-Object)
+    $enabledDomainArray = [string[]]@($enabledDomains | Sort-Object)
+    Set-ManagedBlock -Path $generalUserPath -BeginMarker $generalBegin -EndMarker $generalEnd -Values $enabledDomainArray
     Set-ManagedBlock -Path $excludeUserPath -BeginMarker $excludeBegin -EndMarker $excludeEnd -Values $disabledDomains
 
-    $enabledValues = @($enabledDomains | Sort-Object)
+    $enabledValues = $enabledDomainArray
     if ($enabledValues.Count -eq 0) { $enabledValues = @('nexroute.invalid') }
     Write-Utf8NoBom -Path $enabledListPath -Content (($enabledValues -join "`r`n") + "`r`n")
 
@@ -98,7 +99,7 @@ function Apply-ServiceMatrix {
         $id = Get-SafeServiceId -Value ([string]$service.id)
         $enabledIds.Add($id)
 
-        $serviceDomains = @($service.domains | Where-Object { $_ } | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object -Unique)
+        $serviceDomains = [string[]]@($service.domains | Where-Object { $_ } | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object -Unique)
         $hostListPath = Join-Path $listsDirectory ("list-service-{0}.txt" -f $id)
         $ipsetPath = Join-Path $listsDirectory ("ipset-service-{0}.txt" -f $id)
         $keepPaths.Add($hostListPath)
@@ -113,8 +114,8 @@ function Apply-ServiceMatrix {
         }
 
         $remote = Get-RemoteIpEntries -Sources @($service.ipSources)
-        foreach ($entry in @($remote.Entries)) { [void]$ips.Add($entry) }
-        foreach ($status in @($remote.Statuses)) {
+        foreach ($entry in [string[]]$remote.Entries) { [void]$ips.Add($entry) }
+        foreach ($status in [object[]]$remote.Statuses) {
             $allSourceStatuses.Add([pscustomobject]@{
                 serviceId = $id
                 source = $status.source
@@ -133,11 +134,11 @@ function Apply-ServiceMatrix {
         }
         foreach ($entry in @(Get-ResolvedIpv4Entries -Hosts $resolveHosts.ToArray())) { [void]$ips.Add($entry) }
 
-        $ipValues = @($ips | Sort-Object)
+        $ipValues = [string[]]@($ips | Sort-Object)
         $hasIps = $ipValues.Count -gt 0
         if (-not $hasIps) { $ipValues = @('203.0.113.113/32') }
         Write-Utf8NoBom -Path $ipsetPath -Content (($ipValues -join "`r`n") + "`r`n")
-        foreach ($entry in @($ips)) { [void]$allIps.Add($entry) }
+        foreach ($entry in [string[]]@($ips | ForEach-Object { $_ })) { [void]$allIps.Add($entry) }
 
         $runtimeServices.Add([pscustomobject]@{
             Id = $id
@@ -151,10 +152,10 @@ function Apply-ServiceMatrix {
     }
 
     Remove-StaleServiceLists -KeepPaths $keepPaths.ToArray()
-    $globalIps = @($allIps | Sort-Object)
+    $globalIps = [string[]]@($allIps | Sort-Object)
     if ($globalIps.Count -eq 0) { $globalIps = @('203.0.113.113/32') }
     Write-Utf8NoBom -Path $serviceIpsetPath -Content (($globalIps -join "`r`n") + "`r`n")
-    Write-JsonFile -Path $sourceStatusPath -Value @($allSourceStatuses) -Depth 6
+    Write-JsonFile -Path $sourceStatusPath -Value ([object[]]$allSourceStatuses.ToArray()) -Depth 6
     Write-ServiceRuntime -RuntimeServices $runtimeServices.ToArray()
 
     return [pscustomobject]@{
