@@ -45,7 +45,9 @@ jobs:
 
       - name: Install pinned Pester
         shell: pwsh
-        run: Install-Module Pester -RequiredVersion 5.6.1 -Scope CurrentUser -Force -SkipPublisherCheck
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -RequiredVersion 5.6.1 -Scope CurrentUser -Force -SkipPublisherCheck -AllowClobber
 
       - name: Validate sources and behavior
         shell: pwsh
