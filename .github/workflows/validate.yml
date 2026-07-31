@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate NexRoute 0.2.2 sources
+    name: Validate NexRoute 0.2.3 sources
     runs-on: ubuntu-latest
 
     steps:
@@ -21,34 +21,22 @@ jobs:
         with:
           show-progress: false
 
+      - name: Install pinned Pester
+        shell: pwsh
+        run: Install-Module Pester -RequiredVersion 5.6.1 -Scope CurrentUser -Force -SkipPublisherCheck
+
       - name: Validate source tree
         shell: pwsh
-        run: |
-          ./scripts/Test-Repository.ps1 *> validation.log
-          $exitCode = $LASTEXITCODE
-          if ($exitCode -ne 0) {
-            Write-Host '=== VALIDATION FAILURE SUMMARY ===' -ForegroundColor Red
-            Select-String -Path validation.log -Pattern '\[FAIL\]|parse|Parser|At .+\.ps1:|Validation failed|Exception' -Context 1,2 |
-              ForEach-Object { $_.ToString() } |
-              Select-Object -Unique |
-              Write-Host
-            Write-Host '=== VALIDATION LOG TAIL ===' -ForegroundColor Yellow
-            Get-Content validation.log -Tail 40
-            exit $exitCode
-          }
-          Get-Content validation.log -Tail 20
+        run: ./scripts/Test-Repository.ps1
 
-      - name: Upload validation log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: NexRoute-0.2.2-validation-log
-          path: validation.log
-          if-no-files-found: warn
-          retention-days: 7
+      - name: Run Service Matrix behavior tests
+        shell: pwsh
+        run: |
+          $result = Invoke-Pester -Path ./tests/ServiceMatrix.Tests.ps1 -CI -Output Detailed -PassThru
+          if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
   build-smoke:
-    name: Build and test NexRoute 0.2.2
+    name: Build and test NexRoute 0.2.3
     needs: validate
     runs-on: windows-latest
 
@@ -62,95 +50,36 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          if ($version -ne '0.2.2') { throw "Expected 0.2.2, got $version" }
-          try {
-            ./scripts/Build-NexRoute-0.2.2.ps1 `
-              -Version $version `
-              -UpstreamVersion '1.10.0' `
-              -OutputDirectory ./artifacts *>&1 |
-              Tee-Object -FilePath build.log
-          }
-          catch {
-            @(
-              '',
-              '=== TERMINATING EXCEPTION ===',
-              ($_ | Out-String),
-              '=== EXCEPTION DETAILS ===',
-              ($_ | Format-List * -Force | Out-String),
-              '=== SCRIPT STACK TRACE ===',
-              $_.ScriptStackTrace
-            ) -join [Environment]::NewLine | Tee-Object -FilePath build.log -Append
-            Write-Host '=== BUILD LOG TAIL ===' -ForegroundColor Yellow
-            Get-Content build.log -Tail 80
-            throw
-          }
+          if ($version -ne '0.2.3') { throw "Expected 0.2.3, got $version" }
+          ./scripts/Build-Release.ps1 `
+            -Version $version `
+            -UpstreamVersion '1.10.0' `
+            -OutputDirectory ./artifacts *>&1 |
+            Tee-Object -FilePath build.log
 
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: NexRoute-0.2.2-build-log
-          path: build.log
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Upload built package for inspection
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: NexRoute-0.2.2-pretest-package
-          path: |
-            artifacts/NexRoute-0.2.2-win-x64.zip
-            artifacts/NexRoute-0.2.2-win-x64.zip.sha256
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Inspect package and Windows runtime
+      - name: Verify package
         shell: pwsh
         run: |
-          try {
-            $result = ./scripts/Test-Package-0.2.2.ps1 `
-              -ArtifactsDirectory ./artifacts `
-              -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-0.2.2-test') *>&1 |
-              Tee-Object -FilePath package-test.log
-            $result = $result | Select-Object -Last 1
-            "NEXROUTE_SHA256=$($result.Sha256)" >> $env:GITHUB_ENV
-            "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
-            "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
-            "NEXROUTE_ICON_BYTES=$($result.IconBytes)" >> $env:GITHUB_ENV
-          }
-          catch {
-            @(
-              '',
-              '=== TERMINATING EXCEPTION ===',
-              ($_ | Out-String),
-              '=== EXCEPTION DETAILS ===',
-              ($_ | Format-List * -Force | Out-String),
-              '=== SCRIPT STACK TRACE ===',
-              $_.ScriptStackTrace
-            ) -join [Environment]::NewLine | Tee-Object -FilePath package-test.log -Append
-            Write-Host '=== PACKAGE TEST LOG TAIL ===' -ForegroundColor Yellow
-            Get-Content package-test.log -Tail 100
-            throw
-          }
+          $result = ./scripts/Test-Release.ps1 `
+            -ArtifactsDirectory ./artifacts `
+            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-release-test') *>&1 |
+            Tee-Object -FilePath package-test.log
+          $result = $result | Select-Object -Last 1
+          "NEXROUTE_SHA256=$($result.Sha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
+          "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
 
-      - name: Upload package test log
+      - name: Upload logs and smoke package
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: NexRoute-0.2.2-package-test-log
-          path: package-test.log
-          if-no-files-found: warn
-          retention-days: 7
-
-      - name: Upload smoke package
-        uses: actions/upload-artifact@v4
-        with:
-          name: NexRoute-0.2.2-smoke-package
+          name: NexRoute-0.2.3-smoke
           path: |
-            artifacts/NexRoute-0.2.2-win-x64.zip
-            artifacts/NexRoute-0.2.2-win-x64.zip.sha256
-          if-no-files-found: error
+            build.log
+            package-test.log
+            artifacts/NexRoute-0.2.3-win-x64.zip
+            artifacts/NexRoute-0.2.3-win-x64.zip.sha256
+          if-no-files-found: warn
           retention-days: 7
 
       - name: Print verified metadata
@@ -158,5 +87,4 @@ jobs:
         run: |
           Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
           Write-Host "Services: $env:NEXROUTE_SERVICES"
-          Write-Host "Icon bytes: $env:NEXROUTE_ICON_BYTES"
           Write-Host "SHA-256: $env:NEXROUTE_SHA256"
