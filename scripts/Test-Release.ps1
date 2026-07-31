@@ -59,8 +59,8 @@ if ($runtime -match 'list-service-chatgpt\.txt') { throw 'Disabled ChatGPT servi
 
 $general = Get-Content -LiteralPath (Join-Path $root 'lists/list-general-user.txt') -Raw -Encoding UTF8
 $exclude = Get-Content -LiteralPath (Join-Path $root 'lists/list-exclude-user.txt') -Raw -Encoding UTF8
-if ($general -notmatch '(?m)^youtube\.com$') { throw 'Enabled YouTube domain is absent from the managed general block.' }
-if ($exclude -match '(?m)^youtube\.com$') { throw 'Enabled YouTube domain leaked into the disabled block.' }
+if ($general -notmatch '(?m)^youtube\.com\r?$') { throw 'Enabled YouTube domain is absent from the managed general block.' }
+if ($exclude -match '(?m)^youtube\.com\r?$') { throw 'Enabled YouTube domain leaked into the disabled block.' }
 
 $testLab = Get-Content -LiteralPath (Join-Path $root 'utils/test zapret.ps1') -Raw
 if ($testLab -notmatch 'NEXROUTE_DYNAMIC_TARGETS_V3') { throw 'Strategy Lab does not load enabled Service Matrix targets.' }
