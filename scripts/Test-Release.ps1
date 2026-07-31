@@ -19,7 +19,11 @@ $required = @(
     '.service/services-runtime.cmd',
     '.service/ip-source-status.json',
     '.service/i18n/nexroute-pages-core.ps1',
-    '.service/i18n/nexroute-pages-network.ps1'
+    '.service/i18n/nexroute-pages-network.ps1',
+    '.service/i18n/nexroute-services-state.ps1',
+    '.service/i18n/nexroute-services-network.ps1',
+    '.service/i18n/nexroute-services-runtime.ps1',
+    '.service/i18n/nexroute-services-diagnostics.ps1'
 )
 foreach ($relativePath in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf)) {
