@@ -70,7 +70,7 @@ function Get-ResolvedIpv4Entries {
         }
         catch { }
     }
-    return @($entries)
+    return [string[]]@($entries | ForEach-Object { $_ })
 }
 
 function Get-StringHash {
@@ -89,7 +89,7 @@ function Get-CachedSourceEntries {
     $dataPath = Join-Path $cacheDirectory ($key + '.txt')
     $metaPath = Join-Path $cacheDirectory ($key + '.json')
     if (-not (Test-Path -LiteralPath $dataPath -PathType Leaf) -or -not (Test-Path -LiteralPath $metaPath -PathType Leaf)) {
-        return [pscustomobject]@{ Entries = @(); Usable = $false; AgeDays = $null; DataPath = $dataPath; MetaPath = $metaPath }
+        return [pscustomobject]@{ Entries = [string[]]@(); Usable = $false; AgeDays = $null; DataPath = $dataPath; MetaPath = $metaPath }
     }
 
     try {
@@ -101,16 +101,17 @@ function Get-CachedSourceEntries {
             $cidr = ConvertTo-ValidatedIpv4Cidr -Value $line
             if ($cidr) { [void]$entries.Add($cidr) }
         }
+        $entryArray = [string[]]@($entries | ForEach-Object { $_ })
         return [pscustomobject]@{
-            Entries = @($entries)
-            Usable = ($ageDays -le $sourceCacheMaxAgeDays -and $entries.Count -gt 0)
+            Entries = $entryArray
+            Usable = ($ageDays -le $sourceCacheMaxAgeDays -and $entryArray.Count -gt 0)
             AgeDays = [math]::Round($ageDays, 2)
             DataPath = $dataPath
             MetaPath = $metaPath
         }
     }
     catch {
-        return [pscustomobject]@{ Entries = @(); Usable = $false; AgeDays = $null; DataPath = $dataPath; MetaPath = $metaPath }
+        return [pscustomobject]@{ Entries = [string[]]@(); Usable = $false; AgeDays = $null; DataPath = $dataPath; MetaPath = $metaPath }
     }
 }
 
@@ -141,7 +142,7 @@ function Get-RemoteIpEntries {
     foreach ($sourceValue in @($Sources | Where-Object { $_ } | Sort-Object -Unique)) {
         $source = [string]$sourceValue
         $cache = Get-CachedSourceEntries -Source $source
-        $sourceEntries = @()
+        $sourceEntries = [string[]]@()
         $status = 'failed'
         $message = $null
 
@@ -153,7 +154,7 @@ function Get-RemoteIpEntries {
                 $cidr = ConvertTo-ValidatedIpv4Cidr -Value $candidate
                 if ($cidr) { [void]$validated.Add($cidr) }
             }
-            $sourceEntries = @($validated)
+            $sourceEntries = [string[]]@($validated | ForEach-Object { $_ })
             if ($sourceEntries.Count -eq 0) { throw 'The source returned no valid IPv4 CIDR entries.' }
             Save-SourceCache -Source $source -Entries $sourceEntries
             $status = 'fresh'
@@ -161,7 +162,7 @@ function Get-RemoteIpEntries {
         catch {
             $message = $_.Exception.Message
             if ($cache.Usable) {
-                $sourceEntries = @($cache.Entries)
+                $sourceEntries = [string[]]$cache.Entries
                 $status = 'cache'
                 Write-Warning "Using cached service IP source '$source' ($($cache.AgeDays) days old): $message"
             }
@@ -180,5 +181,8 @@ function Get-RemoteIpEntries {
         })
     }
 
-    return [pscustomobject]@{ Entries = @($entries); Statuses = @($statuses) }
+    return [pscustomobject]@{
+        Entries = [string[]]@($entries | ForEach-Object { $_ })
+        Statuses = [object[]]$statuses.ToArray()
+    }
 }
