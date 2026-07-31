@@ -5,6 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $errors = New-Object 'System.Collections.Generic.List[string]'
+$expectedVersion = '0.2.3'
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)
@@ -25,7 +26,7 @@ function Test-PowerShellFile {
     Assert-True ($parseErrors.Count -eq 0) "$RelativePath parses without PowerShell syntax errors"
 }
 
-Write-Host 'NexRoute 0.2.2 repository validation' -ForegroundColor Cyan
+Write-Host "NexRoute $expectedVersion repository validation" -ForegroundColor Cyan
 Write-Host '====================================' -ForegroundColor Cyan
 
 $required = @(
@@ -36,42 +37,29 @@ $required = @(
     'overlay/.service/i18n/nexroute-theme.ps1','overlay/.service/i18n/nexroute-pages.ps1',
     'overlay/.service/i18n/nexroute-pages-core.ps1','overlay/.service/i18n/nexroute-pages-network.ps1',
     'overlay/.service/i18n/nexroute-services-ui.ps1',
-    'scripts/Build-NexRoute.ps1','scripts/Build-NexRoute-0.2.2.ps1',
-    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Package-0.2.2.ps1',
-    '.github/workflows/validate.yml','.github/workflows/publish-v0.2.2.yml',
-    '.github/release-notes/v0.2.2.md','docs/SERVICES.md'
+    'scripts/Build-NexRoute.ps1','scripts/Build-Release.ps1',
+    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1',
+    'tests/ServiceMatrix.Tests.ps1',
+    '.github/workflows/validate.yml','.github/workflows/release.yml',
+    '.github/release-notes/v0.2.3.md','docs/SERVICES.md'
 )
 foreach ($relativePath in $required) {
     Assert-True (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf) "Required file exists: $relativePath"
 }
 
 $version = (Get-Content -LiteralPath (Join-Path $root '.service/version.txt') -Raw).Trim()
-Assert-True ($version -eq '0.2.2') 'Repository version is 0.2.2'
+Assert-True ($version -eq $expectedVersion) "Repository version is $expectedVersion"
 
 $readme = Get-Content -LiteralPath (Join-Path $root 'README.md') -Raw
-Assert-True ($readme -match '0\.2\.2') 'README mentions 0.2.2'
+Assert-True ($readme -match [regex]::Escape($expectedVersion)) "README mentions $expectedVersion"
 Assert-True ($readme -match '21') 'README documents all 21 real Flowseal strategies'
-Assert-True ($readme -match 'Strategy Lab|Лаборатор') 'README documents Strategy Lab integration'
+Assert-True ($readme -match 'Diagnostics|Диагност') 'README documents diagnostics export'
+Assert-True ($readme -match '14') 'README documents the IP source cache TTL'
 
-$powerShellFiles = @(
-    'scripts/Build-NexRoute.ps1','scripts/Build-NexRoute-0.2.2.ps1',
-    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Package-0.2.2.ps1',
-    'overlay/.service/nexroute-ui.ps1','overlay/.service/nexroute-services.ps1',
-    'overlay/.service/nexroute-services-entry.ps1','overlay/.service/New-NexRouteIcon.ps1',
-    'overlay/.service/i18n/nexroute-theme.ps1','overlay/.service/i18n/nexroute-pages.ps1',
-    'overlay/.service/i18n/nexroute-pages-core.ps1','overlay/.service/i18n/nexroute-pages-network.ps1',
-    'overlay/.service/i18n/nexroute-services-ui.ps1'
-)
-foreach ($relativePath in $powerShellFiles) { Test-PowerShellFile $relativePath }
-
-$dispatcher = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-ui.ps1') -Raw
-foreach ($token in @('GameFilter','UpdateWatch','Repair-NexRouteEmbeddedArguments')) {
-    Assert-True ($dispatcher -match [regex]::Escape($token)) "Dispatcher contains $token"
+$powerShellFiles = @(Get-ChildItem -LiteralPath $root -Filter '*.ps1' -File -Recurse -Force | Where-Object { $_.FullName -notmatch '[\\/]\.git[\\/]' })
+foreach ($file in $powerShellFiles) {
+    Test-PowerShellFile ($file.FullName.Substring($root.Length).TrimStart('\','/'))
 }
-
-$pagesLoader = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-pages.ps1') -Raw
-Assert-True ($pagesLoader -match 'nexroute-pages-core\.ps1') 'Page loader imports the core page module'
-Assert-True ($pagesLoader -match 'nexroute-pages-network\.ps1') 'Page loader imports the network page module'
 
 $servicesDocument = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/services.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $services = @($servicesDocument.services)
@@ -86,26 +74,47 @@ foreach ($service in $services) {
     Assert-True (@($service.tcpPorts).Count -gt 0 -or @($service.udpPorts).Count -gt 0) "Service $($service.id) has transport coverage"
 }
 
-$controller = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-services.ps1') -Raw
-foreach ($token in @('TestTargets','Restart-InstalledStrategy','ipset-services-user.txt','services-runtime.cmd')) {
+$controllerPath = Join-Path $root 'overlay/.service/nexroute-services.ps1'
+$controller = Get-Content -LiteralPath $controllerPath -Raw
+foreach ($token in @(
+    'Diagnostics','services-state.v1.backup.json','services-state.invalid.backup.json',
+    'ConvertTo-ValidatedIpv4Cidr','ConvertTo-ValidatedPort','sourceCacheMaxAgeDays = 14',
+    'list-service-{0}.txt','ipset-service-{0}.txt','allDomains','enabledDomains.Contains'
+)) {
     Assert-True ($controller -match [regex]::Escape($token)) "Service controller contains $token"
 }
 
+try {
+    $validationOutput = & $controllerPath -Mode Validate -Root (Join-Path $root 'overlay') | Select-Object -Last 1
+    Assert-True ($validationOutput -match 'strict ports/CIDR') 'Controller performs strict Service Matrix validation'
+}
+catch {
+    Assert-True $false "Controller validation succeeds: $($_.Exception.Message)"
+}
+
 $entry = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-services-entry.ps1') -Raw
-Assert-True ($entry -match 'NEXROUTE_SERVICE_TCP_ARGS') 'Runtime entry generates TCP service filters'
-Assert-True ($entry -match 'NEXROUTE_SERVICE_UDP_ARGS') 'Runtime entry generates UDP service filters'
-Assert-True ($entry -match '--hostlist=') 'Runtime entry generates domain filters'
-Assert-True ($entry -match '--ipset=') 'Runtime entry generates IP filters'
+Assert-True ($entry -match 'nexroute-services-core\.ps1') 'Package entry delegates to the copied controller core'
+Assert-True ($entry -match 'DiagnosticsPath') 'Package entry forwards diagnostics output path'
+
+$buildWrapper = Get-Content -LiteralPath (Join-Path $root 'scripts/Build-Release.ps1') -Raw
+foreach ($token in @('Expected 21 real strategy BAT files','NEXROUTE_SERVICE_FILTERS_V3','NEXROUTE_DYNAMIC_TARGETS_V3','NEXROUTE_REFRESH_MATRIX_V3','State schema: 2')) {
+    Assert-True ($buildWrapper -match [regex]::Escape($token)) "Generic release builder contains $token"
+}
+
+$releaseTest = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-Release.ps1') -Raw
+foreach ($token in @('list-service-youtube.txt','ipset-service-youtube.txt','Diagnostics','Expected 15 services')) {
+    Assert-True ($releaseTest -match [regex]::Escape($token)) "Generic release test contains $token"
+}
+
+$pesterTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMatrix.Tests.ps1') -Raw
+foreach ($token in @('shared domain only when all owners are disabled','backs up and replaces corrupt state','is idempotent','privacy-safe diagnostics')) {
+    Assert-True ($pesterTests -match [regex]::Escape($token)) "Pester suite covers $token"
+}
 
 $networkPages = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-pages-network.ps1') -Raw
 Assert-True ($networkPages -match 'NEXROUTE-HOSTS-BEGIN') 'SYNC HOSTS uses a managed block'
 Assert-True ($networkPages -match '\[string\]\$localText =') 'SYNC HOSTS is null-safe'
 Assert-True ($networkPages -match 'ipconfig\.exe /flushdns') 'SYNC HOSTS flushes DNS'
-
-$buildWrapper = Get-Content -LiteralPath (Join-Path $root 'scripts/Build-NexRoute-0.2.2.ps1') -Raw
-foreach ($token in @('Expected 21 real strategy BAT files','NEXROUTE_SERVICE_FILTERS_V2','NEXROUTE_DYNAMIC_TARGETS_V2','NEXROUTE_REFRESH_MATRIX_V2','nexroute.bat')) {
-    Assert-True ($buildWrapper -match [regex]::Escape($token)) "0.2.2 builder contains $token"
-}
 
 $iconScript = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/New-NexRouteIcon.ps1') -Raw
 foreach ($token in @('New-NexRouteArtwork','New-RoundedRectanglePath','N E X R O U T E','Write-NexRouteIco','@(16, 20, 24, 32, 40, 48, 64, 128, 256)')) {
@@ -122,4 +131,4 @@ if ($errors.Count -gt 0) {
     Write-Host "`nValidation failed with $($errors.Count) error(s)." -ForegroundColor Red
     exit 1
 }
-Write-Host "`nAll NexRoute 0.2.2 repository checks passed." -ForegroundColor Green
+Write-Host "`nAll NexRoute $expectedVersion repository checks passed." -ForegroundColor Green
