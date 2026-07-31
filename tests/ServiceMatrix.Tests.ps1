@@ -5,9 +5,14 @@ Describe 'NexRoute Service Matrix 0.2.3' {
         $script:packageRoot = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
         $script:serviceRoot = Join-Path $packageRoot '.service'
         $script:listsRoot = Join-Path $packageRoot 'lists'
-        New-Item -ItemType Directory -Path $serviceRoot, $listsRoot -Force | Out-Null
+        $script:i18nRoot = Join-Path $serviceRoot 'i18n'
+        New-Item -ItemType Directory -Path $serviceRoot, $listsRoot, $i18nRoot -Force | Out-Null
 
-        Copy-Item -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'overlay/.service/nexroute-services.ps1') -Destination (Join-Path $serviceRoot 'nexroute-services.ps1') -Force
+        $repositoryRoot = Split-Path -Parent $PSScriptRoot
+        Copy-Item -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/nexroute-services.ps1') -Destination (Join-Path $serviceRoot 'nexroute-services.ps1') -Force
+        foreach ($moduleName in @('nexroute-services-state.ps1','nexroute-services-network.ps1','nexroute-services-runtime.ps1','nexroute-services-diagnostics.ps1')) {
+            Copy-Item -LiteralPath (Join-Path $repositoryRoot "overlay/.service/i18n/$moduleName") -Destination (Join-Path $i18nRoot $moduleName) -Force
+        }
         Set-Content -LiteralPath (Join-Path $serviceRoot 'version.txt') -Value '0.2.3' -Encoding ASCII
 
         $fixture = [ordered]@{
