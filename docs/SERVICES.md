@@ -1,86 +1,78 @@
 # Service Matrix v2
 
-NexRoute `0.2.2` использует матрицу сервисов не только как доменный список. Каждый профиль описывает полный набор данных, который может быть подключён к стратегиям и тестам.
+NexRoute `0.2.3` использует матрицу сервисов как источник доменных, IP- и транспортных фильтров для всех 21 настоящих стратегий Flowseal `1.10.0`.
 
-## Схема
+## Схема профиля
 
 | Поле | Назначение |
 |---|---|
-| `domains` | Домены для `list-general-user.txt` и исключений |
+| `domains` | Домены сервиса |
 | `testTargets` | Реальные HTTP/TLS endpoints для Strategy Lab |
-| `tcpPorts` | Дополнительные TCP-порты перехвата |
-| `udpPorts` | Дополнительные UDP-порты, включая media/STUN/QUIC |
-| `resolveHosts` | Хосты для динамического DNS-разрешения в IPv4 `/32` |
+| `tcpPorts` | TCP-порты перехвата |
+| `udpPorts` | UDP-порты, включая media/STUN/QUIC |
+| `resolveHosts` | Хосты для DNS-разрешения в IPv4 `/32` |
 | `ipCidrs` | Статические IPv4-подсети |
 | `ipSources` | Удалённые источники IPv4 CIDR |
 
-## Что создаётся при применении
+Порты должны находиться в диапазоне `1-65535`; диапазон должен быть возрастающим. CIDR проверяется через `System.Net.IPAddress` и допускает только IPv4 с префиксом `0-32`.
 
-- `lists/list-general-user.txt` — управляемый блок включённых доменов;
-- `lists/list-exclude-user.txt` — управляемый блок отключённых доменов;
-- `lists/list-services-enabled.txt` — отдельный hostlist Service Matrix;
-- `lists/ipset-services-user.txt` — разрешённые IP endpoints и внешние CIDR;
-- `.service/services-runtime.cmd` — агрегированные TCP/UDP-порты и winws arguments.
+## Правило общих доменов
 
-## Подключение к стратегиям
+Контроллер сначала строит карту владения доменами. Домен включается, если активен хотя бы один использующий его профиль. В `list-exclude-user.txt` он попадает только когда выключены все владельцы.
 
-Сборщик патчит все 21 настоящую конфигурацию Flowseal `1.10.0`: `general.bat` и все варианты `general (...)`.
+Например, `fbcdn.net` используется Instagram, Facebook и WhatsApp. Включение любого из этих профилей не позволяет остальным выключенным профилям добавить `fbcdn.net` в исключения.
 
-- расширяет `--wf-tcp` и `--wf-udp` портами включённых сервисов;
-- подключает отдельный TCP-фильтр по hostlist/IPSet;
-- подключает отдельный UDP-фильтр по hostlist/IPSet;
-- применяет матрицу перед каждым ручным запуском;
-- применяет runtime-параметры при установке стратегии как службы.
+## Изолированные runtime-группы
 
-`nexroute.bat` является launcher-ом главного меню, а не отдельной сетевой стратегией, поэтому он исключён из Strategy Lab.
+Для каждого включённого профиля создаются:
 
-## Перезапуск службы
+```text
+lists/list-service-<id>.txt
+lists/ipset-service-<id>.txt
+```
 
-После `ENTER` в `[14] SERVICE MATRIX` контроллер:
+В `.service/services-runtime.cmd` формируются отдельные `--new`-группы для доменов и IP конкретного профиля с его собственными TCP/UDP-портами. Это предотвращает cross-product, при котором широкий UDP-диапазон одного приложения применялся к адресам всех включённых сервисов.
 
-1. сохраняет состояние;
-2. пересобирает домены, IP и порты;
-3. определяет установленную стратегию из реестра;
-4. повторно создаёт службу `zapret` с обновлённой командной строкой;
-5. запускает службу.
+Общие совместимые файлы сохраняются:
 
-Если служба не установлена, матрица сохраняется без ошибки и будет применена при следующем запуске/установке.
+```text
+lists/list-services-enabled.txt
+lists/ipset-services-user.txt
+```
 
-## Strategy Lab
+## Состояние и миграция
 
-Для каждого включённого профиля лаборатория получает несколько целей. Типичные роли:
+`services-state.json` использует схему:
 
-- `web`;
-- `app`;
-- `api`;
-- `cdn`;
-- `media`;
-- `gateway`;
-- `updates`;
-- `signalling`.
+```json
+{
+  "schemaVersion": 2,
+  "updatedAtUtc": "2026-08-01T00:00:00Z",
+  "services": {
+    "youtube": true,
+    "discord": true
+  }
+}
+```
 
-Стандартный режим выполняет HTTP, TLS 1.2, TLS 1.3 и latency checks. DPI-режим TCP 16–20 КБ использует прежнюю suite Flowseal.
+Старый плоский JSON мигрируется с backup `services-state.v1.backup.json`. Повреждённый файл сохраняется как `services-state.invalid.backup.json`, после чего создаётся валидное состояние по умолчанию.
+
+## Внешние IP-источники
+
+Успешно проверенные данные сохраняются в `.service/cache/ip-sources`. Максимальный возраст last-known-good кэша — 14 дней. Статусы источников записываются в `.service/ip-source-status.json`:
+
+- `fresh` — источник успешно обновлён;
+- `cache` — использована свежая кэшированная копия;
+- `failed` — обновление не удалось и допустимого кэша нет.
+
+## Diagnostics
+
+Режим `Diagnostics` экспортирует JSON с версией, ID включённых сервисов, числом сгенерированных записей, статусами источников, SHA-256 runtime и данными окружения. Содержимое пользовательских доменных/IP-списков не копируется.
 
 ## Профили
 
-| Профиль | Покрытие |
-|---|---|
-| YouTube | Web, API, изображения, видео, QUIC |
-| Discord | Web/Desktop, Gateway, CDN, media, updates, voice/video |
-| ChatGPT | Web, API, auth, static, files |
-| FaceTime | iCloud/push signalling, STUN, RTP audio/video ranges |
-| Snapchat | Web/Desktop, account, CDN, calls |
-| Viber | Desktop, account, media, voice/video ports |
-| Signal | Desktop bootstrap, chat gateway, storage, attachments, updates |
-| X | Web, API, images, video |
-| Instagram | Web/App, API, CDN, media/calls |
-| Facebook | Web/App, Graph API, CDN, Messenger/calls |
-| Telegram | Web/Desktop, API, media, official DC CIDR source |
-| LinkedIn | Web, API, media, static assets |
-| TikTok | Web/App, API, video CDN |
-| WhatsApp | Web/Desktop, messaging, CDN, media, STUN/TURN and voice |
-| CaseBattle | Web application and static resources |
+Матрица содержит YouTube, Discord, ChatGPT, FaceTime, Snapchat, Viber, Signal, X, Instagram, Facebook, Telegram, LinkedIn, TikTok, WhatsApp и CaseBattle.
 
 ## Ограничения
 
-IP-адреса CDN и медиареле меняются. DNS-разрешение выполняется при применении матрицы, но некоторые приложения могут использовать дополнительные адреса, IPv6 или динамические peer-to-peer соединения. Портовое и доменное покрытие повышает вероятность работы, но не является универсальной гарантией для любого DPI.
+Версия `0.2.3` разрешает и валидирует IPv4. CDN и медиареле могут менять адреса; IPv6-only и peer-to-peer endpoints потребуют отдельного расширения.
