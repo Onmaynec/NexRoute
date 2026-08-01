@@ -1,0 +1,54 @@
+name: Rename update launcher
+
+on:
+  push:
+    branches:
+      - release/0.3.1
+    paths:
+      - '.github/workflows/rename-update-launcher.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/0.3.1
+          fetch-depth: 0
+
+      - name: Rename launcher and update references
+        shell: python
+        run: |
+          from pathlib import Path
+
+          paths = [
+              Path('overlay/.service/nexroute-updater.ps1'),
+              Path('tests/Updater.Tests.ps1'),
+              Path('docs/UPDATES.md'),
+              Path('.github/release-notes/v0.3.1.md'),
+          ]
+          for path in paths:
+              text = path.read_text(encoding='utf-8')
+              count = text.count('nexroute-update.bat')
+              if count < 1:
+                  raise SystemExit(f'Expected launcher reference in {path}')
+              path.write_text(text.replace('nexroute-update.bat', 'nexroute-update.cmd'), encoding='utf-8', newline='')
+
+          source = Path('overlay/nexroute-update.bat')
+          target = Path('overlay/nexroute-update.cmd')
+          if not source.is_file() or target.exists():
+              raise SystemExit('Launcher rename precondition failed')
+          source.rename(target)
+
+      - name: Commit launcher rename
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add overlay/.service/nexroute-updater.ps1 tests/Updater.Tests.ps1 docs/UPDATES.md .github/release-notes/v0.3.1.md overlay/nexroute-update.bat overlay/nexroute-update.cmd
+          git commit -m "fix: keep updater launcher outside strategy BAT discovery"
+          git push origin HEAD:release/0.3.1
