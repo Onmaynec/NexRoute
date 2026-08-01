@@ -1,0 +1,42 @@
+name: Fix updater fixture ZIP
+
+on:
+  push:
+    branches:
+      - release/0.3.1
+    paths:
+      - '.github/workflows/fix-updater-fixture-zip.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/0.3.1
+          fetch-depth: 0
+
+      - name: Use cross-platform ZipFile fixture
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('tests/Updater.Tests.ps1')
+          text = path.read_text(encoding='utf-8')
+          old = "            Compress-Archive -Path (Join-Path $payload '*') -DestinationPath $archivePath -CompressionLevel NoCompression"
+          new = "            Add-Type -AssemblyName System.IO.Compression.FileSystem\n            [System.IO.Compression.ZipFile]::CreateFromDirectory(\n                $payload,\n                $archivePath,\n                [System.IO.Compression.CompressionLevel]::NoCompression,\n                $false\n            )"
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one fixture ZIP anchor, got {text.count(old)}')
+          path.write_text(text.replace(old, new), encoding='utf-8', newline='')
+
+      - name: Commit fixture fix
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add tests/Updater.Tests.ps1
+          git commit -m "test: include dot-directories in updater fixture ZIP"
+          git push origin HEAD:release/0.3.1
