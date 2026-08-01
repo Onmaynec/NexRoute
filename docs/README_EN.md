@@ -3,34 +3,39 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.3.0-24e1d6)](../.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.3.1-24e1d6)](../.service/version.txt)
 
 NexRoute is a command-line route-control toolkit for DPI desynchronization strategies on Windows 10 and Windows 11.
 
 > [!IMPORTANT]
 > NexRoute is not a VPN, proxy or anonymity service. It locally manages `winws` and WinDivert and does not change the public IP address.
 
-## Version 0.3.0
+## Version 0.3.1 — secure automatic updates
 
-Version `0.3.0` makes the Flowseal foundation and every build-time patch independently auditable:
+Version `0.3.1` adds a stable-channel updater for official `Onmaynec/NexRoute` GitHub Releases:
 
-- `.service/upstream-manifest.json` pins the repository, release tag, asset pattern, minimum size, required paths and SHA-256;
-- the official Flowseal archive is verified before the legacy base builder can consume it;
-- `.service/upstream-lock.json` records the exact asset identity embedded in the package;
-- `.service/patch-report.json` records patch IDs, relative targets, operation counts and SHA-256 values before and after each modification;
-- all 21 real strategies, `service.bat` and Strategy Lab form exactly 23 tracked patch targets;
-- patch anchors require an exact match count and fail closed when the upstream structure changes;
-- `Build-Release.ps1 -UpstreamArchive` supports a fully offline rebuild from a previously verified archive;
-- CI performs an online build followed by an offline rebuild and compares the upstream lock, patch report, 21 strategies and 15 services;
-- Pester covers manifest validation, path traversal, locked digests, SHA mismatches, missing archive files and the local verified proxy.
+- `nexroute.bat` checks for a newer version before opening Control Node when automatic updates are enabled;
+- automatic checks use a 24-hour cooldown stored in `.service/update-state.json`;
+- the `CHECK UPDATES` menu entry opens the full Update Center;
+- `nexroute-update.cmd` provides manual update checks and rollback;
+- draft and prerelease builds are rejected;
+- each accepted release must contain exactly one package ZIP and its matching `.sha256` asset;
+- the updater verifies the asset name, semantic version, SHA-256, mandatory package files, 21 strategies and 23 patch records before installation;
+- the current installation is backed up before any files are replaced;
+- language, Service Matrix state, caches and user-managed lists are preserved;
+- a failed installation automatically restores the previous package;
+- the newest four update backups are retained in the sibling `NexRoute-backups` directory;
+- a per-installation mutex prevents concurrent updater processes from changing the same package.
+
+Network or GitHub failures in automatic mode do not block the current NexRoute version from starting. See [UPDATES.md](UPDATES.md) for the complete update and rollback contract.
 
 ## Reproducible build contract
 
-An online build can save the verified Flowseal archive:
+NexRoute `0.3.x` uses a declarative Flowseal contract. An online build can save the verified Flowseal archive:
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.3.0 `
+  -Version 0.3.1 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -39,12 +44,12 @@ The same verified archive can then be used without contacting the Flowseal relea
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.3.0 `
+  -Version 0.3.1 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
 ```
 
-The offline file must match the committed SHA-256 and the required archive structure. Matching the file name alone is not sufficient.
+The offline file must match the committed SHA-256 and required archive structure. Matching the file name alone is not sufficient.
 
 ## Package provenance
 
@@ -57,7 +62,7 @@ Every release package contains:
 NEXROUTE_BUILD_INFO.txt
 ```
 
-These files do not contain local runner paths, user names or user-managed domain/IP list contents.
+The upstream lock records the exact Flowseal asset, size and SHA-256. The patch report records the 21 strategy targets plus `service.bat` and Strategy Lab, including operation counts and file hashes before and after each patch. These files do not contain user-managed domain/IP list contents.
 
 ## Service Matrix v2
 
@@ -67,16 +72,36 @@ Each profile defines domains, critical endpoints, TCP/UDP ports, IPv4 resolution
 
 State schema v2 supports migration and backups. Remote IP sources use strict IPv4 CIDR validation and a 14-day last-known-good cache. Privacy-safe Diagnostics excludes user-managed list contents and external local paths.
 
+## Update state and backups
+
+Updater state is stored in:
+
+```text
+.service/update-state.json
+```
+
+It records the installed and latest discovered versions, last/next check time, operation status, backup path and installed package SHA-256.
+
+Before an update, NexRoute creates a complete package backup in:
+
+```text
+../NexRoute-backups/
+```
+
+The updater preserves language selection, Service Matrix state, IP-source cache, update/game flags and user-managed list/IPSet files. Rollback creates an additional safety backup before restoring the previous version.
+
 ## Quick start
 
-1. Download `NexRoute-0.3.0-win-x64.zip` and its `.sha256` file from GitHub Releases.
-2. Verify the checksum.
-3. Extract the complete archive to a new folder.
-4. Run `NexRoute.lnk`, `nexroute.bat` or `service.bat` as administrator.
-5. Select and install a strategy.
-6. Configure `[14] SERVICE MATRIX` and use `[12] STRATEGY LAB` when needed.
+1. Download `NexRoute-0.3.1-win-x64.zip` and its `.sha256` file from GitHub Releases.
+2. Verify the checksum and extract the complete archive to a new folder.
+3. Run `NexRoute.lnk`, `nexroute.bat` or `service.bat` as administrator.
+4. Select and install a strategy.
+5. Configure `[14] SERVICE MATRIX`.
+6. Enable automatic updates through `[6] CHECK UPDATES` when desired.
+7. Use `nexroute-update.cmd` for an immediate check or rollback.
+8. Use `[12] STRATEGY LAB` when endpoint testing is needed.
 
-Do not run BAT files directly from the ZIP archive.
+Do not run BAT or CMD launchers directly from the ZIP archive.
 
 ## Validation
 
@@ -85,13 +110,21 @@ pwsh ./scripts/Test-Repository.ps1
 Invoke-Pester -Path ./tests -CI -Output Detailed
 ```
 
-Windows CI builds and verifies the online and offline packages, all 21 actual strategies, 15 service profiles, the upstream lock, 23 patch records, runtime generation, Diagnostics, UI rendering, icon generation and the final ZIP checksum.
+CI covers:
+
+- PowerShell AST parsing for `.ps1` and `.psm1` files;
+- Service Matrix, upstream-contract and updater Pester suites;
+- offline updater fixtures for stable-release discovery, installation, state preservation, checksum mismatch, prerelease rejection, cooldown and rollback;
+- the locked Flowseal `1.10.0` archive;
+- online and offline Windows package builds;
+- 23 tracked patch targets, 21 real strategies and 15 service profiles;
+- runtime generation, Diagnostics, EN/RU UI pages, Update Center wiring, icon generation and final package SHA-256.
 
 ## Limitations
 
-Network effectiveness depends on the ISP, region, DNS configuration, application version and selected strategy. The `0.3.0` runtime is IPv4-focused; IPv6-only endpoints require separate future support.
+Network effectiveness depends on the ISP, region, DNS configuration, application version and selected strategy. The `0.3.1` runtime is IPv4-focused; IPv6-only endpoints require separate future support.
 
-The upstream lock protects build reproducibility but is not a digital signature for the NexRoute release itself. Verify the published `.sha256` file. Signed releases and provenance attestations are planned separately.
+The upstream lock and updater checksum protect integrity and reproducibility, but they are not publisher digital signatures. Signed releases and provenance attestations remain planned work.
 
 ## Licensing
 
