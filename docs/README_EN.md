@@ -3,52 +3,73 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.2.2-24e1d6)](../.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.3.0-24e1d6)](../.service/version.txt)
 
 NexRoute is a command-line route-control toolkit for DPI desynchronization strategies on Windows 10 and Windows 11.
 
 > [!IMPORTANT]
 > NexRoute is not a VPN, proxy or anonymity service. It locally manages `winws` and WinDivert and does not change the public IP address.
 
-## Version 0.2.2
+## Version 0.3.0
 
-- fixes `[09] SYNC HOSTS` with a null-safe managed merge, dated backup, atomic replacement and DNS cache flush;
-- upgrades the 15-profile Service Matrix to schema v2 with domains, real endpoints, TCP/UDP ports, resolved IPv4 addresses and optional CIDR sources;
-- injects enabled-service filters into all 21 actual Flowseal `1.10.0` strategies;
-- excludes `nexroute.bat` from Strategy Lab because it is a menu launcher, not a network strategy;
-- adds enabled-service web/API/CDN/media/gateway probes to every Strategy Lab run;
-- reinstalls and restarts the active `zapret` service after Service Matrix changes;
-- keeps Russian and English UI, with English as the default;
-- replaces raw Game Filter and Update Watch prompts with styled Control Node pages;
-- generates a multi-resolution Windows icon based on the supplied NexRoute visual motif.
+Version `0.3.0` makes the Flowseal foundation and every build-time patch independently auditable:
+
+- `.service/upstream-manifest.json` pins the repository, release tag, asset pattern, minimum size, required paths and SHA-256;
+- the official Flowseal archive is verified before the legacy base builder can consume it;
+- `.service/upstream-lock.json` records the exact asset identity embedded in the package;
+- `.service/patch-report.json` records patch IDs, relative targets, operation counts and SHA-256 values before and after each modification;
+- all 21 real strategies, `service.bat` and Strategy Lab form exactly 23 tracked patch targets;
+- patch anchors require an exact match count and fail closed when the upstream structure changes;
+- `Build-Release.ps1 -UpstreamArchive` supports a fully offline rebuild from a previously verified archive;
+- CI performs an online build followed by an offline rebuild and compares the upstream lock, patch report, 21 strategies and 15 services;
+- Pester covers manifest validation, path traversal, locked digests, SHA mismatches, missing archive files and the local verified proxy.
+
+## Reproducible build contract
+
+An online build can save the verified Flowseal archive:
+
+```powershell
+pwsh ./scripts/Build-Release.ps1 `
+  -Version 0.3.0 `
+  -OutputDirectory ./artifacts `
+  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
+```
+
+The same verified archive can then be used without contacting the Flowseal release API:
+
+```powershell
+pwsh ./scripts/Build-Release.ps1 `
+  -Version 0.3.0 `
+  -OutputDirectory ./artifacts-offline `
+  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
+```
+
+The offline file must match the committed SHA-256 and the required archive structure. Matching the file name alone is not sufficient.
+
+## Package provenance
+
+Every release package contains:
+
+```text
+.service/upstream-manifest.json
+.service/upstream-lock.json
+.service/patch-report.json
+NEXROUTE_BUILD_INFO.txt
+```
+
+These files do not contain local runner paths, user names or user-managed domain/IP list contents.
 
 ## Service Matrix v2
 
-Each profile can define:
-
-```text
-domains
-testTargets
-tcpPorts
-udpPorts
-resolveHosts
-ipCidrs
-ipSources
-```
-
-Applying the matrix creates managed hostlists, an IPv4 set and `.service/services-runtime.cmd`. These values are connected to each actual strategy as separate TCP and UDP filters.
-
 The matrix covers YouTube, Discord, ChatGPT, FaceTime, Snapchat, Viber, Signal, X, Instagram, Facebook, Telegram, LinkedIn, TikTok, WhatsApp and CaseBattle.
 
-## Strategy Lab
+Each profile defines domains, critical endpoints, TCP/UDP ports, IPv4 resolution hosts and optional CIDR sources. Enabled services receive isolated hostlist/IPSet and TCP/UDP filter groups. A shared domain is excluded only when every owning profile is disabled.
 
-The lab keeps the baseline Discord, YouTube, Google, Cloudflare and DNS checks and adds multiple critical endpoints for every enabled service. Standard checks cover HTTP, TLS 1.2, TLS 1.3 and latency. The TCP 16–20 KB DPI mode is preserved.
-
-A full run contains 21 real strategy configurations. The previous apparent 22nd entry was `nexroute.bat`, which only opens the control interface.
+State schema v2 supports migration and backups. Remote IP sources use strict IPv4 CIDR validation and a 14-day last-known-good cache. Privacy-safe Diagnostics excludes user-managed list contents and external local paths.
 
 ## Quick start
 
-1. Download `NexRoute-0.2.2-win-x64.zip` and its `.sha256` file from GitHub Releases.
+1. Download `NexRoute-0.3.0-win-x64.zip` and its `.sha256` file from GitHub Releases.
 2. Verify the checksum.
 3. Extract the complete archive to a new folder.
 4. Run `NexRoute.lnk`, `nexroute.bat` or `service.bat` as administrator.
@@ -57,22 +78,20 @@ A full run contains 21 real strategy configurations. The previous apparent 22nd 
 
 Do not run BAT files directly from the ZIP archive.
 
-## Building
+## Validation
 
 ```powershell
 pwsh ./scripts/Test-Repository.ps1
-
-pwsh ./scripts/Build-NexRoute-0.2.2.ps1 `
-  -Version 0.2.2 `
-  -UpstreamVersion 1.10.0 `
-  -OutputDirectory ./artifacts
+Invoke-Pester -Path ./tests -CI -Output Detailed
 ```
 
-The release builder downloads the pinned Flowseal asset, applies the NexRoute overlay and network integration, patches all 21 actual strategies, generates the icon and shortcut, and creates a ZIP plus SHA-256 checksum.
+Windows CI builds and verifies the online and offline packages, all 21 actual strategies, 15 service profiles, the upstream lock, 23 patch records, runtime generation, Diagnostics, UI rendering, icon generation and the final ZIP checksum.
 
 ## Limitations
 
-Network effectiveness depends on the ISP, region, DNS configuration, application version and selected strategy. Dynamic media relays, IPv6 paths and peer-to-peer traffic cannot be guaranteed in every network.
+Network effectiveness depends on the ISP, region, DNS configuration, application version and selected strategy. The `0.3.0` runtime is IPv4-focused; IPv6-only endpoints require separate future support.
+
+The upstream lock protects build reproducibility but is not a digital signature for the NexRoute release itself. Verify the published `.sha256` file. Signed releases and provenance attestations are planned separately.
 
 ## Licensing
 
