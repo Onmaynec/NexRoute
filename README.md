@@ -1,7 +1,5 @@
 <div align="center">
-
-<img src="assets/nexroute-mark.svg" width="150" alt="NexRoute emblem">
-
+  
 # NexRoute 🧭
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
