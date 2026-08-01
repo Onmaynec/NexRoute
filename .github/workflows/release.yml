@@ -24,6 +24,9 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   publish:
@@ -84,6 +87,22 @@ jobs:
           "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
           if ($result.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Built package contains a different upstream lock.' }
           if ([int]$result.PatchTargetCount -ne 23) { throw 'Built package patch report is incomplete.' }
+
+      - name: Generate signed build provenance
+        id: attest
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            artifacts/${{ steps.version.outputs.archive }}
+            artifacts/${{ steps.version.outputs.archive }}.sha256
+
+      - name: Verify signed build provenance
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify "./artifacts/${{ steps.version.outputs.archive }}" --repo "$env:GITHUB_REPOSITORY"
+          if ($LASTEXITCODE -ne 0) { throw 'Failed to verify package build provenance.' }
 
       - name: Prove offline rebuild
         shell: pwsh
@@ -165,3 +184,4 @@ jobs:
           Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
           Write-Host "Services: $env:NEXROUTE_SERVICES"
           Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
+          Write-Host "Attestation: ${{ steps.attest.outputs.attestation-url }}"
