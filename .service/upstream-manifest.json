@@ -4,7 +4,7 @@
   "tag": "1.10.0",
   "assetPattern": "^zapret-discord-youtube-1\\.10\\.0\\.zip$",
   "minimumBytes": 1024,
-  "expectedSha256": "",
+  "expectedSha256": "6b7c5a66cfd055b8e361f8b5fb00f00b167260f21b1c03d589f6008417fb94a2",
   "requiredPaths": [
     "service.bat",
     "general.bat",
