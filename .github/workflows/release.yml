@@ -6,10 +6,12 @@ on:
       - main
     paths:
       - '.service/version.txt'
+      - '.service/upstream-manifest.json'
       - 'overlay/**'
       - 'assets/nexroute-icon-parts/**'
       - 'scripts/Build-NexRoute.ps1'
       - 'scripts/Build-Release.ps1'
+      - 'scripts/NexRoute.Upstream.psm1'
       - 'scripts/Test-Package.ps1'
       - 'scripts/Test-Release.ps1'
       - 'tests/**'
@@ -53,16 +55,21 @@ jobs:
         shell: pwsh
         run: |
           ./scripts/Test-Repository.ps1
-          $result = Invoke-Pester -Path ./tests/ServiceMatrix.Tests.ps1 -CI -Output Detailed -PassThru
+          $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
-      - name: Build package
+      - name: Build package from locked upstream
         shell: pwsh
         run: |
-          ./scripts/Build-Release.ps1 `
+          $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
+          $result = ./scripts/Build-Release.ps1 `
             -Version '${{ steps.version.outputs.version }}' `
-            -UpstreamVersion '1.10.0' `
-            -OutputDirectory ./artifacts
+            -OutputDirectory ./artifacts `
+            -UpstreamCachePath $cache
+          $build = $result | Select-Object -Last 1
+          "NEXROUTE_UPSTREAM_CACHE=$cache" >> $env:GITHUB_ENV
+          "NEXROUTE_UPSTREAM_SHA256=$($build.UpstreamSha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_PATCH_TARGETS=$($build.PatchTargetCount)" >> $env:GITHUB_ENV
 
       - name: Verify package
         shell: pwsh
@@ -73,6 +80,25 @@ jobs:
           "NEXROUTE_SHA256=$($result.Sha256)" >> $env:GITHUB_ENV
           "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
           "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
+          if ($result.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Built package contains a different upstream lock.' }
+          if ([int]$result.PatchTargetCount -ne 23) { throw 'Built package patch report is incomplete.' }
+
+      - name: Prove offline rebuild
+        shell: pwsh
+        run: |
+          $result = ./scripts/Build-Release.ps1 `
+            -Version '${{ steps.version.outputs.version }}' `
+            -OutputDirectory ./artifacts-offline `
+            -UpstreamArchive $env:NEXROUTE_UPSTREAM_CACHE
+          $offlineBuild = $result | Select-Object -Last 1
+          if ($offlineBuild.UpstreamResolution -ne 'offline') { throw 'Offline rebuild did not use offline resolution.' }
+          if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Offline rebuild used a different upstream archive.' }
+          $offline = ./scripts/Test-Release.ps1 `
+            -ArtifactsDirectory ./artifacts-offline `
+            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-offline-release-test') `
+            -SkipRuntime | Select-Object -Last 1
+          if ($offline.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Offline package lock differs.' }
+          if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -131,6 +157,8 @@ jobs:
       - name: Print verified metadata
         shell: pwsh
         run: |
+          Write-Host "Upstream SHA-256: $env:NEXROUTE_UPSTREAM_SHA256"
+          Write-Host "Tracked patch targets: $env:NEXROUTE_PATCH_TARGETS"
           Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
           Write-Host "Services: $env:NEXROUTE_SERVICES"
-          Write-Host "SHA-256: $env:NEXROUTE_SHA256"
+          Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
