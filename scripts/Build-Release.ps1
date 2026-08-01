@@ -314,10 +314,10 @@ try {
         Write-Step "Saved verified upstream cache: $UpstreamCachePath"
     }
 
-    $script:nexrouteProxyReleaseUrl = $resolvedUpstream.ReleaseApiUrl
-    $script:nexrouteProxyAssetUrl = 'https://nexroute.invalid/verified-upstream.zip'
-    $script:nexrouteProxyArchive = $resolvedUpstream.ArchivePath
-    $script:nexrouteProxyRelease = New-NexRouteProxyRelease -ResolvedUpstream $resolvedUpstream -ProxyAssetUrl $script:nexrouteProxyAssetUrl
+    $global:nexrouteProxyReleaseUrl = $resolvedUpstream.ReleaseApiUrl
+    $global:nexrouteProxyAssetUrl = 'https://nexroute.invalid/verified-upstream.zip'
+    $global:nexrouteProxyArchive = $resolvedUpstream.ArchivePath
+    $global:nexrouteProxyRelease = New-NexRouteProxyRelease -ResolvedUpstream $resolvedUpstream -ProxyAssetUrl $global:nexrouteProxyAssetUrl
 
     function Invoke-RestMethod {
         [CmdletBinding()]
@@ -326,7 +326,7 @@ try {
             [hashtable]$Headers,
             [string]$Method = 'Get'
         )
-        if ($Uri -eq $script:nexrouteProxyReleaseUrl) { return $script:nexrouteProxyRelease }
+        if ($Uri -eq $global:nexrouteProxyReleaseUrl) { return $global:nexrouteProxyRelease }
         return Microsoft.PowerShell.Utility\Invoke-RestMethod @PSBoundParameters
     }
 
@@ -338,9 +338,9 @@ try {
             [string]$OutFile,
             [switch]$UseBasicParsing
         )
-        if ($Uri -eq $script:nexrouteProxyAssetUrl) {
+        if ($Uri -eq $global:nexrouteProxyAssetUrl) {
             if (-not $OutFile) { throw 'The verified upstream proxy requires OutFile.' }
-            Copy-Item -LiteralPath $script:nexrouteProxyArchive -Destination $OutFile -Force
+            Copy-Item -LiteralPath $global:nexrouteProxyArchive -Destination $OutFile -Force
             return [pscustomobject]@{ StatusCode = 200 }
         }
         return Microsoft.PowerShell.Utility\Invoke-WebRequest @PSBoundParameters
@@ -456,5 +456,6 @@ try {
     }
 }
 finally {
+    Remove-Variable -Name nexrouteProxyReleaseUrl,nexrouteProxyAssetUrl,nexrouteProxyArchive,nexrouteProxyRelease -Scope Global -ErrorAction SilentlyContinue
     if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
 }
