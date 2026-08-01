@@ -1,17 +1,17 @@
 name: Include updater in package
 
 on:
-  push:
-    branches:
-      - release/0.3.1
+  pull_request:
     paths:
       - '.github/workflows/include-updater-in-package.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.ref == 'release/0.3.1'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release branch
