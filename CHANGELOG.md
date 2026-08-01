@@ -6,6 +6,36 @@
 
 Пока нет изменений.
 
+## [0.3.1] - 2026-08-01
+
+### Added
+
+- встроенный stable-updater `overlay/.service/nexroute-updater.ps1`;
+- автоматическая проверка GitHub Releases перед запуском `nexroute.bat`;
+- 24-часовой cooldown через `.service/update-state.json`;
+- ручной Update Center `nexroute-update.cmd`;
+- полная резервная копия установки перед обновлением;
+- rollback к последнему update-backup;
+- сохранение языка, Service Matrix state, IP-кеша и пользовательских списков;
+- Pester fixtures для проверки update, checksum mismatch, prerelease rejection, cooldown и rollback;
+- документация `docs/UPDATES.md`.
+
+### Changed
+
+- пункт `CHECK UPDATES` теперь открывает полноценный Update Center вместо простого переключателя-флага;
+- updater принимает только стабильные Releases из `Onmaynec/NexRoute`;
+- перед установкой проверяются имя assets, версия, SHA-256, обязательные файлы, 21 стратегия и 23 patch records;
+- хранится не более четырёх backup-наборов;
+- сетевой сбой updater-а не блокирует запуск текущей версии NexRoute.
+
+### Security
+
+- draft и prerelease-релизы отклоняются;
+- checksum asset обязан содержать ровно одну валидную SHA-256 запись;
+- release asset URL ограничен официальным путём GitHub Releases проекта;
+- mutex предотвращает параллельное изменение установки двумя updater-процессами;
+- ошибка установки вызывает автоматическое восстановление предыдущего пакета.
+
 ## [0.3.0] - 2026-08-01
 
 ### Added

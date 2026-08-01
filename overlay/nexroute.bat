@@ -10,4 +10,8 @@ if not exist "%~dp0service.bat" (
     exit /b 1
 )
 
+if exist "%~dp0.service\nexroute-updater.ps1" if exist "%~dp0utils\check_updates.enabled" (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0.service\nexroute-updater.ps1" -Mode Auto -Root "%~dp0"
+)
+
 call "%~dp0service.bat" %*

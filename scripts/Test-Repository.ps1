@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $errors = New-Object 'System.Collections.Generic.List[string]'
-$expectedVersion = '0.3.0'
+$expectedVersion = '0.3.1'
 $bootstrapUnlocked = $env:NEXROUTE_BOOTSTRAP_UPSTREAM -eq '1'
 
 function Assert-True {
@@ -32,11 +32,13 @@ Write-Host '====================================' -ForegroundColor Cyan
 
 $required = @(
     'README.md','CHANGELOG.md','LICENSE','THIRD_PARTY_NOTICES.md','.service/version.txt','.service/upstream-manifest.json',
-    'overlay/nexroute.bat','overlay/.service/nexroute-ui.ps1','overlay/.service/nexroute-services.ps1',
+    'overlay/nexroute.bat','overlay/nexroute-update.cmd','overlay/.service/nexroute-ui.ps1',
+    'overlay/.service/nexroute-updater.ps1','overlay/.service/nexroute-services.ps1',
     'overlay/.service/nexroute-services-entry.ps1','overlay/.service/services.json',
     'overlay/.service/New-NexRouteIcon.ps1','overlay/.service/i18n/ru.json','overlay/.service/i18n/en.json',
     'overlay/.service/i18n/nexroute-theme.ps1','overlay/.service/i18n/nexroute-pages.ps1',
     'overlay/.service/i18n/nexroute-pages-core.ps1','overlay/.service/i18n/nexroute-pages-network.ps1',
+    'overlay/.service/i18n/nexroute-pages-update.ps1',
     'overlay/.service/i18n/nexroute-services-ui.ps1',
     'overlay/.service/i18n/nexroute-services-state.ps1',
     'overlay/.service/i18n/nexroute-services-network.ps1',
@@ -44,9 +46,9 @@ $required = @(
     'overlay/.service/i18n/nexroute-services-diagnostics.ps1',
     'scripts/Build-NexRoute.ps1','scripts/Build-Release.ps1','scripts/NexRoute.Upstream.psm1',
     'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1',
-    'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1',
+    'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml',
-    '.github/release-notes/v0.3.0.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md'
+    '.github/release-notes/v0.3.1.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md'
 )
 foreach ($relativePath in $required) {
     Assert-True (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf) "Required file exists: $relativePath"
@@ -61,6 +63,8 @@ Assert-True ($readme -match '21') 'README documents all 21 real Flowseal strateg
 Assert-True ($readme -match 'upstream-lock\.json') 'README documents the upstream lock'
 Assert-True ($readme -match 'patch-report\.json') 'README documents patch provenance'
 Assert-True ($readme -match 'offline|офлайн') 'README documents offline rebuilds'
+Assert-True ($readme -match 'nexroute-update\.cmd') 'README documents the manual update center'
+Assert-True ($readme -match 'update-state\.json') 'README documents updater state'
 
 $powerShellFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force -Include '*.ps1','*.psm1' | Where-Object {
     $_.FullName -notmatch '[\\/]\.git[\\/]'
@@ -155,8 +159,22 @@ foreach ($token in @('path traversal','locked digest','offline archive','SHA-256
     Assert-True ($upstreamTests -match [regex]::Escape($token)) "Upstream Pester suite covers $token"
 }
 
+$updater = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-updater.ps1') -Raw
+foreach ($token in @('releases/latest','Prerelease builds are not accepted','SHA-256 mismatch','NexRoute-backups','rolled-back','NexRouteUpdater-')) {
+    Assert-True ($updater -match [regex]::Escape($token)) "Updater contains $token"
+}
+
+$updaterTests = Get-Content -LiteralPath (Join-Path $root 'tests/Updater.Tests.ps1') -Raw
+foreach ($token in @('preserves user state','rolls back','mismatched checksum','automatic update cooldown','automatic updates are disabled')) {
+    Assert-True ($updaterTests -match [regex]::Escape($token)) "Updater Pester suite covers $token"
+}
+
+$updateLauncher = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute.bat') -Raw
+Assert-True ($updateLauncher -match 'nexroute-updater\.ps1') 'Launcher invokes the updater'
+Assert-True ($updateLauncher -match '-Mode Auto') 'Launcher performs automatic update checks'
+
 $validateWorkflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/validate.yml') -Raw
-foreach ($token in @('UpstreamContract.Tests.ps1','UpstreamCachePath','UpstreamArchive','offline','0.3.0')) {
+foreach ($token in @('Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.3.1')) {
     Assert-True ($validateWorkflow -match [regex]::Escape($token)) "Validation workflow contains $token"
 }
 
