@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "repository": "Flowseal/zapret-discord-youtube",
+  "tag": "1.10.0",
+  "assetPattern": "^zapret-discord-youtube-1\\.10\\.0\\.zip$",
+  "minimumBytes": 1024,
+  "expectedSha256": "",
+  "requiredPaths": [
+    "service.bat",
+    "general.bat",
+    "bin/winws.exe",
+    "bin/WinDivert.dll",
+    "bin/WinDivert64.sys",
+    "lists/list-general.txt",
+    "lists/list-google.txt",
+    "utils/test zapret.ps1"
+  ]
+}
