@@ -1,8 +1,10 @@
-$repoRoot = Split-Path -Parent $PSScriptRoot
-$workflowPath = Join-Path $repoRoot '.github/workflows/release.yml'
-$workflow = Get-Content -LiteralPath $workflowPath -Raw -Encoding UTF8
-
 Describe 'Release artifact attestations' {
+    BeforeAll {
+        $repoRoot = Split-Path -Parent $PSScriptRoot
+        $workflowPath = Join-Path $repoRoot '.github/workflows/release.yml'
+        $workflow = Get-Content -LiteralPath $workflowPath -Raw -Encoding UTF8
+    }
+
     It 'grants the OIDC and attestation permissions required by actions/attest' {
         $workflow | Should -Match '(?m)^  id-token: write$'
         $workflow | Should -Match '(?m)^  attestations: write$'
