@@ -90,7 +90,7 @@ function Read-NexRouteUpstreamManifest {
             throw "Unsafe upstream required path: $relativePath"
         }
     }
-    if (($requiredPaths | Sort-Object -Unique).Count -ne $requiredPaths.Count) {
+    if (@($requiredPaths | Sort-Object -Unique).Count -ne $requiredPaths.Count) {
         throw 'Upstream requiredPaths contains duplicates.'
     }
 
@@ -174,6 +174,7 @@ function Resolve-NexRouteUpstreamArchive {
     $resolvedArchive = Join-Path $WorkingDirectory 'upstream.zip'
     $assetName = $null
     $assetId = $null
+    $releaseId = $null
     $assetSizeFromApi = $null
     $apiDigest = $null
     $resolutionMode = $null
@@ -191,6 +192,7 @@ function Resolve-NexRouteUpstreamArchive {
     }
     else {
         $release = Microsoft.PowerShell.Utility\Invoke-RestMethod -Uri $releaseApiUrl -Headers $headers -Method Get
+        $releaseId = $release.id
         $assets = @($release.assets | Where-Object {
             $_.browser_download_url -and ([string]$_.name -match [string]$Manifest.assetPattern)
         })
@@ -249,6 +251,7 @@ function Resolve-NexRouteUpstreamArchive {
         ArchivePath = $resolvedArchive
         ReleaseApiUrl = $releaseApiUrl
         ResolutionMode = $resolutionMode
+        ReleaseId = $releaseId
         AssetId = $assetId
         ApiDigest = $apiDigest
         Lock = $lock
@@ -263,6 +266,7 @@ function New-NexRouteProxyRelease {
     )
 
     return [pscustomobject]@{
+        id = $ResolvedUpstream.ReleaseId
         assets = @(
             [pscustomobject]@{
                 id = $ResolvedUpstream.AssetId
