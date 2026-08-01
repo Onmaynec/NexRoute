@@ -1,0 +1,48 @@
+name: Patch Strategy Lab anchor count exactly
+
+on:
+  push:
+    branches:
+      - release/0.3.0
+    paths:
+      - '.github/workflows/patch-locale-anchor-python.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/0.3.0
+          fetch-depth: 0
+
+      - name: Apply exact replacement
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('scripts/Build-Release.ps1')
+          content = path.read_text(encoding='utf-8')
+          old = '''        $pair = $localizedReplacements[$index]
+          $content = Replace-RequiredLiteral -Content $content -OldValue $pair[0] -NewValue $pair[1] -PatchId ("testlab.locale-{0}" -f ($index + 1))
+          $operations++'''.replace('          $content', '        $content').replace('          $operations', '        $operations')
+          new = '''        $pair = $localizedReplacements[$index]
+          $expectedCount = if ($index -eq 3) { 2 } else { 1 }
+          $content = Replace-RequiredLiteral -Content $content -OldValue $pair[0] -NewValue $pair[1] -PatchId ("testlab.locale-{0}" -f ($index + 1)) -ExpectedCount $expectedCount
+          $operations++'''.replace('          $expectedCount', '        $expectedCount').replace('          $content', '        $content').replace('          $operations', '        $operations')
+          if content.count(old) != 1:
+              raise SystemExit(f'Localized replacement loop anchor count: {content.count(old)}')
+          path.write_text(content.replace(old, new), encoding='utf-8', newline='')
+
+      - name: Commit fix
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/Build-Release.ps1
+          git commit -m "fix: require both Strategy Lab locale anchors"
+          git push origin HEAD:release/0.3.0
