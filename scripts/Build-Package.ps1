@@ -75,9 +75,20 @@ try {
         throw 'Expanded package has no .service/i18n directory.'
     }
 
+    $updaterDestination = Join-Path $serviceDirectory 'nexroute-updater.ps1'
     Copy-NexRoutePackageFile `
         -Source (Join-Path $repositoryRoot 'overlay/.service/nexroute-updater.ps1') `
-        -Destination (Join-Path $serviceDirectory 'nexroute-updater.ps1')
+        -Destination $updaterDestination
+
+    # Windows PowerShell 5.1 interprets UTF-8 without BOM as the active ANSI code page.
+    # The updater contains RU strings, so the packaged copy must carry an explicit BOM.
+    $updaterText = [System.IO.File]::ReadAllText($updaterDestination, [System.Text.Encoding]::UTF8)
+    [System.IO.File]::WriteAllText(
+        $updaterDestination,
+        $updaterText,
+        (New-Object System.Text.UTF8Encoding($true))
+    )
+
     Copy-NexRoutePackageFile `
         -Source (Join-Path $repositoryRoot 'overlay/.service/i18n/nexroute-pages.ps1') `
         -Destination (Join-Path $i18nDirectory 'nexroute-pages.ps1')
