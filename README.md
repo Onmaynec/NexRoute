@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](docs/UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.2.2-24e1d6)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.2.3-24e1d6)](.service/version.txt)
 
 **Консольная система управления стратегиями обхода DPI для Windows 10 и Windows 11.**
 
@@ -18,84 +18,76 @@
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранную стратегию к трафику включённых сервисов.
 
-## Что изменилось в 0.2.2
+## Что изменилось в 0.2.3
 
-- исправлен `[09] SYNC HOSTS`: больше нет вызова метода у `$null`, системный `hosts` обновляется автоматически через управляемый блок;
-- пользовательские строки `hosts` сохраняются, перед записью создаётся резервная копия с датой, после обновления очищается DNS-кэш;
-- Service Matrix переведена на схему v2: домены, критические endpoints, TCP/UDP-порты, динамически разрешённые IP и внешние IP-источники;
-- включённые сервисы реально добавляются во **все 21 настоящую стратегию Flowseal** — `general.bat` и каждый вариант `general (...)`;
-- `nexroute.bat` больше не ошибочно считается 22-й стратегией в Strategy Lab: это только launcher главного меню;
-- установленная служба `zapret` автоматически переустанавливается и перезапускается после сохранения матрицы;
-- Strategy Lab получает несколько реальных целей каждого включённого сервиса: сайт, API, CDN, media, gateway или update endpoint;
-- Telegram использует официальный динамический список IP-подсетей, а остальные профили получают IP через DNS-разрешение критических endpoints;
-- Game Filter и Update Watch перенесены в оформленные страницы Control Node;
-- английский язык установлен по умолчанию, русская локализация переписана нормальными техническими терминами;
-- новый значок NexRoute генерируется по мотивам приложенного логотипа в многоразмерный `.ico` и назначается ярлыку;
-- добавлены дополнительные анимации загрузки, пересборки матрицы, сетевых проверок и перезапуска службы.
+- устранён конфликт общих доменов: домен попадает в исключения только тогда, когда выключены **все** использующие его профили;
+- для каждого включённого сервиса создаются собственные hostlist/IPSet и отдельные TCP/UDP `--new`-группы, поэтому широкие медиапорты одного приложения больше не объединяются с адресами остальных;
+- состояние Service Matrix переведено на схему v2; старый плоский JSON мигрируется автоматически с резервной копией;
+- повреждённое состояние сохраняется как backup и заменяется безопасными настройками по умолчанию;
+- порты и IPv4 CIDR проходят строгую семантическую проверку;
+- внешние IP-источники используют last-known-good кэш с TTL **14 дней** и статусом `fresh/cache/failed`;
+- добавлен privacy-safe экспорт **Diagnostics** без содержимого пользовательских доменных/IP-списков;
+- добавлены поведенческие тесты Pester `5.6.1`: общие домены, миграция, corrupt JSON, идемпотентность, изоляция runtime и диагностика;
+- release pipeline стал версионно-независимым: `Build-Release.ps1`, `Test-Release.ps1` и `.github/workflows/release.yml`;
+- после успешной публикации `v0.2.3` workflow закрывает устаревшие tracking issues `#7–#10` и PR `#4`.
 
 ## Service Matrix v2
 
-Матрица содержит 15 профилей:
+Матрица содержит 15 профилей: YouTube, Discord, ChatGPT, FaceTime, Snapchat, Viber, Signal, X, Instagram, Facebook, Telegram, LinkedIn, TikTok, WhatsApp и CaseBattle.
 
-- YouTube;
-- Discord;
-- ChatGPT;
-- FaceTime;
-- Snapchat;
-- Viber;
-- Signal;
-- X (Twitter);
-- Instagram;
-- Facebook;
-- Telegram;
-- LinkedIn;
-- TikTok;
-- WhatsApp;
-- CaseBattle.
+Для каждого профиля описаны `domains`, `testTargets`, `tcpPorts`, `udpPorts`, `resolveHosts`, `ipCidrs` и `ipSources`.
 
-Для каждого профиля описаны:
-
-```text
-domains
-testTargets
-tcpPorts
-udpPorts
-resolveHosts
-ipCidrs
-ipSources
-```
-
-При сохранении создаются:
+При применении создаются общие совместимые списки и отдельные файлы каждого включённого сервиса:
 
 ```text
 lists/list-services-enabled.txt
 lists/ipset-services-user.txt
+lists/list-service-<service>.txt
+lists/ipset-service-<service>.txt
 .service/services-runtime.cmd
+.service/ip-source-status.json
 ```
 
-Эти данные подключаются к каждой стратегии как отдельные TCP/UDP-фильтры. Отключённые сервисы остаются в управляемом блоке исключений.
+Каждая из 21 настоящей стратегии Flowseal получает отдельные доменные и IP-фильтры TCP/UDP. `nexroute.bat` остаётся launcher-ом меню и не считается отдельной стратегией.
 
-## Strategy Lab
+## Миграция состояния
 
-Лаборатория тестирует базовые Discord/YouTube/Google/Cloudflare цели и дополняет их endpoint-ами всех включённых профилей. Проверки выполняются для каждой конфигурации и включают HTTP, TLS 1.2, TLS 1.3 и задержку. DPI-режим TCP 16–20 КБ сохранён.
+Старый файл вида:
 
-Чем больше сервисов включено, тем дольше выполняется полный прогон 21 настоящей стратегии. `nexroute.bat` исключён из списка тестов, поскольку он не содержит отдельной сетевой конфигурации.
+```json
+{"youtube":true,"discord":true}
+```
 
-## Безопасная синхронизация hosts
+автоматически преобразуется в:
 
-`[09] SYNC HOSTS`:
+```json
+{
+  "schemaVersion": 2,
+  "updatedAtUtc": "...",
+  "services": {
+    "youtube": true,
+    "discord": true
+  }
+}
+```
 
-1. загружает набор Flowseal без кэширования;
-2. проверяет формат строк;
-3. удаляет только старый блок `NEXROUTE-HOSTS-BEGIN/END`;
-4. сохраняет все пользовательские строки вне блока;
-5. создаёт backup в `.service/backups`;
-6. записывает новый файл через временный файл в каталоге системного `hosts`;
-7. выполняет `ipconfig /flushdns`.
+Перед миграцией создаётся `.service/services-state.v1.backup.json`. Для повреждённого JSON используется `.service/services-state.invalid.backup.json`.
+
+## Диагностика
+
+Контроллер поддерживает режим:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .service\nexroute-services.ps1 `
+  -Mode Diagnostics `
+  -Root .
+```
+
+Отчёт содержит версию, включённые ID сервисов, количество сгенерированных записей, статусы IP-источников, SHA-256 runtime-файла, версию Windows/PowerShell и состояние службы. Содержимое пользовательских списков, имена пользователей и внешние пути не включаются.
 
 ## Быстрый старт
 
-1. Скачайте `NexRoute-0.2.2-win-x64.zip` и `.sha256` из Releases.
+1. Скачайте `NexRoute-0.2.3-win-x64.zip` и `.sha256` из Releases.
 2. Полностью распакуйте архив в новую папку.
 3. Запустите `NexRoute.lnk`, `nexroute.bat` или `service.bat` от имени администратора.
 4. Выберите стратегию и установите её как службу.
@@ -106,31 +98,18 @@ lists/ipset-services-user.txt
 
 ## Системные требования
 
-- Windows 10 x64;
-- Windows 11 x64;
+- Windows 10 x64 или Windows 11 x64;
 - Windows PowerShell 5.1+;
 - права администратора;
 - `curl.exe` для Strategy Lab.
 
 ## Проверки Release
 
-CI проверяет:
-
-- синтаксис PowerShell;
-- схему 15 сервисов и реальные test targets;
-- сборку на Windows из Flowseal `1.10.0`;
-- ровно 21 пропатченную настоящую стратегию;
-- исключение `nexroute.bat` из Strategy Lab;
-- runtime-фильтры TCP/UDP и Service Matrix hooks;
-- временное включение Telegram и фактическое изменение hostlist, портов и тестовых целей;
-- EN/RU страницы в Windows PowerShell 5.1;
-- исправление malformed `-Root`;
-- структуру многоразмерной иконки;
-- SHA-256 итогового ZIP.
+CI проверяет синтаксис PowerShell, 15 профилей, строгие порты/CIDR, Pester-сценарии, сборку из Flowseal `1.10.0`, ровно 21 стратегию, отдельные runtime-группы сервисов, Diagnostics, EN/RU страницы, иконку и SHA-256 итогового ZIP.
 
 ## Ограничения
 
-Эффективность обхода зависит от провайдера, региона, DNS, версии приложений и конфигурации DPI. NexRoute расширяет покрытие доменов, IP и портов, но не может гарантировать работу каждого медиареле в любой сети без проверки на конкретном провайдере.
+Эффективность обхода зависит от провайдера, региона, DNS, версии приложений и конфигурации DPI. В версии `0.2.3` обрабатывается IPv4; приложения с IPv6-only endpoints могут требовать отдельной будущей поддержки.
 
 ## Лицензирование
 
@@ -142,4 +121,4 @@ CI проверяет:
 
 ---
 
-**NexRoute 0.2.2** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64
+**NexRoute 0.2.3** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64

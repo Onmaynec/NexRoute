@@ -14,12 +14,12 @@ if (-not $Version) { $Version = (Get-Content -LiteralPath (Join-Path $repository
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repositoryRoot 'artifacts' }
 $outputPath = [System.IO.Path]::GetFullPath($OutputDirectory)
 $baseBuilder = Join-Path $PSScriptRoot 'Build-NexRoute.ps1'
-$tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("nexroute-v022-{0}" -f [guid]::NewGuid().ToString('N'))
+$tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("nexroute-release-{0}" -f [guid]::NewGuid().ToString('N'))
 $packageRoot = Join-Path $tempRoot 'package'
 
 function Write-Step {
     param([string]$Message)
-    Write-Host ("[NexRoute 0.2.2] {0}" -f $Message) -ForegroundColor Cyan
+    Write-Host ("[NexRoute {0}] {1}" -f $Version, $Message) -ForegroundColor Cyan
 }
 
 function Write-AsciiFile {
@@ -32,14 +32,14 @@ function Patch-NexRouteStrategy {
 
     $lines = New-Object 'System.Collections.Generic.List[string]'
     foreach ($line in [System.IO.File]::ReadAllLines($File.FullName)) { $lines.Add($line) }
-    if ($lines -contains 'rem NEXROUTE_SERVICE_FILTERS_V2') { return }
+    if ($lines -contains 'rem NEXROUTE_SERVICE_FILTERS_V3') { return }
 
     $hookIndex = -1
     for ($i = 0; $i -lt $lines.Count; $i++) {
         if ($lines[$i] -match 'nexroute-services\.ps1.+-Mode Apply') { $hookIndex = $i; break }
     }
     if ($hookIndex -lt 0) { throw "Strategy has no Service Matrix apply hook: $($File.Name)" }
-    $lines.Insert($hookIndex + 1, 'rem NEXROUTE_SERVICE_FILTERS_V2')
+    $lines.Insert($hookIndex + 1, 'rem NEXROUTE_SERVICE_FILTERS_V3')
     $lines.Insert($hookIndex + 2, 'if exist "%~dp0.service\services-runtime.cmd" call "%~dp0.service\services-runtime.cmd"')
 
     $startIndex = -1
@@ -62,9 +62,9 @@ function Patch-NexRouteServiceBat {
     $content = [System.IO.File]::ReadAllText($Path)
     $nl = "`r`n"
 
-    if ($content -notmatch 'NEXROUTE_REFRESH_MATRIX_V2') {
+    if ($content -notmatch 'NEXROUTE_REFRESH_MATRIX_V3') {
         $handler = @'
-rem NEXROUTE_REFRESH_MATRIX_V2
+rem NEXROUTE_REFRESH_MATRIX_V3
 if /I "%~1"=="refresh_matrix" (
     setlocal EnableExtensions EnableDelayedExpansion
     set "NEXROUTE_REFRESH_FILE=%~2"
@@ -97,9 +97,9 @@ goto menu
         $content = $content.Replace($anchor, $routes + $anchor)
     }
 
-    if ($content -notmatch 'NEXROUTE_REFRESH_INSTALL_V2') {
+    if ($content -notmatch 'NEXROUTE_REFRESH_INSTALL_V3') {
         $refreshInstall = @'
-rem NEXROUTE_REFRESH_INSTALL_V2
+rem NEXROUTE_REFRESH_INSTALL_V3
 if exist "%~dp0.service\nexroute-services.ps1" powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0.service\nexroute-services.ps1" -Mode Apply -Root "%~dp0" >nul 2>&1
 if exist "%~dp0.service\services-runtime.cmd" call "%~dp0.service\services-runtime.cmd"
 if defined NEXROUTE_REFRESH_FILE (
@@ -135,10 +135,10 @@ function Patch-NexRouteTestLab {
     param([string]$Path)
 
     $content = [System.IO.File]::ReadAllText($Path)
-    if ($content -match 'NEXROUTE_DYNAMIC_TARGETS_V2') { return }
+    if ($content -match 'NEXROUTE_DYNAMIC_TARGETS_V3') { return }
     $nl = "`r`n"
     $languageBootstrap = @'
-# NEXROUTE_TEST_LANGUAGE_V2
+# NEXROUTE_TEST_LANGUAGE_V3
 $nrLanguagePath = Join-Path (Split-Path $PSScriptRoot) '.service\language.txt'
 $nrLanguage = 'EN'
 if (Test-Path -LiteralPath $nrLanguagePath -PathType Leaf) {
@@ -153,15 +153,13 @@ if (Test-Path -LiteralPath $nrLanguagePath -PathType Leaf) {
         $content = $languageBootstrap + $content
     }
 
-    # Upstream counted nexroute.bat as a 22nd configuration even though it is only
-    # a launcher. Strategy Lab must test the 21 actual Flowseal strategy BAT files.
     $content = $content.Replace(
         'Where-Object { $_.Name -notlike "service*" }',
         'Where-Object { $_.Name -notlike "service*" -and $_.Name -ne "nexroute.bat" }'
     )
 
     $block = @'
-    # NEXROUTE_DYNAMIC_TARGETS_V2
+    # NEXROUTE_DYNAMIC_TARGETS_V3
     $nrServiceRoot = Split-Path $PSScriptRoot
     $nrController = Join-Path $nrServiceRoot '.service\nexroute-services.ps1'
     if (Test-Path -LiteralPath $nrController -PathType Leaf) {
@@ -203,14 +201,14 @@ try {
     if (-not (Test-Path -LiteralPath $baseBuilder -PathType Leaf)) { throw "Base builder not found: $baseBuilder" }
     New-Item -ItemType Directory -Path $outputPath, $packageRoot -Force | Out-Null
 
-    Write-Step 'Building Flowseal 1.10.0 baseline with NexRoute overlay'
+    Write-Step "Building Flowseal $UpstreamVersion baseline with NexRoute overlay"
     & $baseBuilder -Version $Version -UpstreamVersion $UpstreamVersion -OutputDirectory $outputPath
 
     $zipPath = Join-Path $outputPath ("NexRoute-{0}-win-x64.zip" -f $Version)
     $checksumPath = $zipPath + '.sha256'
     if (-not (Test-Path -LiteralPath $zipPath -PathType Leaf)) { throw "Base package was not created: $zipPath" }
 
-    Write-Step 'Expanding package for 0.2.2 network integration'
+    Write-Step 'Expanding package for Service Matrix integration'
     Expand-Archive -LiteralPath $zipPath -DestinationPath $packageRoot -Force
 
     $serviceDirectory = Join-Path $packageRoot '.service'
@@ -220,7 +218,7 @@ try {
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/nexroute-services-entry.ps1') -Destination $controller -Force
     Set-Content -LiteralPath (Join-Path $serviceDirectory 'language.txt') -Value 'EN' -Encoding ASCII
 
-    Write-Step 'Applying full Service Matrix runtime'
+    Write-Step 'Applying Service Matrix runtime'
     & $controller -Mode Apply -Root $packageRoot | Out-Null
 
     $strategyFiles = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') })
@@ -237,15 +235,17 @@ try {
     $buildInfoPath = Join-Path $packageRoot 'NEXROUTE_BUILD_INFO.txt'
     Add-Content -LiteralPath $buildInfoPath -Value @(
         'Service Matrix schema: 2',
+        'State schema: 2 with legacy migration and backup',
         'Strategy integration: 21/21 real Flowseal BAT profiles',
-        'Strategy Lab launcher exclusion: nexroute.bat',
-        'Dynamic filters: domain + resolved IPv4/IP source + TCP/UDP ports',
-        'Strategy Lab: enabled-service web/API/CDN/media/gateway targets',
+        'Dynamic filters: isolated per-service domain/IP/TCP/UDP groups',
+        'Shared-domain policy: excluded only when every owner is disabled',
+        'IP sources: strict IPv4 CIDR validation and 14-day last-known-good cache',
+        'Diagnostics: privacy-safe JSON export',
         'Default language: EN',
         'Icon: NexRoute supplied artwork motif, multi-resolution ICO'
     ) -Encoding UTF8
 
-    Write-Step 'Repacking verified 0.2.2 artifact'
+    Write-Step "Repacking verified $Version artifact"
     Remove-Item -LiteralPath $zipPath -Force
     if (Test-Path -LiteralPath $checksumPath) { Remove-Item -LiteralPath $checksumPath -Force }
     Compress-Archive -Path (Join-Path $packageRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal

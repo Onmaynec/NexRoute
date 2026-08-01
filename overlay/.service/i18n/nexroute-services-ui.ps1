@@ -10,8 +10,9 @@ function Get-NexRouteServiceState {
     if (Test-Path -LiteralPath $path) {
         try {
             $saved = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+            $savedServices = if ($saved.PSObject.Properties['services']) { $saved.services } else { $saved }
             foreach ($item in $Definitions) {
-                $property = $saved.PSObject.Properties[$item.id]
+                $property = $savedServices.PSObject.Properties[$item.id]
                 if ($property) { $state[$item.id] = [bool]$property.Value }
             }
         } catch {}
@@ -22,7 +23,12 @@ function Get-NexRouteServiceState {
 function Save-NexRouteServiceState {
     param($State)
     $path = Join-Path $script:ServiceDirectory 'services-state.json'
-    [System.IO.File]::WriteAllText($path, (($State | ConvertTo-Json -Depth 6) + [Environment]::NewLine), (New-Object System.Text.UTF8Encoding($false)))
+    $document = [ordered]@{
+        schemaVersion = 2
+        updatedAtUtc = [DateTime]::UtcNow.ToString('o')
+        services = $State
+    }
+    [System.IO.File]::WriteAllText($path, (($document | ConvertTo-Json -Depth 6) + [Environment]::NewLine), (New-Object System.Text.UTF8Encoding($false)))
     $controller = Join-Path $script:ServiceDirectory 'nexroute-services.ps1'
     $applyJson = & $controller -Mode Apply -Root $script:Root | Select-Object -Last 1
     $apply = if ($applyJson) { $applyJson | ConvertFrom-Json } else { $null }
@@ -90,7 +96,7 @@ function Show-NexRouteServices {
                 try {
                     Invoke-NexRouteAnimation -Label $script:Text.launchLists -Duration 210
                     Invoke-NexRouteAnimation -Label 'Resolving enabled endpoint addresses' -Duration 230
-                    Invoke-NexRouteAnimation -Label 'Generating TCP and UDP runtime filters' -Duration 230
+                    Invoke-NexRouteAnimation -Label 'Generating isolated TCP and UDP runtime filters' -Duration 230
                     $result = Save-NexRouteServiceState -State $state
                     Invoke-NexRouteAnimation -Label $script:Text.servicesRestarting -Duration 260
                     $message = $script:Text.servicesSaved

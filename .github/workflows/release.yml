@@ -1,93 +1,136 @@
-name: Build and publish release
+name: Build and publish NexRoute
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches:
+      - main
+    paths:
+      - '.service/version.txt'
+      - 'overlay/**'
+      - 'assets/nexroute-icon-parts/**'
+      - 'scripts/Build-NexRoute.ps1'
+      - 'scripts/Build-Release.ps1'
+      - 'scripts/Test-Package.ps1'
+      - 'scripts/Test-Release.ps1'
+      - 'tests/**'
+      - '.github/release-notes/**'
+      - '.github/workflows/release.yml'
   workflow_dispatch:
-    inputs:
-      version:
-        description: NexRoute version to build
-        required: false
-        type: string
-      upstream_version:
-        description: Flowseal release baseline
-        required: false
-        default: '1.10.0'
-        type: string
 
 permissions:
   contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
-  build:
-    name: Build Windows distribution
+  publish:
+    name: Build, verify and publish current version
     runs-on: windows-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          show-progress: false
 
-      - name: Resolve versions
-        id: versions
+      - name: Resolve version
+        id: version
         shell: pwsh
         run: |
-          $repositoryVersion = (Get-Content ./.service/version.txt -Raw).Trim()
-          $requestedVersion = '${{ inputs.version }}'
-          $upstreamVersion = '${{ inputs.upstream_version }}'
+          $version = (Get-Content ./.service/version.txt -Raw).Trim()
+          if ($version -notmatch '^\d+\.\d+\.\d+$') { throw "Invalid release version: $version" }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=v$version" >> $env:GITHUB_OUTPUT
+          "archive=NexRoute-$version-win-x64.zip" >> $env:GITHUB_OUTPUT
 
-          if ([string]::IsNullOrWhiteSpace($requestedVersion)) {
-            $requestedVersion = $repositoryVersion
-          }
-          if ([string]::IsNullOrWhiteSpace($upstreamVersion)) {
-            $upstreamVersion = '1.10.0'
-          }
-
-          if ('${{ github.ref_type }}' -eq 'tag') {
-            $expectedTag = "v$repositoryVersion"
-            if ('${{ github.ref_name }}' -ne $expectedTag) {
-              throw "Release tag must be $expectedTag, got ${{ github.ref_name }}"
-            }
-            $requestedVersion = $repositoryVersion
-          }
-
-          "version=$requestedVersion" >> $env:GITHUB_OUTPUT
-          "upstream_version=$upstreamVersion" >> $env:GITHUB_OUTPUT
-
-      - name: Validate source tree
-        shell: pwsh
-        run: ./scripts/Test-Repository.ps1
-
-      - name: Build NexRoute package
+      - name: Install pinned Pester
         shell: pwsh
         run: |
-          ./scripts/Build-NexRoute.ps1 `
-            -Version '${{ steps.versions.outputs.version }}' `
-            -UpstreamVersion '${{ steps.versions.outputs.upstream_version }}' `
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -RequiredVersion 5.6.1 -Scope CurrentUser -Force -SkipPublisherCheck -AllowClobber
+
+      - name: Validate sources and behavior
+        shell: pwsh
+        run: |
+          ./scripts/Test-Repository.ps1
+          $result = Invoke-Pester -Path ./tests/ServiceMatrix.Tests.ps1 -CI -Output Detailed -PassThru
+          if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
+
+      - name: Build package
+        shell: pwsh
+        run: |
+          ./scripts/Build-Release.ps1 `
+            -Version '${{ steps.version.outputs.version }}' `
+            -UpstreamVersion '1.10.0' `
             -OutputDirectory ./artifacts
 
-      - name: Upload build artifact
+      - name: Verify package
+        shell: pwsh
+        run: |
+          $result = ./scripts/Test-Release.ps1 `
+            -ArtifactsDirectory ./artifacts `
+            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-release-test')
+          "NEXROUTE_SHA256=$($result.Sha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
+          "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
+
+      - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: NexRoute-${{ steps.versions.outputs.version }}-win-x64
+          name: NexRoute-${{ steps.version.outputs.version }}-win-x64
           path: |
-            artifacts/*.zip
-            artifacts/*.sha256
+            artifacts/${{ steps.version.outputs.archive }}
+            artifacts/${{ steps.version.outputs.archive }}.sha256
           if-no-files-found: error
+          retention-days: 14
 
       - name: Publish GitHub Release
-        if: github.ref_type == 'tag'
+        id: publish
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $version = '${{ steps.versions.outputs.version }}'
-          $archive = "artifacts/NexRoute-$version-win-x64.zip"
-          $checksum = "$archive.sha256"
+          $tag = '${{ steps.version.outputs.tag }}'
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $tag already exists."
+            "created=false" >> $env:GITHUB_OUTPUT
+            exit 0
+          }
 
-          gh release create '${{ github.ref_name }}' `
-            $archive `
-            $checksum `
-            --title "NexRoute $version" `
-            --generate-notes `
-            --verify-tag
+          $notes = "./.github/release-notes/$tag.md"
+          if (-not (Test-Path -LiteralPath $notes -PathType Leaf)) { throw "Release notes are missing: $notes" }
+          gh release create $tag `
+            "./artifacts/${{ steps.version.outputs.archive }}" `
+            "./artifacts/${{ steps.version.outputs.archive }}.sha256" `
+            --target $env:GITHUB_SHA `
+            --title "NexRoute ${{ steps.version.outputs.version }}" `
+            --notes-file $notes `
+            --latest
+          if ($LASTEXITCODE -ne 0) { throw "Failed to publish $tag" }
+          "created=true" >> $env:GITHUB_OUTPUT
+
+      - name: Close superseded tracking items
+        if: steps.publish.outputs.created == 'true'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $comment = 'Implemented and verified in NexRoute ${{ steps.version.outputs.tag }}.'
+          foreach ($issue in 7,8,9,10) {
+            $state = gh issue view $issue --json state --jq .state 2>$null
+            if ($LASTEXITCODE -eq 0 -and $state -eq 'OPEN') {
+              gh issue close $issue --comment $comment
+            }
+          }
+          $prState = gh pr view 4 --json state --jq .state 2>$null
+          if ($LASTEXITCODE -eq 0 -and $prState -eq 'OPEN') {
+            gh pr close 4 --comment 'Superseded by the released NexRoute ${{ steps.version.outputs.tag }} implementation.'
+          }
+
+      - name: Print verified metadata
+        shell: pwsh
+        run: |
+          Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
+          Write-Host "Services: $env:NEXROUTE_SERVICES"
+          Write-Host "SHA-256: $env:NEXROUTE_SHA256"
