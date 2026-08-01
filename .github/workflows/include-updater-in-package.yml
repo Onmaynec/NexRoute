@@ -1,0 +1,50 @@
+name: Include updater in package
+
+on:
+  push:
+    branches:
+      - release/0.3.1
+    paths:
+      - '.github/workflows/include-updater-in-package.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: release/0.3.1
+          fetch-depth: 0
+
+      - name: Add updater overlay copy contract
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('scripts/Build-Release.ps1')
+          text = path.read_text(encoding='utf-8')
+          old = "    Set-Content -LiteralPath (Join-Path $serviceDirectory 'language.txt') -Value 'EN' -Encoding ASCII\n\n    Write-Step 'Applying Service Matrix runtime'"
+          new = """    Set-Content -LiteralPath (Join-Path $serviceDirectory 'language.txt') -Value 'EN' -Encoding ASCII
+
+    Write-Step 'Adding secure update center'
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/nexroute-updater.ps1') -Destination (Join-Path $serviceDirectory 'nexroute-updater.ps1') -Force
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/i18n/nexroute-pages.ps1') -Destination (Join-Path $serviceDirectory 'i18n/nexroute-pages.ps1') -Force
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/i18n/nexroute-pages-update.ps1') -Destination (Join-Path $serviceDirectory 'i18n/nexroute-pages-update.ps1') -Force
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'overlay/nexroute-update.cmd') -Destination (Join-Path $packageRoot 'nexroute-update.cmd') -Force
+
+    Write-Step 'Applying Service Matrix runtime'"""
+          if text.count(old) != 1:
+              raise SystemExit(f'Expected one package overlay anchor, got {text.count(old)}')
+          path.write_text(text.replace(old, new), encoding='utf-8', newline='')
+
+      - name: Commit package contract
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add scripts/Build-Release.ps1
+          git commit -m "fix: include secure updater in release package"
+          git push origin HEAD:release/0.3.1
