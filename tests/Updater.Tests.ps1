@@ -66,7 +66,13 @@ Describe 'NexRoute secure updater' {
 
             $archiveName = "NexRoute-$Version-win-x64.zip"
             $archivePath = Join-Path $assets $archiveName
-            Compress-Archive -Path (Join-Path $payload '*') -DestinationPath $archivePath -CompressionLevel NoCompression
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            [System.IO.Compression.ZipFile]::CreateFromDirectory(
+                $payload,
+                $archivePath,
+                [System.IO.Compression.CompressionLevel]::NoCompression,
+                $false
+            )
             $actualHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
             $checksumHash = if ($InvalidChecksum) { '0' * 64 } else { $actualHash }
             Set-Content -LiteralPath (Join-Path $assets "$archiveName.sha256") -Value "$checksumHash  $archiveName" -Encoding ASCII
