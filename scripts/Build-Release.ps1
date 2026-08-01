@@ -260,6 +260,7 @@ if (Test-Path -LiteralPath $nrLanguagePath -PathType Leaf) {
 }
 
 $patchJournal = New-Object 'System.Collections.Generic.List[object]'
+ = New-Object 'System.Collections.Generic.HashSet[string]'
 
 function Get-PackageRelativePath {
     param([Parameter(Mandatory)][string]$Path)
@@ -277,7 +278,7 @@ function Invoke-TrackedPatch {
         [Parameter(Mandatory)][string]$Target,
         [Parameter(Mandatory)][scriptblock]$Action
     )
-    if ($patchJournal.Id -contains $Id) { throw "Duplicate patch id: $Id" }
+    if (-not $patchIds.Add($Id)) { throw "Duplicate patch id: $Id" }
     $before = Get-NexRouteSha256 -Path $Target
     $operations = [int](& $Action | Select-Object -Last 1)
     $after = Get-NexRouteSha256 -Path $Target
@@ -388,7 +389,7 @@ try {
     if ($patchJournal.Count -ne 23) {
         throw "Expected 23 tracked patch targets, got $($patchJournal.Count)."
     }
-    if (($patchJournal.Id | Sort-Object -Unique).Count -ne $patchJournal.Count) {
+    if ($patchIds.Count -ne $patchJournal.Count) {
         throw 'Patch report contains duplicate IDs.'
     }
 
