@@ -10,9 +10,12 @@ on:
 permissions:
   contents: read
 
+env:
+  NEXROUTE_BOOTSTRAP_UPSTREAM: '1'
+
 jobs:
   validate:
-    name: Validate NexRoute 0.2.3 sources
+    name: Validate NexRoute 0.3.0 sources
     runs-on: ubuntu-latest
 
     steps:
@@ -31,14 +34,14 @@ jobs:
         shell: pwsh
         run: ./scripts/Test-Repository.ps1
 
-      - name: Run Service Matrix behavior tests
+      - name: Run behavior and upstream contract tests
         shell: pwsh
         run: |
-          $result = Invoke-Pester -Path ./tests/ServiceMatrix.Tests.ps1 -CI -Output Detailed -PassThru
+          $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
   build-smoke:
-    name: Build and test NexRoute 0.2.3
+    name: Build and test NexRoute 0.3.0
     needs: validate
     runs-on: windows-latest
 
@@ -48,45 +51,85 @@ jobs:
         with:
           show-progress: false
 
-      - name: Build package
+      - name: Build online package and cache verified upstream
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          if ($version -ne '0.2.3') { throw "Expected 0.2.3, got $version" }
-          ./scripts/Build-Release.ps1 `
+          if ($version -ne '0.3.0') { throw "Expected 0.3.0, got $version" }
+          $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
+          $result = ./scripts/Build-Release.ps1 `
             -Version $version `
-            -UpstreamVersion '1.10.0' `
-            -OutputDirectory ./artifacts *>&1 |
-            Tee-Object -FilePath build.log
+            -OutputDirectory ./artifacts `
+            -UpstreamCachePath $cache `
+            -AllowUnlockedUpstream *>&1 |
+            Tee-Object -FilePath build-online.log
+          $build = $result | Select-Object -Last 1
+          "NEXROUTE_UPSTREAM_CACHE=$cache" >> $env:GITHUB_ENV
+          "NEXROUTE_UPSTREAM_SHA=$($build.UpstreamSha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_PATCH_TARGETS=$($build.PatchTargetCount)" >> $env:GITHUB_ENV
 
-      - name: Verify package
+      - name: Verify online package
         shell: pwsh
         run: |
           $result = ./scripts/Test-Release.ps1 `
             -ArtifactsDirectory ./artifacts `
-            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-release-test') *>&1 |
-            Tee-Object -FilePath package-test.log
-          $result = $result | Select-Object -Last 1
-          "NEXROUTE_SHA256=$($result.Sha256)" >> $env:GITHUB_ENV
-          "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
-          "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
+            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-online-test') *>&1 |
+            Tee-Object -FilePath package-online.log
+          $online = $result | Select-Object -Last 1
+          "NEXROUTE_SHA256=$($online.Sha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_STRATEGIES=$($online.StrategyCount)" >> $env:GITHUB_ENV
+          "NEXROUTE_SERVICES=$($online.ServiceCount)" >> $env:GITHUB_ENV
+          "NEXROUTE_ONLINE_UPSTREAM_SHA=$($online.UpstreamSha256)" >> $env:GITHUB_ENV
+
+      - name: Rebuild completely offline from verified cache
+        shell: pwsh
+        run: |
+          $version = (Get-Content ./.service/version.txt -Raw).Trim()
+          $result = ./scripts/Build-Release.ps1 `
+            -Version $version `
+            -OutputDirectory ./artifacts-offline `
+            -UpstreamArchive $env:NEXROUTE_UPSTREAM_CACHE `
+            -AllowUnlockedUpstream *>&1 |
+            Tee-Object -FilePath build-offline.log
+          $offlineBuild = $result | Select-Object -Last 1
+          if ($offlineBuild.UpstreamResolution -ne 'offline') { throw 'Offline build did not use offline resolution mode.' }
+          if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Online and offline upstream hashes differ.' }
+          if ([int]$offlineBuild.PatchTargetCount -ne 23) { throw 'Offline build did not apply 23 tracked patch targets.' }
+
+      - name: Verify offline package
+        shell: pwsh
+        run: |
+          $result = ./scripts/Test-Release.ps1 `
+            -ArtifactsDirectory ./artifacts-offline `
+            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-offline-test') `
+            -SkipRuntime *>&1 |
+            Tee-Object -FilePath package-offline.log
+          $offline = $result | Select-Object -Last 1
+          if ($offline.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Offline package lock differs from the online package lock.' }
+          if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
+          if ([int]$offline.StrategyCount -ne [int]$env:NEXROUTE_STRATEGIES) { throw 'Online and offline strategy counts differ.' }
+          if ([int]$offline.ServiceCount -ne [int]$env:NEXROUTE_SERVICES) { throw 'Online and offline service counts differ.' }
 
       - name: Upload logs and smoke package
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: NexRoute-0.2.3-smoke
+          name: NexRoute-0.3.0-smoke
           path: |
-            build.log
-            package-test.log
-            artifacts/NexRoute-0.2.3-win-x64.zip
-            artifacts/NexRoute-0.2.3-win-x64.zip.sha256
+            build-online.log
+            package-online.log
+            build-offline.log
+            package-offline.log
+            artifacts/NexRoute-0.3.0-win-x64.zip
+            artifacts/NexRoute-0.3.0-win-x64.zip.sha256
           if-no-files-found: warn
           retention-days: 7
 
       - name: Print verified metadata
         shell: pwsh
         run: |
+          Write-Host "Upstream SHA-256: $env:NEXROUTE_ONLINE_UPSTREAM_SHA"
+          Write-Host "Tracked patches: $env:NEXROUTE_PATCH_TARGETS"
           Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
           Write-Host "Services: $env:NEXROUTE_SERVICES"
-          Write-Host "SHA-256: $env:NEXROUTE_SHA256"
+          Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
