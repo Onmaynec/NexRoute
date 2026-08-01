@@ -251,7 +251,8 @@ if (Test-Path -LiteralPath $nrLanguagePath -PathType Leaf) {
     )
     for ($index = 0; $index -lt $localizedReplacements.Count; $index++) {
         $pair = $localizedReplacements[$index]
-        $content = Replace-RequiredLiteral -Content $content -OldValue $pair[0] -NewValue $pair[1] -PatchId ("testlab.locale-{0}" -f ($index + 1))
+        $expectedCount = if ($index -eq 3) { 2 } else { 1 }
+        $content = Replace-RequiredLiteral -Content $content -OldValue $pair[0] -NewValue $pair[1] -PatchId ("testlab.locale-{0}" -f ($index + 1)) -ExpectedCount $expectedCount
         $operations++
     }
 
