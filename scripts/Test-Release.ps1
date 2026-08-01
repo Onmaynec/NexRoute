@@ -10,6 +10,7 @@ $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $expectedVersion = (Get-Content -LiteralPath (Join-Path $repositoryRoot '.service/version.txt') -Raw).Trim()
+$sourceManifest = Get-Content -LiteralPath (Join-Path $repositoryRoot '.service/upstream-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $baseTest = Join-Path $PSScriptRoot 'Test-Package.ps1'
 $result = @(& $baseTest -ArtifactsDirectory $ArtifactsDirectory -ExtractDirectory $ExtractDirectory -SkipRuntime:$SkipRuntime) | Select-Object -Last 1
 $root = $result.ExtractPath
@@ -18,6 +19,9 @@ $required = @(
     '.service/nexroute-services-core.ps1',
     '.service/services-runtime.cmd',
     '.service/ip-source-status.json',
+    '.service/upstream-manifest.json',
+    '.service/upstream-lock.json',
+    '.service/patch-report.json',
     '.service/i18n/nexroute-pages-core.ps1',
     '.service/i18n/nexroute-pages-network.ps1',
     '.service/i18n/nexroute-services-state.ps1',
@@ -37,8 +41,43 @@ if ($version -ne $expectedVersion) { throw "Expected package version $expectedVe
 $language = (Get-Content -LiteralPath (Join-Path $root '.service/language.txt') -Raw -Encoding ASCII).Trim().ToUpperInvariant()
 if ($language -ne 'EN') { throw "Default package language must be EN, got $language" }
 
+$packageManifest = Get-Content -LiteralPath (Join-Path $root '.service/upstream-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$upstreamLock = Get-Content -LiteralPath (Join-Path $root '.service/upstream-lock.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ([int]$packageManifest.schemaVersion -ne 1) { throw 'Package upstream manifest schema must be 1.' }
+if ([int]$upstreamLock.schemaVersion -ne 1) { throw 'Package upstream lock schema must be 1.' }
+if ($upstreamLock.repository -ne $sourceManifest.repository) { throw 'Upstream lock repository differs from the source manifest.' }
+if ($upstreamLock.tag -ne $sourceManifest.tag) { throw 'Upstream lock tag differs from the source manifest.' }
+if ([string]$upstreamLock.assetName -notmatch [string]$sourceManifest.assetPattern) { throw 'Upstream lock asset does not match the declared pattern.' }
+if ([string]$upstreamLock.sha256 -notmatch '^[0-9a-f]{64}$') { throw 'Upstream lock does not contain a valid SHA-256.' }
+if ([long]$upstreamLock.assetSize -lt [long]$sourceManifest.minimumBytes) { throw 'Upstream lock asset size is below the manifest minimum.' }
+if ([int]$upstreamLock.strategyCount -ne 21) { throw "Expected upstream lock to report 21 strategies, got $($upstreamLock.strategyCount)." }
+if ($sourceManifest.expectedSha256 -and $upstreamLock.sha256 -ne ([string]$sourceManifest.expectedSha256).ToLowerInvariant()) {
+    throw 'Upstream lock SHA-256 differs from the committed source lock.'
+}
+
+$patchReport = Get-Content -LiteralPath (Join-Path $root '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+$patches = @($patchReport.patches)
+if ([int]$patchReport.schemaVersion -ne 1) { throw 'Patch report schema must be 1.' }
+if ($patchReport.nexRouteVersion -ne $expectedVersion) { throw 'Patch report contains the wrong NexRoute version.' }
+if ($patchReport.upstreamSha256 -ne $upstreamLock.sha256) { throw 'Patch report and upstream lock use different archive hashes.' }
+if ([int]$patchReport.summary.targetCount -ne 23 -or $patches.Count -ne 23) {
+    throw "Expected 23 tracked patch targets, got $($patches.Count)."
+}
+if ([int]$patchReport.summary.strategyTargets -ne 21) { throw 'Patch report does not declare 21 strategy targets.' }
+if ([int]$patchReport.summary.infrastructureTargets -ne 2) { throw 'Patch report does not declare two infrastructure targets.' }
+if (($patches.id | Sort-Object -Unique).Count -ne $patches.Count) { throw 'Patch report contains duplicate IDs.' }
+if (@($patches | Where-Object { $_.id -like 'strategy.*' }).Count -ne 21) { throw 'Patch report does not contain 21 strategy records.' }
+foreach ($patch in $patches) {
+    if ([string]::IsNullOrWhiteSpace([string]$patch.id)) { throw 'Patch report contains an empty ID.' }
+    if ([string]::IsNullOrWhiteSpace([string]$patch.target)) { throw "Patch '$($patch.id)' has no target." }
+    if ([int]$patch.operations -lt 1) { throw "Patch '$($patch.id)' reports no operations." }
+    if ([string]$patch.beforeSha256 -notmatch '^[0-9a-f]{64}$') { throw "Patch '$($patch.id)' has an invalid before hash." }
+    if ([string]$patch.afterSha256 -notmatch '^[0-9a-f]{64}$') { throw "Patch '$($patch.id)' has an invalid after hash." }
+    if ($patch.beforeSha256 -eq $patch.afterSha256) { throw "Patch '$($patch.id)' did not change its target." }
+}
+
 $serviceBat = Get-Content -LiteralPath (Join-Path $root 'service.bat') -Raw
-foreach ($token in @('NEXROUTE_REFRESH_MATRIX_V3',':nexroute_game_filter',':nexroute_update_watch','-Mode GameFilter','-Mode UpdateWatch','NEXROUTE_EXPAND_RUNTIME_ARGS')) {
+foreach ($token in @('NEXROUTE_REFRESH_MATRIX_V4',':nexroute_game_filter',':nexroute_update_watch','-Mode GameFilter','-Mode UpdateWatch','NEXROUTE_EXPAND_RUNTIME_ARGS')) {
     if ($serviceBat -notmatch [regex]::Escape($token)) { throw "service.bat is missing release token: $token" }
 }
 
@@ -46,7 +85,7 @@ $strategyFiles = @(Get-ChildItem -LiteralPath $root -Filter '*.bat' -File | Wher
 if ($strategyFiles.Count -ne 21) { throw "Expected 21 patched real strategies, got $($strategyFiles.Count)" }
 foreach ($strategy in $strategyFiles) {
     $content = Get-Content -LiteralPath $strategy.FullName -Raw
-    foreach ($token in @('NEXROUTE_SERVICE_FILTERS_V3','services-runtime.cmd','%NEXROUTE_SERVICE_TCP_ARGS%','%NEXROUTE_SERVICE_UDP_ARGS%')) {
+    foreach ($token in @('NEXROUTE_SERVICE_FILTERS_V4','services-runtime.cmd','%NEXROUTE_SERVICE_TCP_ARGS%','%NEXROUTE_SERVICE_UDP_ARGS%')) {
         if ($content -notmatch [regex]::Escape($token)) { throw "$($strategy.Name) is missing $token" }
     }
 }
@@ -63,7 +102,7 @@ if ($general -notmatch '(?m)^youtube\.com\r?$') { throw 'Enabled YouTube domain 
 if ($exclude -match '(?m)^youtube\.com\r?$') { throw 'Enabled YouTube domain leaked into the disabled block.' }
 
 $testLab = Get-Content -LiteralPath (Join-Path $root 'utils/test zapret.ps1') -Raw
-if ($testLab -notmatch 'NEXROUTE_DYNAMIC_TARGETS_V3') { throw 'Strategy Lab does not load enabled Service Matrix targets.' }
+if ($testLab -notmatch 'NEXROUTE_DYNAMIC_TARGETS_V4') { throw 'Strategy Lab does not load enabled Service Matrix targets.' }
 if ($testLab -notmatch '-Mode TestTargets') { throw 'Strategy Lab is not connected to real Service Matrix endpoints.' }
 if ($testLab -notmatch '\$_.Name -ne "nexroute\.bat"') { throw 'Strategy Lab still counts nexroute.bat as a strategy.' }
 
@@ -99,6 +138,8 @@ if (-not $SkipRuntime) {
 }
 
 Write-Host "NexRoute $expectedVersion extended package checks passed." -ForegroundColor Green
+Write-Host "Upstream SHA-256: $($upstreamLock.sha256)" -ForegroundColor Green
+Write-Host "Tracked patch targets: $($patches.Count)" -ForegroundColor Green
 Write-Host "Patched real strategies: $($strategyFiles.Count)" -ForegroundColor Green
 Write-Host "Generated icon bytes: $iconSize" -ForegroundColor Green
 
@@ -107,6 +148,9 @@ Write-Host "Generated icon bytes: $iconSize" -ForegroundColor Green
     Checksum = $result.Checksum
     ExtractPath = $root
     Sha256 = $result.Sha256
+    UpstreamSha256 = [string]$upstreamLock.sha256
+    PatchTargetCount = $patches.Count
+    PatchOperationCount = [int]$patchReport.summary.operationCount
     StrategyCount = $strategyFiles.Count
     ServiceCount = $services.Count
     IconBytes = $iconSize
