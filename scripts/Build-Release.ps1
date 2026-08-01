@@ -260,7 +260,7 @@ if (Test-Path -LiteralPath $nrLanguagePath -PathType Leaf) {
 }
 
 $patchJournal = New-Object 'System.Collections.Generic.List[object]'
- = New-Object 'System.Collections.Generic.HashSet[string]'
+$patchIds = New-Object 'System.Collections.Generic.HashSet[string]'
 
 function Get-PackageRelativePath {
     param([Parameter(Mandatory)][string]$Path)
