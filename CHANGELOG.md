@@ -6,6 +6,33 @@
 
 Пока нет изменений.
 
+## [0.3.0] - 2026-08-01
+
+### Added
+
+- декларативный `.service/upstream-manifest.json` для repository, tag, asset pattern, размера, SHA-256 и обязательных путей Flowseal;
+- модуль `scripts/NexRoute.Upstream.psm1` для online/offline разрешения и проверки upstream-архива;
+- `.service/upstream-lock.json` внутри Release ZIP;
+- `.service/patch-report.json` с patch ID, target, количеством операций и hashes до/после;
+- поддержка `Build-Release.ps1 -UpstreamArchive` для офлайн-сборки;
+- поддержка `-UpstreamCachePath` для сохранения уже проверенного официального архива;
+- Pester-тесты upstream manifest, path traversal, locked digest, missing files и локального release proxy;
+- CI-сценарий, который строит проект онлайн, затем повторяет сборку полностью офлайн.
+
+### Changed
+
+- базовый builder получает Flowseal через локальный verified proxy и больше не использует непроверенный download напрямую;
+- 21 стратегия, `service.bat` и Strategy Lab представлены как 23 отслеживаемые patch-targets;
+- patch anchors требуют точное ожидаемое количество совпадений;
+- Release pipeline сравнивает upstream lock и структуру online/offline пакетов;
+- PowerShell AST validation включает `.psm1`.
+
+### Security
+
+- сборка останавливается при несовпадении committed SHA-256, GitHub asset digest или asset size;
+- небезопасные `requiredPaths` с абсолютными путями и `..` отклоняются;
+- частично применённые или повторно применённые patch contracts приводят к ошибке, а не к публикации ZIP.
+
 ## [0.2.3] - 2026-08-01
 
 ### Added
