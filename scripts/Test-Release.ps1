@@ -22,6 +22,9 @@ $required = @(
     '.service/upstream-manifest.json',
     '.service/upstream-lock.json',
     '.service/patch-report.json',
+    '.service/nexroute-updater.ps1',
+    '.service/i18n/nexroute-pages-update.ps1',
+    'nexroute-update.cmd',
     '.service/i18n/nexroute-pages-core.ps1',
     '.service/i18n/nexroute-pages-network.ps1',
     '.service/i18n/nexroute-services-state.ps1',
@@ -80,6 +83,17 @@ $serviceBat = Get-Content -LiteralPath (Join-Path $root 'service.bat') -Raw
 foreach ($token in @('NEXROUTE_REFRESH_MATRIX_V4',':nexroute_game_filter',':nexroute_update_watch','-Mode GameFilter','-Mode UpdateWatch','NEXROUTE_EXPAND_RUNTIME_ARGS')) {
     if ($serviceBat -notmatch [regex]::Escape($token)) { throw "service.bat is missing release token: $token" }
 }
+
+$launcher = Get-Content -LiteralPath (Join-Path $root 'nexroute.bat') -Raw
+foreach ($token in @('nexroute-updater.ps1','check_updates.enabled','-Mode Auto')) {
+    if ($launcher -notmatch [regex]::Escape($token)) { throw "nexroute.bat is missing updater token: $token" }
+}
+$updater = Get-Content -LiteralPath (Join-Path $root '.service/nexroute-updater.ps1') -Raw
+foreach ($token in @('releases/latest','NexRoute-backups','SHA-256 mismatch','rolled-back')) {
+    if ($updater -notmatch [regex]::Escape($token)) { throw "Updater is missing package token: $token" }
+}
+$updatePage = Get-Content -LiteralPath (Join-Path $root '.service/i18n/nexroute-pages-update.ps1') -Raw
+if ($updatePage -notmatch '-Mode Menu') { throw 'Update Center UI is not connected to the updater menu.' }
 
 $strategyFiles = @(Get-ChildItem -LiteralPath $root -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat','nexroute.bat') })
 if ($strategyFiles.Count -ne 21) { throw "Expected 21 patched real strategies, got $($strategyFiles.Count)" }
