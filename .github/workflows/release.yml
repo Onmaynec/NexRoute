@@ -11,6 +11,7 @@ on:
       - 'assets/nexroute-icon-parts/**'
       - 'scripts/Build-NexRoute.ps1'
       - 'scripts/Build-Release.ps1'
+      - 'scripts/Build-Package.ps1'
       - 'scripts/NexRoute.Upstream.psm1'
       - 'scripts/Test-Package.ps1'
       - 'scripts/Test-Release.ps1'
@@ -58,15 +59,16 @@ jobs:
           $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
-      - name: Build package from locked upstream
+      - name: Build finalized package from locked upstream
         shell: pwsh
         run: |
           $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
-          $result = ./scripts/Build-Release.ps1 `
+          $result = ./scripts/Build-Package.ps1 `
             -Version '${{ steps.version.outputs.version }}' `
             -OutputDirectory ./artifacts `
             -UpstreamCachePath $cache
           $build = $result | Select-Object -Last 1
+          if (-not $build.UpdaterIncluded) { throw 'The release package was not finalized with the updater.' }
           "NEXROUTE_UPSTREAM_CACHE=$cache" >> $env:GITHUB_ENV
           "NEXROUTE_UPSTREAM_SHA256=$($build.UpstreamSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_PATCH_TARGETS=$($build.PatchTargetCount)" >> $env:GITHUB_ENV
@@ -86,12 +88,13 @@ jobs:
       - name: Prove offline rebuild
         shell: pwsh
         run: |
-          $result = ./scripts/Build-Release.ps1 `
+          $result = ./scripts/Build-Package.ps1 `
             -Version '${{ steps.version.outputs.version }}' `
             -OutputDirectory ./artifacts-offline `
             -UpstreamArchive $env:NEXROUTE_UPSTREAM_CACHE
           $offlineBuild = $result | Select-Object -Last 1
           if ($offlineBuild.UpstreamResolution -ne 'offline') { throw 'Offline rebuild did not use offline resolution.' }
+          if (-not $offlineBuild.UpdaterIncluded) { throw 'Offline rebuild was not finalized with the updater.' }
           if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Offline rebuild used a different upstream archive.' }
           $offline = ./scripts/Test-Release.ps1 `
             -ArtifactsDirectory ./artifacts-offline `
