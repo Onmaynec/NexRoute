@@ -245,7 +245,7 @@ function Get-NexRoutePackageRoot {
     $packageRoot = $candidates[0]
     $required = @(
         'nexroute.bat',
-        'nexroute-update.bat',
+        'nexroute-update.cmd',
         'service.bat',
         '.service/version.txt',
         '.service/nexroute-updater.ps1',
@@ -265,7 +265,7 @@ function Get-NexRoutePackageRoot {
     }
 
     $strategies = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object {
-        $_.Name -notin @('service.bat', 'nexroute.bat', 'nexroute-update.bat')
+        $_.Name -notin @('service.bat', 'nexroute.bat', 'nexroute-update.cmd')
     })
     if ($strategies.Count -ne 21) {
         throw "Downloaded package contains $($strategies.Count) strategies instead of 21."

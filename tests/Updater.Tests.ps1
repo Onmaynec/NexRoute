@@ -50,7 +50,7 @@ function New-UpdaterReleaseFixture {
     Set-Content -LiteralPath (Join-Path $payload '.service/upstream-lock.json') -Value '{"schemaVersion":1,"sha256":"6b7c5a66cfd055b8e361f8b5fb00f00b167260f21b1c03d589f6008417fb94a2"}' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $payload '.service/patch-report.json') -Value '{"schemaVersion":1,"summary":{"targetCount":23}}' -Encoding UTF8
     Set-Content -LiteralPath (Join-Path $payload 'nexroute.bat') -Value '@echo off' -Encoding ASCII
-    Set-Content -LiteralPath (Join-Path $payload 'nexroute-update.bat') -Value '@echo off' -Encoding ASCII
+    Set-Content -LiteralPath (Join-Path $payload 'nexroute-update.cmd') -Value '@echo off' -Encoding ASCII
     Set-Content -LiteralPath (Join-Path $payload 'service.bat') -Value '@echo off' -Encoding ASCII
 
     1..21 | ForEach-Object {
