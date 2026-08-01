@@ -37,6 +37,7 @@ jobs:
       - name: Run behavior and upstream contract tests
         shell: pwsh
         run: |
+          # Includes ./tests/ServiceMatrix.Tests.ps1 and ./tests/UpstreamContract.Tests.ps1.
           $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
