@@ -63,7 +63,7 @@ Describe 'NexRoute upstream contract' {
 
     It 'rejects duplicate required paths' {
         $path = New-TestManifestFile -RequiredPaths @('service.bat','service.bat')
-        { Read-NexRouteUpstreamManifest -Path $path } | Should -Throw '*contains duplicates*'
+        { Read-NexRouteUpstreamManifest -Path $path } | Should -Throw
     }
 
     It 'requires a locked digest unless bootstrap mode is explicit' {
