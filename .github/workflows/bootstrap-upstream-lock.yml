@@ -1,0 +1,46 @@
+name: Bootstrap upstream lock
+
+on:
+  push:
+    branches:
+      - release/0.3.0
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lock:
+    name: Resolve Flowseal 1.10.0 lock
+    runs-on: windows-latest
+    steps:
+      - name: Download and hash official asset
+        shell: pwsh
+        run: |
+          $headers = @{
+            Accept = 'application/vnd.github+json'
+            'User-Agent' = 'NexRoute-Upstream-Lock'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $release = Invoke-RestMethod `
+            -Uri 'https://api.github.com/repos/Flowseal/zapret-discord-youtube/releases/tags/1.10.0' `
+            -Headers $headers
+          $assets = @($release.assets | Where-Object {
+            $_.name -eq 'zapret-discord-youtube-1.10.0.zip' -and $_.browser_download_url
+          })
+          if ($assets.Count -ne 1) { throw "Expected exactly one upstream ZIP, got $($assets.Count)." }
+          $asset = $assets[0]
+          $archive = Join-Path $env:RUNNER_TEMP $asset.name
+          Invoke-WebRequest -Uri $asset.browser_download_url -Headers $headers -OutFile $archive -UseBasicParsing
+          $sha = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          $result = [ordered]@{
+            repository = 'Flowseal/zapret-discord-youtube'
+            tag = '1.10.0'
+            assetName = [string]$asset.name
+            assetId = [long]$asset.id
+            assetSize = (Get-Item -LiteralPath $archive).Length
+            apiSize = [long]$asset.size
+            apiDigest = [string]$asset.digest
+            sha256 = $sha
+          }
+          $result | ConvertTo-Json -Depth 5
