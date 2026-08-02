@@ -23,7 +23,7 @@ jobs:
       - name: Expand verified source payload
         shell: bash
         run: |
-          base64 -d .github/payloads/nr050.tar.xz.b64 > /tmp/nr050.tar.xz
+          cat .github/payloads/nr050.part* | base64 -d > /tmp/nr050.tar.xz
           echo '651eab7c33e067905202d6ce78b2d7c3d9f97bdf51fe4548fdb2212fb83fd4a8  /tmp/nr050.tar.xz' | sha256sum -c -
           tar -xJf /tmp/nr050.tar.xz -C .
 
@@ -63,8 +63,9 @@ jobs:
           marker="$serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMatrix.Tests.ps1') -Raw\n"
           guard="""$nextInterface = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-console.ps1') -Raw
           $nextCommon = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-common.ps1') -Raw
+          $serviceNetwork = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-services-network.ps1') -Raw
           foreach ($token in @('>[+]','UpArrow','DownArrow','Installing Config','Check Update','Confirm-NrY','Invoke-NrStrategyLab','ConvertTo-ValidatedIpCidr')) {
-              Assert-True (($nextInterface + $nextCommon + $buildWrapper) -match [regex]::Escape($token)) "NexRoute 0.5.0 control suite contains $token"
+              Assert-True (($nextInterface + $nextCommon + $serviceNetwork + $buildWrapper) -match [regex]::Escape($token)) "NexRoute 0.5.0 control suite contains $token"
           }
 
           $serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMatrix.Tests.ps1') -Raw
@@ -179,7 +180,7 @@ jobs:
       - name: Commit materialized release source
         shell: bash
         run: |
-          rm -f .github/workflows/materialize-nexroute-0.5.0.yml .github/payloads/nr050.tar.xz.b64
+          rm -f .github/workflows/materialize-nexroute-0.5.0.yml .github/payloads/nr050.tar.xz.b64 .github/payloads/nr050.part*
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add -A
