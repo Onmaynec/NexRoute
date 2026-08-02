@@ -4,7 +4,6 @@ import { GitHubIcon } from "@/components/ui/github-icon";
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
-  ArrowDown,
   Check,
   CheckCircle2,
   Circle,
@@ -199,17 +198,16 @@ const updateSteps = [
 
 export function UpdateFlow() {
   return (
-    <div className="grid gap-3 md:grid-cols-6">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3">
       {updateSteps.map((step, index) => {
         const Icon = step.icon;
         return (
-          <div key={step.label} className="relative rounded-2xl border border-white/8 bg-white/[0.022] p-4">
-            <div className="flex size-9 items-center justify-center rounded-xl border border-cyan-300/13 bg-cyan-300/[0.045] text-cyan-200">
+          <div key={step.label} className="flex min-h-[170px] min-w-0 flex-col rounded-2xl border border-white/8 bg-white/[0.022] p-4">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/13 bg-cyan-300/[0.045] text-cyan-200">
               <Icon className="size-4" />
             </div>
-            <p className="mt-4 text-sm font-medium text-white">{step.label}</p>
-            <p className="mt-2 font-mono text-[10px] uppercase tracking-[.14em] text-zinc-700">step 0{index + 1}</p>
-            {index < updateSteps.length - 1 && <ArrowDown className="absolute -bottom-3 left-1/2 z-10 size-5 -translate-x-1/2 rounded-full bg-[#070a0d] p-1 text-zinc-700 md:-right-3 md:bottom-auto md:left-auto md:top-1/2 md:-translate-y-1/2 md:rotate-[-90deg]" />}
+            <p className="mt-4 break-words text-sm font-medium leading-5 text-white">{step.label}</p>
+            <p className="mt-auto pt-4 font-mono text-[10px] uppercase tracking-[.14em] text-zinc-600">step 0{index + 1}</p>
           </div>
         );
       })}
@@ -219,21 +217,28 @@ export function UpdateFlow() {
 
 export function RollbackDemo() {
   return (
-    <div className="rounded-2xl border border-white/8 bg-[#060b0f] p-5">
-      <div className="grid items-center gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr]">
-        <div className="rounded-xl border border-emerald-300/12 bg-emerald-300/[0.04] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[.15em] text-emerald-300">VERSION A</p>
-          <p className="mt-2 text-sm text-white">Рабочая установка</p>
+    <div className="rounded-2xl border border-white/8 bg-[#060b0f] p-4 sm:p-5">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-3">
+        <div className="flex min-h-[136px] min-w-0 flex-col rounded-xl border border-emerald-300/12 bg-emerald-300/[0.04] p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[.15em] text-emerald-300">VERSION A</p>
+            <span className="font-mono text-[9px] text-zinc-700">01</span>
+          </div>
+          <p className="mt-auto break-words pt-5 text-sm leading-5 text-white">Рабочая установка</p>
         </div>
-        <ArrowDown className="mx-auto size-4 text-zinc-700 sm:rotate-[-90deg]" />
-        <div className="rounded-xl border border-rose-300/12 bg-rose-300/[0.04] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[.15em] text-rose-300">UPDATE ERROR</p>
-          <p className="mt-2 text-sm text-white">Установка остановлена</p>
+        <div className="flex min-h-[136px] min-w-0 flex-col rounded-xl border border-rose-300/12 bg-rose-300/[0.04] p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[.15em] text-rose-300">ОШИБКА ОБНОВЛЕНИЯ</p>
+            <span className="font-mono text-[9px] text-zinc-700">02</span>
+          </div>
+          <p className="mt-auto break-words pt-5 text-sm leading-5 text-white">Установка остановлена</p>
         </div>
-        <RotateCcw className="mx-auto size-4 text-cyan-300" />
-        <div className="rounded-xl border border-cyan-300/12 bg-cyan-300/[0.04] p-4">
-          <p className="font-mono text-[10px] uppercase tracking-[.15em] text-cyan-300">RESTORED</p>
-          <p className="mt-2 text-sm text-white">Version A из backup</p>
+        <div className="flex min-h-[136px] min-w-0 flex-col rounded-xl border border-cyan-300/12 bg-cyan-300/[0.04] p-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="font-mono text-[10px] uppercase tracking-[.15em] text-cyan-300">ВОССТАНОВЛЕНО</p>
+            <span className="flex items-center gap-2 font-mono text-[9px] text-zinc-600"><RotateCcw className="size-3.5 text-cyan-300" />03</span>
+          </div>
+          <p className="mt-auto break-words pt-5 text-sm leading-5 text-white">Версия A восстановлена из backup</p>
         </div>
       </div>
     </div>
@@ -241,16 +246,17 @@ export function RollbackDemo() {
 }
 
 export function ReleaseVerificationDemo() {
+  const stages = ["Исходный коммит", "GitHub Actions", "Аттестация", "Релизный файл"];
   return (
-    <div className="rounded-2xl border border-white/8 bg-[#060b0f] p-5">
-      <div className="grid gap-3 sm:grid-cols-4">
-        {["Source commit", "GitHub Actions", "Attestation", "Release asset"].map((label, index) => (
-          <div key={label} className="relative rounded-xl border border-white/7 bg-white/[0.02] p-4 text-center">
-            <div className="mx-auto flex size-8 items-center justify-center rounded-full border border-cyan-300/14 bg-cyan-300/[0.045] text-cyan-200">
-              {index === 3 ? <Check className="size-4" /> : <Circle className="size-3 fill-current" />}
+    <div className="rounded-2xl border border-white/8 bg-[#060b0f] p-4 sm:p-5">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-3">
+        {stages.map((label, index) => (
+          <div key={label} className="flex min-h-[132px] min-w-0 flex-col items-center justify-center rounded-xl border border-white/7 bg-white/[0.02] px-3 py-4 text-center">
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-cyan-300/14 bg-cyan-300/[0.045] text-cyan-200">
+              {index === stages.length - 1 ? <Check className="size-4" /> : <Circle className="size-3 fill-current" />}
             </div>
-            <p className="mt-3 text-xs text-zinc-300">{label}</p>
-            {index < 3 && <span className="absolute -bottom-2 left-1/2 h-4 w-px bg-white/10 sm:-right-2 sm:bottom-auto sm:left-auto sm:top-1/2 sm:h-px sm:w-4" />}
+            <p className="mt-3 break-words text-xs leading-5 text-zinc-300">{label}</p>
+            <p className="mt-2 font-mono text-[9px] uppercase tracking-[.14em] text-zinc-700">0{index + 1}</p>
           </div>
         ))}
       </div>
