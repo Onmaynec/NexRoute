@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](docs/UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.4.0-24e1d6)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.4.1-24e1d6)](.service/version.txt)
 
 **Консольная система управления стратегиями обхода DPI для Windows 10 и Windows 11.**
 
@@ -15,6 +15,16 @@
 
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранную стратегию к трафику включённых сервисов.
+
+## Что изменилось в 0.4.1 🧪
+
+Версия `0.4.1` исправляет запуск пункта `[12] STRATEGY LAB` в стандартном Windows PowerShell 5.1.
+
+- финальная копия `utils/test zapret.ps1` сохраняется как UTF-8 с BOM;
+- русские строки больше не превращаются в набор символов `Р…` и не ломают синтаксический анализатор;
+- готовый release ZIP проверяется на наличие BOM и отсутствие PowerShell parse errors;
+- отдельный regression probe запускается через `powershell.exe`, то есть через тот же Windows PowerShell, который использует пункт 12;
+- онлайн- и полностью офлайн-сборки проходят одинаковую проверку.
 
 ## Что изменилось в 0.4.0 🌐
 
@@ -52,8 +62,8 @@ npm run dev
 GitHub Actions создаёт Sigstore-backed build provenance attestation для ZIP и соответствующего `.sha256`. Оба assets проверяются до публикации GitHub Release.
 
 ```powershell
-gh attestation verify .\NexRoute-0.4.0-win-x64.zip --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.4.0-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.4.1-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.4.1-win-x64.zip.sha256 --repo Onmaynec/NexRoute
 ```
 
 Подробности: [docs/ATTESTATIONS.md](docs/ATTESTATIONS.md).
@@ -99,7 +109,7 @@ NEXROUTE_BUILD_INFO.txt
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.4.0 `
+  -Version 0.4.1 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -108,7 +118,7 @@ pwsh ./scripts/Build-Release.ps1 `
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.4.0 `
+  -Version 0.4.1 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -148,7 +158,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .service\nexroute-services.p
 
 ## Быстрый старт 🚀
 
-1. Скачайте `NexRoute-0.4.0-win-x64.zip` и `.sha256` из Releases.
+1. Скачайте `NexRoute-0.4.1-win-x64.zip` и `.sha256` из Releases.
 2. При необходимости проверьте оба файла через `gh attestation verify`.
 3. Полностью распакуйте архив в новую папку.
 4. Запустите `NexRoute.lnk`, `nexroute.bat` или `service.bat` от имени администратора.
@@ -177,6 +187,7 @@ CI проверяет:
 - stable-only metadata, checksum mismatch, cooldown, state preservation и rollback;
 - pinned Flowseal `1.10.0`, locked SHA-256 и обязательную структуру upstream ZIP;
 - online/offline сборку, 23 patch-targets, 21 стратегию и 15 сервисных профилей;
+- UTF-8 BOM и синтаксис готовой Strategy Lab через Windows PowerShell 5.1;
 - SHA-256 и self-verification attestations до публикации релиза;
 - структуру сайта, обязательные маршруты, TypeScript typecheck и production build Next.js.
 
@@ -196,4 +207,4 @@ Locked upstream, checksum updater-а и GitHub build provenance защищают
 
 ---
 
-**NexRoute 0.4.0** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64
+**NexRoute 0.4.1** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64
