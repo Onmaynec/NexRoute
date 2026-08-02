@@ -1,0 +1,82 @@
+name: Verify NexRoute site layout hotfix
+
+on:
+  issues:
+    types:
+      - opened
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  verify:
+    if: github.repository == 'Onmaynec/NexRoute' && github.event.issue.title == 'Проверить hotfix вёрстки production'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Verify deployed pages
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          security_url='https://onmaynec.github.io/NexRoute/security/'
+          features_url='https://onmaynec.github.io/NexRoute/features/'
+          security_file="$RUNNER_TEMP/security.html"
+          features_file="$RUNNER_TEMP/features.html"
+
+          for attempt in $(seq 1 30); do
+            security_status="$(curl -L -sS -o "$security_file" -w '%{http_code}' "$security_url" || true)"
+            features_status="$(curl -L -sS -o "$features_file" -w '%{http_code}' "$features_url" || true)"
+            if [[ "$security_status" == '200' ]] && [[ "$features_status" == '200' ]] \
+              && grep -Fq 'Исходный коммит' "$security_file" \
+              && grep -Fq 'Релизный файл' "$security_file" \
+              && grep -Fq 'ОШИБКА ОБНОВЛЕНИЯ' "$features_file"; then
+              echo "security_status=$security_status" >> "$GITHUB_OUTPUT"
+              echo "features_status=$features_status" >> "$GITHUB_OUTPUT"
+              echo "verified=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo 'Production pages did not expose the expected hotfix content in time.' >&2
+          echo "security_status=${security_status:-unknown}" >&2
+          echo "features_status=${features_status:-unknown}" >&2
+          exit 1
+
+      - name: Report success
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          SECURITY_STATUS: ${{ steps.verify.outputs.security_status }}
+          FEATURES_STATUS: ${{ steps.verify.outputs.features_status }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body "## Production hotfix verification
+
+- Security page HTTP: \`$SECURITY_STATUS\`
+- Features page HTTP: \`$FEATURES_STATUS\`
+- Найдены новые подписи: \`Исходный коммит\`, \`Релизный файл\`, \`ОШИБКА ОБНОВЛЕНИЯ\`
+- Layout hotfix deployment: \`success\`
+- URL: https://onmaynec.github.io/NexRoute/"
+          gh issue close "$ISSUE_NUMBER" --reason completed
+
+      - name: Remove one-shot verifier
+        if: always()
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git switch main
+          git reset --hard origin/main
+          git rm .github/workflows/verify-site-layout-hotfix.yml
+          git commit -m 'Remove one-shot production layout verifier'
+          git push origin main
