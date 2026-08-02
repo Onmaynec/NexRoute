@@ -39,7 +39,6 @@ foreach ($relativePath in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $extractPath $relativePath) -PathType Leaf)) { throw "Built package is missing $relativePath" }
 }
 
-\
 $nextScripts = @(Get-ChildItem -LiteralPath (Join-Path $extractPath '.service') -Filter '*.ps1' -File -Recurse | Where-Object { $_.FullName -match '[\\/]next[\\/]|nexroute-(console|monitor|tray)\.ps1$' })
 foreach ($nextScript in $nextScripts) {
     $tokens = $null
@@ -63,11 +62,11 @@ foreach ($batchFile in $allBatchFiles) {
     }
 }
 
-$servicePath = Join-Path $extractPath 'service.bat'
+$servicePath = Join-Path $extractPath '.service/legacy-service.bat'
 $service = Get-Content -LiteralPath $servicePath -Raw
-if ($service -notmatch 'if "!menu_choice!"=="14" goto nexroute_services_matrix') { throw 'service.bat is missing option 14.' }
+if ($service -notmatch 'if "!menu_choice!"=="14" goto nexroute_services_matrix') { throw 'legacy-service.bat is missing option 14.' }
 foreach ($token in @('-Mode Menu','-Mode Action','-Mode Status','-Mode StrategyPicker','-Mode PayloadManager','-Mode IpSetSwitch','-Mode SyncIpSet','-Mode SyncHosts','-Mode TestsIntro','-Mode Services')) {
-    if ($service -notmatch [regex]::Escape($token)) { throw "service.bat is missing $token" }
+    if ($service -notmatch [regex]::Escape($token)) { throw "legacy-service.bat is missing $token" }
 }
 
 $testLabPath = Join-Path $extractPath 'utils/test zapret.ps1'
