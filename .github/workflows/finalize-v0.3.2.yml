@@ -1,4 +1,4 @@
-# One-shot trigger commit: the workflow now exists on the default branch.
+# Triggered through a merge commit so GitHub Actions receives a normal push event.
 name: Finalize NexRoute 0.3.2
 
 on:
