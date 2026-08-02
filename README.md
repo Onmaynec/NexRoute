@@ -5,20 +5,40 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](docs/UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.3.1-24e1d6)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.3.2-24e1d6)](.service/version.txt)
 
 **Консольная система управления стратегиями обхода DPI для Windows 10 и Windows 11.**
 
-[English](docs/README_EN.md) · [Сервисы](docs/SERVICES.md) · [Обновления](docs/UPDATES.md) · [Upstream](docs/UPSTREAM.md) · [Архитектура](docs/ARCHITECTURE.md) · [Сборка](docs/RELEASES.md)
+[English](docs/README_EN.md) · [Сервисы](docs/SERVICES.md) · [Обновления](docs/UPDATES.md) · [Attestations](docs/ATTESTATIONS.md) · [Upstream](docs/UPSTREAM.md) · [Архитектура](docs/ARCHITECTURE.md) · [Сборка](docs/RELEASES.md)
 
 </div>
 
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранную стратегию к трафику включённых сервисов.
 
-## Что изменилось в 0.3.1 🔄
+## Что изменилось в 0.3.2 🧾
 
-Версия `0.3.1` добавляет безопасное обновление NexRoute до последнего стабильного GitHub Release.
+Версия `0.3.2` добавляет проверяемое происхождение официальных release assets.
+
+- GitHub Actions создаёт Sigstore-backed build provenance attestation для ZIP и соответствующего `.sha256`;
+- release workflow получает только минимально необходимые OIDC/attestation permissions;
+- оба assets проверяются командой `gh attestation verify` до публикации GitHub Release;
+- Pester-контракт фиксирует версию `actions/attest`, permissions, состав подписываемых файлов и порядок release-шагов;
+- пользователь может проверить, что скачанный файл создан workflow репозитория `Onmaynec/NexRoute` из конкретного commit;
+- attestation дополняет SHA-256, upstream lock и patch report, но не заменяет Windows Authenticode code signing.
+
+Проверка после загрузки релиза:
+
+```powershell
+gh attestation verify .\NexRoute-0.3.2-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.3.2-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+```
+
+Подробности: [docs/ATTESTATIONS.md](docs/ATTESTATIONS.md).
+
+## Безопасное обновление 🔄
+
+NexRoute содержит встроенный stable-updater:
 
 - `nexroute.bat` проверяет новую версию перед запуском, когда автообновление включено;
 - повторная автоматическая проверка выполняется не чаще одного раза в 24 часа;
@@ -56,13 +76,15 @@ NEXROUTE_BUILD_INFO.txt
 
 Официальный архив Flowseal сначала загружается и проверяется. Подмена asset, несовпадение размера, GitHub digest, SHA-256 или обязательной структуры останавливают сборку до упаковки NexRoute.
 
+Начиная с `0.3.2`, GitHub build provenance attestation дополнительно связывает SHA-256 опубликованных assets с release workflow, репозиторием и source commit.
+
 ## Онлайн- и офлайн-сборка 📦
 
 Онлайн-сборка с сохранением проверенного upstream-архива:
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.3.1 `
+  -Version 0.3.2 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -71,7 +93,7 @@ pwsh ./scripts/Build-Release.ps1 `
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.3.1 `
+  -Version 0.3.2 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -134,14 +156,15 @@ Updater хранит отдельное состояние:
 
 ## Быстрый старт 🚀
 
-1. Скачайте `NexRoute-0.3.1-win-x64.zip` и `.sha256` из Releases.
-2. Полностью распакуйте архив в новую папку.
-3. Запустите `NexRoute.lnk`, `nexroute.bat` или `service.bat` от имени администратора.
-4. Выберите стратегию и установите её как службу.
-5. Настройте `[14] SERVICE MATRIX`.
-6. Включите автообновление через `[6] CHECK UPDATES`, если оно требуется.
-7. Для ручной проверки или rollback используйте `nexroute-update.cmd`.
-8. При необходимости запустите `[12] STRATEGY LAB`.
+1. Скачайте `NexRoute-0.3.2-win-x64.zip` и `.sha256` из Releases.
+2. При необходимости проверьте оба файла через `gh attestation verify`.
+3. Полностью распакуйте архив в новую папку.
+4. Запустите `NexRoute.lnk`, `nexroute.bat` или `service.bat` от имени администратора.
+5. Выберите стратегию и установите её как службу.
+6. Настройте `[14] SERVICE MATRIX`.
+7. Включите автообновление через `[6] CHECK UPDATES`, если оно требуется.
+8. Для ручной проверки или rollback используйте `nexroute-update.cmd`.
+9. При необходимости запустите `[12] STRATEGY LAB`.
 
 Не запускайте BAT/CMD-файлы непосредственно из ZIP.
 
@@ -151,14 +174,15 @@ Updater хранит отдельное состояние:
 - Windows PowerShell 5.1+;
 - права администратора для установки и перезапуска службы;
 - `curl.exe` для Strategy Lab;
-- доступ к GitHub Releases для онлайн-обновлений.
+- доступ к GitHub Releases для онлайн-обновлений;
+- GitHub CLI только для дополнительной проверки build provenance attestation.
 
 ## Проверки Release ✅
 
 CI проверяет:
 
 - PowerShell AST parsing для `.ps1` и `.psm1`;
-- Service Matrix, upstream contract и updater через Pester `5.6.1`;
+- Service Matrix, upstream contract, updater и release attestation contract через Pester `5.6.1`;
 - updater fixtures без обращения к реальному NexRoute Release;
 - stable-only metadata, checksum mismatch, сохранение пользовательского state, cooldown и rollback;
 - pinned Flowseal `1.10.0` и locked SHA-256;
@@ -167,13 +191,14 @@ CI проверяет:
 - ровно 23 patch-targets и уникальные patch IDs;
 - hashes до/после каждого изменённого файла;
 - 21 стратегию и 15 сервисных профилей;
-- runtime, Diagnostics, EN/RU страницы, Update Center, иконку и SHA-256 итогового ZIP.
+- runtime, Diagnostics, EN/RU страницы, Update Center, иконку и SHA-256 итогового ZIP;
+- создание и self-verification attestations для ZIP и `.sha256` до публикации релиза.
 
 ## Ограничения ⚠️
 
-Эффективность обхода зависит от провайдера, региона, DNS, версии приложений и конфигурации DPI. В `0.3.1` сетевой runtime обрабатывает IPv4; IPv6-only endpoints требуют отдельной будущей поддержки.
+Эффективность обхода зависит от провайдера, региона, DNS, версии приложений и конфигурации DPI. В `0.3.2` сетевой runtime обрабатывает IPv4; IPv6-only endpoints требуют отдельной будущей поддержки.
 
-Locked upstream и checksum updater-а защищают целостность и воспроизводимость, но не являются цифровой подписью издателя. Полноценная кодовая подпись и provenance attestation планируются отдельно.
+Locked upstream, checksum updater-а и GitHub build provenance attestation защищают целостность и проверяемое происхождение сборки. Они не являются Windows Authenticode-подписью издателя.
 
 ## Лицензирование ⚖️
 
@@ -185,4 +210,4 @@ Locked upstream и checksum updater-а защищают целостность �
 
 ---
 
-**NexRoute 0.3.1** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64
+**NexRoute 0.3.2** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64

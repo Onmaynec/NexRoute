@@ -3,16 +3,36 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.3.1-24e1d6)](../.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.3.2-24e1d6)](../.service/version.txt)
 
 NexRoute is a command-line route-control toolkit for DPI desynchronization strategies on Windows 10 and Windows 11.
 
 > [!IMPORTANT]
 > NexRoute is not a VPN, proxy or anonymity service. It locally manages `winws` and WinDivert and does not change the public IP address.
 
-## Version 0.3.1 — secure automatic updates
+## Version 0.3.2 — verifiable build provenance
 
-Version `0.3.1` adds a stable-channel updater for official `Onmaynec/NexRoute` GitHub Releases:
+Version `0.3.2` adds GitHub build provenance attestations for the official release assets:
+
+- the release workflow creates a Sigstore-backed attestation for the package ZIP and matching `.sha256` file;
+- only the minimum OIDC and attestation permissions are granted;
+- both subjects are verified with `gh attestation verify` before the GitHub Release is published;
+- a Pester contract protects the action version, permissions, subject list and release-step ordering;
+- users can verify that a downloaded asset was produced by the `Onmaynec/NexRoute` workflow from a specific source commit;
+- attestations complement SHA-256, the upstream lock and patch report, but do not replace Windows Authenticode signing.
+
+Verification after downloading the release:
+
+```powershell
+gh attestation verify .\NexRoute-0.3.2-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.3.2-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+```
+
+See [ATTESTATIONS.md](ATTESTATIONS.md) for the trust boundary and verification details.
+
+## Secure automatic updates
+
+NexRoute includes a stable-channel updater for official `Onmaynec/NexRoute` GitHub Releases:
 
 - `nexroute.bat` checks for a newer version before opening Control Node when automatic updates are enabled;
 - automatic checks use a 24-hour cooldown stored in `.service/update-state.json`;
@@ -35,7 +55,7 @@ NexRoute `0.3.x` uses a declarative Flowseal contract. An online build can save 
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.3.1 `
+  -Version 0.3.2 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -44,7 +64,7 @@ The same verified archive can then be used without contacting the Flowseal relea
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.3.1 `
+  -Version 0.3.2 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -63,6 +83,8 @@ NEXROUTE_BUILD_INFO.txt
 ```
 
 The upstream lock records the exact Flowseal asset, size and SHA-256. The patch report records the 21 strategy targets plus `service.bat` and Strategy Lab, including operation counts and file hashes before and after each patch. These files do not contain user-managed domain/IP list contents.
+
+Starting with `0.3.2`, GitHub build provenance attestations additionally bind the published ZIP and checksum digests to the release workflow, repository and source commit.
 
 ## Service Matrix v2
 
@@ -92,14 +114,15 @@ The updater preserves language selection, Service Matrix state, IP-source cache,
 
 ## Quick start
 
-1. Download `NexRoute-0.3.1-win-x64.zip` and its `.sha256` file from GitHub Releases.
-2. Verify the checksum and extract the complete archive to a new folder.
-3. Run `NexRoute.lnk`, `nexroute.bat` or `service.bat` as administrator.
-4. Select and install a strategy.
-5. Configure `[14] SERVICE MATRIX`.
-6. Enable automatic updates through `[6] CHECK UPDATES` when desired.
-7. Use `nexroute-update.cmd` for an immediate check or rollback.
-8. Use `[12] STRATEGY LAB` when endpoint testing is needed.
+1. Download `NexRoute-0.3.2-win-x64.zip` and its `.sha256` file from GitHub Releases.
+2. Verify the checksum and, optionally, both build provenance attestations.
+3. Extract the complete archive to a new folder.
+4. Run `NexRoute.lnk`, `nexroute.bat` or `service.bat` as administrator.
+5. Select and install a strategy.
+6. Configure `[14] SERVICE MATRIX`.
+7. Enable automatic updates through `[6] CHECK UPDATES` when desired.
+8. Use `nexroute-update.cmd` for an immediate check or rollback.
+9. Use `[12] STRATEGY LAB` when endpoint testing is needed.
 
 Do not run BAT or CMD launchers directly from the ZIP archive.
 
@@ -113,18 +136,19 @@ Invoke-Pester -Path ./tests -CI -Output Detailed
 CI covers:
 
 - PowerShell AST parsing for `.ps1` and `.psm1` files;
-- Service Matrix, upstream-contract and updater Pester suites;
+- Service Matrix, upstream-contract, updater and release-attestation Pester suites;
 - offline updater fixtures for stable-release discovery, installation, state preservation, checksum mismatch, prerelease rejection, cooldown and rollback;
 - the locked Flowseal `1.10.0` archive;
 - online and offline Windows package builds;
 - 23 tracked patch targets, 21 real strategies and 15 service profiles;
-- runtime generation, Diagnostics, EN/RU UI pages, Update Center wiring, icon generation and final package SHA-256.
+- runtime generation, Diagnostics, EN/RU UI pages, Update Center wiring, icon generation and final package SHA-256;
+- creation and self-verification of attestations for the ZIP and `.sha256` before release publication.
 
 ## Limitations
 
-Network effectiveness depends on the ISP, region, DNS configuration, application version and selected strategy. The `0.3.1` runtime is IPv4-focused; IPv6-only endpoints require separate future support.
+Network effectiveness depends on the ISP, region, DNS configuration, application version and selected strategy. The `0.3.2` runtime is IPv4-focused; IPv6-only endpoints require separate future support.
 
-The upstream lock and updater checksum protect integrity and reproducibility, but they are not publisher digital signatures. Signed releases and provenance attestations remain planned work.
+The upstream lock, updater checksum and GitHub build provenance attestation protect integrity and verifiable build origin. They are not Windows Authenticode publisher signatures.
 
 ## Licensing
 
