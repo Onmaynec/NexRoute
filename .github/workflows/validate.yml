@@ -34,7 +34,7 @@ jobs:
       - name: Run behavior, upstream, updater and attestation tests
         shell: pwsh
         run: |
-          # Includes ServiceMatrix, UpstreamContract, Updater and ReleaseAttestation suites.
+          # Includes ServiceMatrix, UpstreamContract, Updater fixture suites and ReleaseAttestation.
           $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
