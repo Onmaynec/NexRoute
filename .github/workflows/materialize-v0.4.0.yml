@@ -35,6 +35,7 @@ jobs:
           echo 'bbd00c79e7d964008e6d973a17be0d6036bee283cf0259b97566a8672282b910  /tmp/nexroute-0.4.0.tar.gz' | sha256sum --check --strict
           tar -xzf "$payload" -C .
           rm -rf .github/nexroute-v0.4.0-payload
+          git checkout HEAD -- .github/workflows/validate.yml
 
       - name: Commit clean NexRoute 0.4.0 source tree
         id: commit
@@ -55,4 +56,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh pr comment '${{ github.event.pull_request.number }}' --body "NexRoute 0.4.0 website materialized successfully at commit `${{ steps.commit.outputs.sha }}`. Payload SHA-256 verified."
+          gh pr comment '${{ github.event.pull_request.number }}' --body "NexRoute 0.4.0 website materialized successfully at commit `${{ steps.commit.outputs.sha }}`. Payload SHA-256 verified. CI workflow is committed separately through the GitHub API."
