@@ -6,6 +6,20 @@
 
 Пока нет изменений.
 
+## [0.3.2] - 2026-08-02
+
+### Added
+
+- GitHub build provenance attestations для официального ZIP и соответствующего `.sha256` asset;
+- self-verification обоих release assets через `gh attestation verify` до публикации GitHub Release;
+- документация `docs/ATTESTATIONS.md` с командами проверки и границами доверия;
+- Pester-контракт для attestation permissions, версии action, списка subjects и порядка release-шагов.
+
+### Security
+
+- SHA-256 опубликованных assets криптографически связывается с release workflow, репозиторием `Onmaynec/NexRoute` и source commit через Sigstore-backed attestation;
+- проверка provenance дополняет, но не заменяет checksum, upstream lock, patch report и будущую Windows Authenticode-подпись.
+
 ## [0.3.1] - 2026-08-01
 
 ### Added
