@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
 import { siteConfig } from "@/lib/metadata";
 
+export const dynamic = "force-static";
+
 const paths = [
   "",
   "/features",
