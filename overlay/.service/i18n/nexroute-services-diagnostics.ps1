@@ -88,7 +88,7 @@ function Assert-ServiceDefinitions {
             if (-not (ConvertTo-ValidatedPort -Value ([string]$port))) { throw "Service '$($service.id)' has invalid port '$port'." }
         }
         foreach ($cidrValue in @($service.ipCidrs)) {
-            if (-not (ConvertTo-ValidatedIpv4Cidr -Value ([string]$cidrValue))) { throw "Service '$($service.id)' has invalid IPv4 CIDR '$cidrValue'." }
+            if (-not (ConvertTo-ValidatedIpCidr -Value ([string]$cidrValue))) { throw "Service '$($service.id)' has invalid IPv4/IPv6 CIDR '$cidrValue'." }
         }
         foreach ($domainValue in @($service.domains)) {
             $domain = ([string]$domainValue).Trim()

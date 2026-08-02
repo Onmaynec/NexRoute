@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<test-results xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="nunit_schema_2.5.xsd" name="Pester" total="7" errors="0" failures="0" not-run="0" inconclusive="0" ignored="0" skipped="0" invalid="0" date="2026-08-02" time="20:57:27">
+  <environment clr-version="10.0.9" machine-name="runnervmvrwv9" cwd="/home/runner/work/NexRoute/NexRoute" user="runner" os-version="6.17.0-1020-azure" nunit-version="2.5.8.0" platform="Linux" user-domain="" />
+  <culture-info current-culture="" current-uiculture="" />
+  <test-suite type="TestFixture" name="Pester" executed="True" result="Success" success="True" time="0.5552" asserts="0" description="Pester">
+    <results>
+      <test-suite type="TestFixture" name="/home/runner/work/NexRoute/NexRoute/tests/NextInterface.Tests.ps1" executed="True" result="Success" success="True" time="0.5552" asserts="0" description="/home/runner/work/NexRoute/NexRoute/tests/NextInterface.Tests.ps1">
+        <results>
+          <test-suite type="TestFixture" name="NexRoute 0.5.0 arrow-key control node" executed="True" result="Success" success="True" time="0.2592" asserts="0" description="NexRoute 0.5.0 arrow-key control node">
+            <results>
+              <test-case description="renders [+] actions and reads arrow keys instead of numeric menu input" name="NexRoute 0.5.0 arrow-key control node.renders [+] actions and reads arrow keys instead of numeric menu input" time="0.0973" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="contains the fully renamed English and Russian main menu" name="NexRoute 0.5.0 arrow-key control node.contains the fully renamed English and Russian main menu" time="0.0567" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="requires Y confirmation and performs an install-and-restart update flow" name="NexRoute 0.5.0 arrow-key control node.requires Y confirmation and performs an install-and-restart update flow" time="0.0104" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="implements strategy scoring history recommendations and failover" name="NexRoute 0.5.0 arrow-key control node.implements strategy scoring history recommendations and failover" time="0.0179" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="implements monitoring tray notifications logs backups and statistics" name="NexRoute 0.5.0 arrow-key control node.implements monitoring tray notifications logs backups and statistics" time="0.0172" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="implements DNS encryption network profiles and full IPv6 CIDR handling" name="NexRoute 0.5.0 arrow-key control node.implements DNS encryption network profiles and full IPv6 CIDR handling" time="0.013" asserts="0" success="True" result="Success" executed="True" />
+              <test-case description="merges custom service profiles without replacing built-in definitions" name="NexRoute 0.5.0 arrow-key control node.merges custom service profiles without replacing built-in definitions" time="0.0103" asserts="0" success="True" result="Success" executed="True" />
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>

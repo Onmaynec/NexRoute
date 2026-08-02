@@ -3,11 +3,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.4.1-24e1d6)](../.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.5.0-24e1d6)](../.service/version.txt)
 
 NexRoute is a command-line route-control toolkit for DPI desynchronization strategies on Windows 10 and Windows 11 x64.
 
 > NexRoute is not a VPN, proxy, or anonymity service. It locally manages winws and WinDivert and does not change the public IP address.
+
+## Version 0.5.0 — arrow-key control and automation suite
+
+Version 0.5.0 replaces numeric menu input with a `>[+]` arrow-key interface and adds confirmed one-action updates, strategy scoring/failover, per-service strategies, monitoring, tray controls, DNS encryption modes, backup/configuration managers, diagnostics, statistics, and IPv6 support.
+
+See [NEXT_CONTROL.md](NEXT_CONTROL.md).
 
 ## Version 0.4.1 — Strategy Lab compatibility fix
 
@@ -47,7 +53,7 @@ See [WEBSITE.md](WEBSITE.md) and [../website/README.md](../website/README.md).
 
 ## Quick start
 
-1. Download `NexRoute-0.4.1-win-x64.zip` and its `.sha256` asset from Releases.
+1. Download `NexRoute-0.5.0-win-x64.zip` and its `.sha256` asset from Releases.
 2. Optionally verify both assets with `gh attestation verify`.
 3. Fully extract the archive into a new directory.
 4. Run `NexRoute.lnk`, `nexroute.bat`, or `service.bat` as administrator.
@@ -61,7 +67,7 @@ Do not run BAT or CMD launchers directly from the ZIP archive.
 ## Build provenance verification
 
 ```powershell
-gh attestation verify .\NexRoute-0.4.1-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.5.0-win-x64.zip --repo Onmaynec/NexRoute
 ```
 
 Build provenance verifies the release workflow, repository, source commit, and asset digest. It does not replace Windows Authenticode code signing.

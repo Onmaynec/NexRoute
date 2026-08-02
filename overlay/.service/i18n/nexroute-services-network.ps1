@@ -6,7 +6,7 @@ function Get-EndpointHost {
     try { return ([Uri][string]$Target.url).DnsSafeHost } catch { return $null }
 }
 
-function ConvertTo-ValidatedIpv4Cidr {
+function ConvertTo-ValidatedIpCidr {
     param([string]$Value)
     if ([string]::IsNullOrWhiteSpace($Value)) { return $null }
     $parts = $Value.Trim().Split('/')
@@ -14,12 +14,22 @@ function ConvertTo-ValidatedIpv4Cidr {
 
     $address = $null
     if (-not [System.Net.IPAddress]::TryParse($parts[0], [ref]$address)) { return $null }
-    if ($address.AddressFamily -ne [System.Net.Sockets.AddressFamily]::InterNetwork) { return $null }
-
     $prefix = 0
     if (-not [int]::TryParse($parts[1], [ref]$prefix)) { return $null }
-    if ($prefix -lt 0 -or $prefix -gt 32) { return $null }
+    $maximum = if ($address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork) { 32 } elseif ($address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6) { 128 } else { return $null }
+    if ($prefix -lt 0 -or $prefix -gt $maximum) { return $null }
     return ('{0}/{1}' -f $address.IPAddressToString, $prefix)
+}
+
+# Compatibility alias retained for older modules and repository contracts.
+function ConvertTo-ValidatedIpv4Cidr {
+    param([string]$Value)
+    $cidr = ConvertTo-ValidatedIpCidr -Value $Value
+    if (-not $cidr) { return $null }
+    $address = $null
+    if (-not [System.Net.IPAddress]::TryParse(($cidr -split '/',2)[0], [ref]$address)) { return $null }
+    if ($address.AddressFamily -ne [System.Net.Sockets.AddressFamily]::InterNetwork) { return $null }
+    return $cidr
 }
 
 function ConvertTo-ValidatedPort {
@@ -51,26 +61,40 @@ function Get-PortText {
     return ($result -join ',')
 }
 
-function Get-ResolvedIpv4Entries {
+function Get-ResolvedIpEntries {
     param([Parameter(Mandatory)][string[]]$Hosts)
     $entries = New-Object 'System.Collections.Generic.HashSet[string]'
     foreach ($hostName in @($Hosts | Where-Object { $_ } | Sort-Object -Unique)) {
         try {
             $addresses = @()
             if (Get-Command Resolve-DnsName -ErrorAction SilentlyContinue) {
-                $addresses = @(Resolve-DnsName -Name $hostName -Type A -DnsOnly -ErrorAction Stop | Where-Object { $_.IPAddress } | ForEach-Object { $_.IPAddress })
+                $addresses = @(
+                    Resolve-DnsName -Name $hostName -Type A -DnsOnly -ErrorAction SilentlyContinue
+                    Resolve-DnsName -Name $hostName -Type AAAA -DnsOnly -ErrorAction SilentlyContinue
+                ) | Where-Object { $_.IPAddress } | ForEach-Object { $_.IPAddress }
             }
             else {
-                $addresses = @([System.Net.Dns]::GetHostAddresses($hostName) | Where-Object { $_.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork } | ForEach-Object { $_.IPAddressToString })
+                $addresses = @([System.Net.Dns]::GetHostAddresses($hostName) | ForEach-Object { $_.IPAddressToString })
             }
-            foreach ($address in $addresses) {
-                $cidr = ConvertTo-ValidatedIpv4Cidr -Value ("$address/32")
+            foreach ($addressText in $addresses) {
+                $address = $null
+                if (-not [System.Net.IPAddress]::TryParse([string]$addressText, [ref]$address)) { continue }
+                $prefix = if ($address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork) { 32 } else { 128 }
+                $cidr = ConvertTo-ValidatedIpCidr -Value ("$addressText/$prefix")
                 if ($cidr) { [void]$entries.Add($cidr) }
             }
         }
         catch { }
     }
     return [string[]]@($entries | ForEach-Object { $_ })
+}
+
+function Get-ResolvedIpv4Entries {
+    param([Parameter(Mandatory)][string[]]$Hosts)
+    return [string[]]@(Get-ResolvedIpEntries -Hosts $Hosts | Where-Object {
+        $address = $null
+        [System.Net.IPAddress]::TryParse(($_ -split '/',2)[0], [ref]$address) -and $address.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetwork
+    })
 }
 
 function Get-StringHash {
@@ -98,7 +122,7 @@ function Get-CachedSourceEntries {
         $ageDays = ([DateTime]::UtcNow - $fetchedAt).TotalDays
         $entries = New-Object 'System.Collections.Generic.HashSet[string]'
         foreach ($line in @(Get-Content -LiteralPath $dataPath -Encoding UTF8)) {
-            $cidr = ConvertTo-ValidatedIpv4Cidr -Value $line
+            $cidr = ConvertTo-ValidatedIpCidr -Value $line
             if ($cidr) { [void]$entries.Add($cidr) }
         }
         $entryArray = [string[]]@($entries | ForEach-Object { $_ })
@@ -151,11 +175,11 @@ function Get-RemoteIpEntries {
             $validated = New-Object 'System.Collections.Generic.HashSet[string]'
             foreach ($line in @([string]$response.Content -split "`r?`n")) {
                 $candidate = ($line -split '[#;]', 2)[0].Trim()
-                $cidr = ConvertTo-ValidatedIpv4Cidr -Value $candidate
+                $cidr = ConvertTo-ValidatedIpCidr -Value $candidate
                 if ($cidr) { [void]$validated.Add($cidr) }
             }
             $sourceEntries = [string[]]@($validated | ForEach-Object { $_ })
-            if ($sourceEntries.Count -eq 0) { throw 'The source returned no valid IPv4 CIDR entries.' }
+            if ($sourceEntries.Count -eq 0) { throw 'The source returned no valid IPv4 or IPv6 CIDR entries.' }
             Save-SourceCache -Source $source -Entries $sourceEntries
             $status = 'fresh'
         }

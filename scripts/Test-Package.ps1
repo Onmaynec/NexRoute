@@ -24,9 +24,12 @@ New-Item -ItemType Directory -Path $extractPath -Force | Out-Null
 Expand-Archive -LiteralPath $zip.FullName -DestinationPath $extractPath -Force
 
 $required = @(
-    'service.bat','nexroute.bat','NexRoute.lnk','general.bat','utils/test zapret.ps1','bin/winws.exe',
+    'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','NexRoute.lnk','general.bat','utils/test zapret.ps1','bin/winws.exe',
     'bin/WinDivert.dll','bin/WinDivert64.sys','.service/nexroute.ico',
     '.service/nexroute-ui.ps1','.service/nexroute-services.ps1','.service/services.json',
+    '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1',
+    '.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1','.service/next/nexroute-network.ps1',
+    '.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1','.service/next/nexroute-update.ps1',
     '.service/services-state.json','.service/i18n/ru.json','.service/i18n/en.json',
     '.service/i18n/nexroute-theme.ps1','.service/i18n/nexroute-pages.ps1',
     '.service/i18n/nexroute-services-ui.ps1','.service/language.txt','.service/version.txt',
@@ -35,6 +38,22 @@ $required = @(
 foreach ($relativePath in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $extractPath $relativePath) -PathType Leaf)) { throw "Built package is missing $relativePath" }
 }
+
+\
+$nextScripts = @(Get-ChildItem -LiteralPath (Join-Path $extractPath '.service') -Filter '*.ps1' -File -Recurse | Where-Object { $_.FullName -match '[\\/]next[\\/]|nexroute-(console|monitor|tray)\.ps1$' })
+foreach ($nextScript in $nextScripts) {
+    $tokens = $null
+    $parseErrors = $null
+    [void][System.Management.Automation.Language.Parser]::ParseFile($nextScript.FullName, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count -gt 0) {
+        $details = ($parseErrors | ForEach-Object { "$($_.Extent.StartLineNumber):$($_.Extent.StartColumnNumber) $($_.Message)" }) -join '; '
+        throw "NexRoute 0.5.0 script has syntax errors: $($nextScript.Name): $details"
+    }
+}
+$newService = Get-Content -LiteralPath (Join-Path $extractPath 'service.bat') -Raw
+if ($newService -notmatch 'nexroute-console\.ps1') { throw 'service.bat does not launch the arrow-key control node.' }
+$nextConsole = Get-Content -LiteralPath (Join-Path $extractPath '.service/next/nexroute-common.ps1') -Raw
+if ($nextConsole -notmatch [regex]::Escape('>[+]') -or $nextConsole -notmatch "'UpArrow'" -or $nextConsole -notmatch "'DownArrow'") { throw 'Arrow-key [+] menu contract is missing.' }
 
 $allBatchFiles = @(Get-ChildItem -LiteralPath $extractPath -Filter '*.bat' -File)
 foreach ($batchFile in $allBatchFiles) {
