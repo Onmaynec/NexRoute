@@ -6,9 +6,9 @@ Describe 'Release artifact attestations' {
     }
 
     It 'grants the OIDC and attestation permissions required by actions/attest' {
-        $workflow | Should -Match '(?m)^  id-token: write$'
-        $workflow | Should -Match '(?m)^  attestations: write$'
-        $workflow | Should -Match '(?m)^  artifact-metadata: write$'
+        $workflow | Should -Match '(?m)^  id-token: write\r?$'
+        $workflow | Should -Match '(?m)^  attestations: write\r?$'
+        $workflow | Should -Match '(?m)^  artifact-metadata: write\r?$'
     }
 
     It 'uses the current official attestation action' {
