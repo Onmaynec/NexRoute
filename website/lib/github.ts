@@ -47,6 +47,13 @@ function headers(): HeadersInit {
   return value;
 }
 
+function requestOptions(revalidate: number) {
+  if (process.env.GITHUB_PAGES === "true") {
+    return { headers: headers(), cache: "force-cache" as const };
+  }
+  return { headers: headers(), next: { revalidate } };
+}
+
 function normalizeRelease(release: GitHubRelease): StableRelease {
   const archive =
     release.assets.find((asset) => /^NexRoute-\d+\.\d+\.\d+-win-x64\.zip$/.test(asset.name)) ?? null;
@@ -67,10 +74,10 @@ function normalizeRelease(release: GitHubRelease): StableRelease {
 
 export async function getStableReleases(limit = 10): Promise<StableRelease[]> {
   try {
-    const response = await fetch(`${API}/releases?per_page=${Math.max(limit, 10)}`, {
-      headers: headers(),
-      next: { revalidate: 900 },
-    });
+    const response = await fetch(
+      `${API}/releases?per_page=${Math.max(limit, 10)}`,
+      requestOptions(900),
+    );
     if (!response.ok) return [];
     const data = (await response.json()) as GitHubRelease[];
     return data
@@ -89,10 +96,7 @@ export async function getLatestStableRelease(): Promise<StableRelease | null> {
 
 export async function getRepositoryStats(): Promise<RepositoryStats> {
   try {
-    const response = await fetch(API, {
-      headers: headers(),
-      next: { revalidate: 3600 },
-    });
+    const response = await fetch(API, requestOptions(3600));
     if (!response.ok) throw new Error("GitHub API unavailable");
     const data = (await response.json()) as {
       stargazers_count?: number;
