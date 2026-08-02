@@ -1,19 +1,21 @@
 name: Materialize NexRoute 0.4.0 website
 
 on:
-  issues:
+  pull_request:
+    branches:
+      - main
     types:
       - opened
-      - edited
+      - reopened
 
 permissions:
   contents: write
-  issues: write
+  pull-requests: write
 
 jobs:
   materialize:
     name: Materialize verified website payload
-    if: github.repository == 'Onmaynec/NexRoute' && github.event.issue.title == 'Materialize NexRoute 0.4.0 website'
+    if: github.repository == 'Onmaynec/NexRoute' && github.head_ref == 'agent/nexroute-0.4.0-website'
     runs-on: ubuntu-latest
 
     steps:
@@ -53,5 +55,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh issue comment '${{ github.event.issue.number }}' --body "NexRoute 0.4.0 website materialized successfully at commit `${{ steps.commit.outputs.sha }}`. Payload SHA-256 verified."
-          gh issue close '${{ github.event.issue.number }}' --reason completed
+          gh pr comment '${{ github.event.pull_request.number }}' --body "NexRoute 0.4.0 website materialized successfully at commit `${{ steps.commit.outputs.sha }}`. Payload SHA-256 verified."
