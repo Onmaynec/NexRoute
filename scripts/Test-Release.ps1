@@ -79,9 +79,14 @@ foreach ($patch in $patches) {
     if ($patch.beforeSha256 -eq $patch.afterSha256) { throw "Patch '$($patch.id)' did not change its target." }
 }
 
-$serviceBat = Get-Content -LiteralPath (Join-Path $root 'service.bat') -Raw
+$legacyServiceBat = Get-Content -LiteralPath (Join-Path $root '.service/legacy-service.bat') -Raw
 foreach ($token in @('NEXROUTE_REFRESH_MATRIX_V4',':nexroute_game_filter',':nexroute_update_watch','-Mode GameFilter','-Mode UpdateWatch','NEXROUTE_EXPAND_RUNTIME_ARGS')) {
-    if ($serviceBat -notmatch [regex]::Escape($token)) { throw "service.bat is missing release token: $token" }
+    if ($legacyServiceBat -notmatch [regex]::Escape($token)) { throw "legacy-service.bat is missing release token: $token" }
+}
+
+$arrowLauncher = Get-Content -LiteralPath (Join-Path $root 'service.bat') -Raw
+foreach ($token in @('nexroute-console.ps1','-Root','%~dp0')) {
+    if ($arrowLauncher -notmatch [regex]::Escape($token)) { throw "service.bat is missing arrow launcher token: $token" }
 }
 
 $launcher = Get-Content -LiteralPath (Join-Path $root 'nexroute.bat') -Raw
