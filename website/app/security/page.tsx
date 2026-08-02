@@ -1,4 +1,5 @@
-import { ArrowRight, CheckCircle2, Github, HardDriveDownload, LockKeyhole, ShieldCheck } from "lucide-react";
+import { GitHubIcon } from "@/components/ui/github-icon";
+import { ArrowRight, CheckCircle2, HardDriveDownload, LockKeyhole, ShieldCheck } from "lucide-react";
 import { createMetadata } from "@/lib/metadata";
 import { ButtonLink, FeatureCard, PageHero, SectionHeading } from "@/components/ui/primitives";
 import { CodeBlock } from "@/components/ui/code-block";
@@ -22,7 +23,7 @@ const sections = [
     text: "Контрольная сумма — цифровой отпечаток файла. Если архив был изменён или повреждён, его SHA-256 не совпадёт с опубликованным значением.",
   },
   {
-    icon: Github,
+    icon: GitHubIcon,
     title: "Build Provenance",
     text: "GitHub attestation связывает опубликованный asset с workflow, репозиторием и исходным commit через Sigstore-backed сертификат.",
   },
@@ -37,7 +38,7 @@ const sections = [
     text: "Перед обновлением создаётся полная резервная копия текущей установки. При ошибке предыдущая версия восстанавливается автоматически.",
   },
   {
-    icon: Github,
+    icon: GitHubIcon,
     title: "Open Source",
     text: "Исходный код, release workflow, Pester-контракты и документация доступны в открытом репозитории.",
   },

@@ -1,8 +1,9 @@
 "use client";
 
+import { GitHubIcon } from "@/components/ui/github-icon";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Download, Github, Menu, X } from "lucide-react";
+import { Download, Menu, X } from "lucide-react";
 import { navigation, projectLinks } from "@/content/site";
 import { LogoMark } from "@/components/layout/logo";
 import { cn } from "@/lib/utils";
@@ -59,7 +60,7 @@ export function SiteHeader() {
             rel="noreferrer"
             className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-white/[0.025] px-4 text-sm font-medium text-zinc-200 transition hover:border-white/16 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"
           >
-            <Github className="size-4" aria-hidden="true" /> GitHub
+            <GitHubIcon className="size-4" aria-hidden="true" /> GitHub
           </a>
           <Link
             href="/download"
@@ -99,7 +100,7 @@ export function SiteHeader() {
               rel="noreferrer"
               className="mt-3 inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-5 py-4 font-medium text-white"
             >
-              <Github className="size-5" /> GitHub
+              <GitHubIcon className="size-5" /> GitHub
             </a>
             <Link
               href="/download"

@@ -1,3 +1,4 @@
+import { GitHubIcon } from "@/components/ui/github-icon";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -5,7 +6,6 @@ import {
   CheckCircle2,
   Download,
   ExternalLink,
-  Github,
   HardDriveDownload,
   ShieldCheck,
   SlidersHorizontal,
@@ -73,7 +73,7 @@ export default async function HomePage() {
                   <Download className="size-4" /> Скачать последнюю версию
                 </ButtonLink>
                 <ButtonLink href={projectLinks.github} external variant="secondary" className="w-full sm:w-auto">
-                  <Github className="size-4" /> Открыть на GitHub
+                  <GitHubIcon className="size-4" /> Открыть на GitHub
                 </ButtonLink>
               </div>
               <Link href="/docs" className="mt-5 inline-flex items-center gap-2 text-sm text-zinc-400 transition hover:text-cyan-200">
@@ -211,7 +211,7 @@ export default async function HomePage() {
           </Reveal>
           <div className="mt-12 grid gap-4 lg:grid-cols-3">
             <FeatureCard icon={ShieldCheck} title="SHA-256" description="Сравните цифровой отпечаток загруженного архива с опубликованным файлом .sha256." />
-            <FeatureCard icon={Github} title="GitHub Attestations" description="Проверьте, что asset был создан workflow репозитория Onmaynec/NexRoute." />
+            <FeatureCard icon={GitHubIcon} title="GitHub Attestations" description="Проверьте, что asset был создан workflow репозитория Onmaynec/NexRoute." />
             <FeatureCard icon={BookOpen} title="Open Source" description="Изучите исходный код, release workflow и процесс сборки непосредственно на GitHub." />
           </div>
           <div className="mt-8 grid items-stretch gap-4 lg:grid-cols-[1.2fr_.8fr]">
@@ -269,7 +269,7 @@ export default async function HomePage() {
             <p className="mt-5 text-lg leading-8 text-zinc-400">Скачайте последнюю стабильную версию или изучите исходный код проекта на GitHub.</p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <ButtonLink href={downloadHref} external><Download className="size-4" /> Скачать NexRoute</ButtonLink>
-              <ButtonLink href={projectLinks.github} external variant="secondary"><Github className="size-4" /> Открыть GitHub</ButtonLink>
+              <ButtonLink href={projectLinks.github} external variant="secondary"><GitHubIcon className="size-4" /> Открыть GitHub</ButtonLink>
             </div>
           </div>
         </div>

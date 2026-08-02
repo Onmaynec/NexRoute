@@ -1,5 +1,6 @@
 "use client";
 
+import { GitHubIcon } from "@/components/ui/github-icon";
 import { useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import {
@@ -8,7 +9,6 @@ import {
   CheckCircle2,
   Circle,
   Download,
-  Github,
   HardDriveDownload,
   RefreshCcw,
   RotateCcw,
@@ -189,7 +189,7 @@ export function StrategyLabDemo() {
 }
 
 const updateSteps = [
-  { label: "Проверка релиза", icon: Github },
+  { label: "Проверка релиза", icon: GitHubIcon },
   { label: "Загрузка пакета", icon: Download },
   { label: "Проверка SHA-256", icon: ShieldCheck },
   { label: "Создание backup", icon: HardDriveDownload },

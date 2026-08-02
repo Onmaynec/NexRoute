@@ -1,5 +1,5 @@
+import { GitHubIcon } from "@/components/ui/github-icon";
 import Link from "next/link";
-import { Github } from "lucide-react";
 import { footerColumns, projectLinks } from "@/content/site";
 import { LogoMark } from "@/components/layout/logo";
 
@@ -22,7 +22,7 @@ export function SiteFooter() {
               target="_blank"
               rel="noreferrer"
             >
-              <Github className="size-4" /> Onmaynec/NexRoute
+              <GitHubIcon className="size-4" /> Onmaynec/NexRoute
             </a>
           </div>
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">

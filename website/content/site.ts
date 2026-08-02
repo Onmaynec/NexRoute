@@ -4,7 +4,6 @@ import {
   BookOpen,
   Download,
   FlaskConical,
-  Github,
   History,
   RefreshCcw,
   Route,
@@ -197,5 +196,3 @@ export const projectLinks = {
   releases: "https://github.com/Onmaynec/NexRoute/releases",
   issues: "https://github.com/Onmaynec/NexRoute/issues",
 };
-
-export const icons = { Github };
