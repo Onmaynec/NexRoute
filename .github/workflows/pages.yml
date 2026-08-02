@@ -1,0 +1,84 @@
+name: Deploy NexRoute website to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'website/**'
+      - '.github/workflows/pages.yml'
+  pull_request:
+    paths:
+      - 'website/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build static website
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Configure GitHub Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Install dependencies
+        working-directory: website
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck website
+        working-directory: website
+        run: npm run typecheck
+
+      - name: Build static export
+        working-directory: website
+        env:
+          GITHUB_PAGES: 'true'
+          GITHUB_TOKEN: ${{ github.token }}
+          NEXT_PUBLIC_SITE_URL: https://onmaynec.github.io/NexRoute
+          NEXT_PUBLIC_BASE_PATH: /NexRoute
+        run: npm run build
+
+      - name: Disable Jekyll processing
+        if: github.event_name != 'pull_request'
+        run: touch website/out/.nojekyll
+
+      - name: Upload GitHub Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: website/out
+
+  deploy:
+    name: Publish website
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
