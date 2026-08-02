@@ -3,11 +3,20 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.4.0-24e1d6)](../.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.4.1-24e1d6)](../.service/version.txt)
 
 NexRoute is a command-line route-control toolkit for DPI desynchronization strategies on Windows 10 and Windows 11 x64.
 
 > NexRoute is not a VPN, proxy, or anonymity service. It locally manages winws and WinDivert and does not change the public IP address.
+
+## Version 0.4.1 — Strategy Lab compatibility fix
+
+Version 0.4.1 fixes menu option `[12] STRATEGY LAB` under the built-in Windows PowerShell 5.1:
+
+- the finalized laboratory script is encoded as UTF-8 with BOM;
+- localized Cyrillic strings no longer become mojibake and parser errors;
+- release verification checks the BOM and parses the script through `powershell.exe`;
+- online and completely offline package builds run the same regression test.
 
 ## Version 0.4.0 — official website source
 
@@ -38,7 +47,7 @@ See [WEBSITE.md](WEBSITE.md) and [../website/README.md](../website/README.md).
 
 ## Quick start
 
-1. Download `NexRoute-0.4.0-win-x64.zip` and its `.sha256` asset from Releases.
+1. Download `NexRoute-0.4.1-win-x64.zip` and its `.sha256` asset from Releases.
 2. Optionally verify both assets with `gh attestation verify`.
 3. Fully extract the archive into a new directory.
 4. Run `NexRoute.lnk`, `nexroute.bat`, or `service.bat` as administrator.
@@ -52,7 +61,7 @@ Do not run BAT or CMD launchers directly from the ZIP archive.
 ## Build provenance verification
 
 ```powershell
-gh attestation verify .\NexRoute-0.4.0-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.4.1-win-x64.zip --repo Onmaynec/NexRoute
 ```
 
 Build provenance verifies the release workflow, repository, source commit, and asset digest. It does not replace Windows Authenticode code signing.
