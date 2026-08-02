@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $errors = New-Object 'System.Collections.Generic.List[string]'
-$expectedVersion = '0.3.1'
+$expectedVersion = '0.3.2'
 $bootstrapUnlocked = $env:NEXROUTE_BOOTSTRAP_UPSTREAM -eq '1'
 
 function Assert-True {
@@ -46,9 +46,9 @@ $required = @(
     'overlay/.service/i18n/nexroute-services-diagnostics.ps1',
     'scripts/Build-NexRoute.ps1','scripts/Build-Release.ps1','scripts/NexRoute.Upstream.psm1',
     'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1',
-    'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1',
+    'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/ReleaseAttestation.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml',
-    '.github/release-notes/v0.3.1.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md'
+    '.github/release-notes/v0.3.2.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md'
 )
 foreach ($relativePath in $required) {
     Assert-True (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf) "Required file exists: $relativePath"
@@ -65,6 +65,8 @@ Assert-True ($readme -match 'patch-report\.json') 'README documents patch proven
 Assert-True ($readme -match 'offline|офлайн') 'README documents offline rebuilds'
 Assert-True ($readme -match 'nexroute-update\.cmd') 'README documents the manual update center'
 Assert-True ($readme -match 'update-state\.json') 'README documents updater state'
+Assert-True ($readme -match 'gh attestation verify') 'README documents build provenance verification'
+Assert-True ($readme -match 'docs/ATTESTATIONS\.md') 'README links the attestation guide'
 
 $powerShellFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force -Include '*.ps1','*.psm1' | Where-Object {
     $_.FullName -notmatch '[\\/]\.git[\\/]'
@@ -169,13 +171,23 @@ foreach ($token in @('preserves user state','rolls back','mismatched checksum','
     Assert-True ($updaterTests -match [regex]::Escape($token)) "Updater Pester suite covers $token"
 }
 
+$attestationTests = Get-Content -LiteralPath (Join-Path $root 'tests/ReleaseAttestation.Tests.ps1') -Raw
+foreach ($token in @('actions/attest@v4','gh attestation verify','release archive and its checksum file','before publishing the GitHub Release')) {
+    Assert-True ($attestationTests -match [regex]::Escape($token)) "Release attestation Pester suite covers $token"
+}
+
 $updateLauncher = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute.bat') -Raw
 Assert-True ($updateLauncher -match 'nexroute-updater\.ps1') 'Launcher invokes the updater'
 Assert-True ($updateLauncher -match '-Mode Auto') 'Launcher performs automatic update checks'
 
 $validateWorkflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/validate.yml') -Raw
-foreach ($token in @('Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.3.1')) {
+foreach ($token in @('Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.3.2')) {
     Assert-True ($validateWorkflow -match [regex]::Escape($token)) "Validation workflow contains $token"
+}
+
+$releaseWorkflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/release.yml') -Raw
+foreach ($token in @('id-token: write','attestations: write','artifact-metadata: write','actions/attest@v4','gh attestation verify')) {
+    Assert-True ($releaseWorkflow -match [regex]::Escape($token)) "Release workflow contains $token"
 }
 
 $networkPages = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-pages-network.ps1') -Raw
