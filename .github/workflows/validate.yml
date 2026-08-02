@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate NexRoute 0.4.1 sources
+    name: Validate NexRoute 0.5.0 sources
     runs-on: ubuntu-latest
 
     steps:
@@ -68,7 +68,7 @@ jobs:
         run: npm run build
 
   build-smoke:
-    name: Build and test NexRoute 0.4.1
+    name: Build and test NexRoute 0.5.0
     needs:
       - validate
       - website
@@ -84,7 +84,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          if ($version -ne '0.4.1') { throw "Expected 0.4.1, got $version" }
+          if ($version -ne '0.5.0') { throw "Expected 0.5.0, got $version" }
           $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
           $result = ./scripts/Build-Package.ps1 `
             -Version $version `
@@ -143,14 +143,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: NexRoute-0.4.1-smoke
+          name: NexRoute-0.5.0-smoke
           path: |
             build-online.log
             package-online.log
             build-offline.log
             package-offline.log
-            artifacts/NexRoute-0.4.1-win-x64.zip
-            artifacts/NexRoute-0.4.1-win-x64.zip.sha256
+            artifacts/NexRoute-0.5.0-win-x64.zip
+            artifacts/NexRoute-0.5.0-win-x64.zip.sha256
           if-no-files-found: warn
           retention-days: 7
 
