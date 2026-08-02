@@ -1,3 +1,4 @@
+# Повторный push-trigger после регистрации workflow в default branch.
 name: Применить NexRoute 0.4.1 hotfix через push
 
 on:
@@ -16,7 +17,7 @@ permissions:
 jobs:
   materialize:
     name: Материализовать hotfix и запустить релиз
-    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'ci: запустить подготовку NexRoute 0.4.1'
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.head_commit.message, 'ci:')
     runs-on: ubuntu-latest
 
     steps:
