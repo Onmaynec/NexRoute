@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $errors = New-Object 'System.Collections.Generic.List[string]'
-$expectedVersion = '0.3.2'
+$expectedVersion = '0.4.0'
 $bootstrapUnlocked = $env:NEXROUTE_BOOTSTRAP_UPSTREAM -eq '1'
 
 function Assert-True {
@@ -48,7 +48,14 @@ $required = @(
     'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1',
     'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/ReleaseAttestation.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml',
-    '.github/release-notes/v0.3.2.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md'
+    '.github/release-notes/v0.4.0.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/WEBSITE.md',
+    'website/package.json','website/tsconfig.json','website/next.config.ts','website/postcss.config.mjs','website/.env.example','website/README.md','website/vercel.json',
+    'website/app/layout.tsx','website/app/page.tsx','website/app/features/page.tsx','website/app/download/page.tsx',
+    'website/app/docs/page.tsx','website/app/docs/[slug]/page.tsx','website/app/security/page.tsx','website/app/faq/page.tsx','website/app/changelog/page.tsx','website/app/not-found.tsx',
+    'website/app/robots.ts','website/app/sitemap.ts','website/app/manifest.ts','website/app/opengraph-image.tsx',
+    'website/components/layout/site-header.tsx','website/components/layout/site-footer.tsx','website/components/product/demos.tsx',
+    'website/components/docs/docs-shell.tsx','website/components/docs/doc-article.tsx','website/components/ui/code-block.tsx','website/components/ui/faq-accordion.tsx',
+    'website/content/docs.ts','website/content/faq.ts','website/content/site.ts','website/lib/github.ts','website/lib/metadata.ts'
 )
 foreach ($relativePath in $required) {
     Assert-True (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf) "Required file exists: $relativePath"
@@ -67,6 +74,8 @@ Assert-True ($readme -match 'nexroute-update\.cmd') 'README documents the manual
 Assert-True ($readme -match 'update-state\.json') 'README documents updater state'
 Assert-True ($readme -match 'gh attestation verify') 'README documents build provenance verification'
 Assert-True ($readme -match 'docs/ATTESTATIONS\.md') 'README links the attestation guide'
+Assert-True ($readme -match 'website/') 'README documents the official website source'
+Assert-True ($readme -match 'npm run dev') 'README documents website local startup'
 
 $powerShellFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force -Include '*.ps1','*.psm1' | Where-Object {
     $_.FullName -notmatch '[\\/]\.git[\\/]'
@@ -181,7 +190,7 @@ Assert-True ($updateLauncher -match 'nexroute-updater\.ps1') 'Launcher invokes t
 Assert-True ($updateLauncher -match '-Mode Auto') 'Launcher performs automatic update checks'
 
 $validateWorkflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/validate.yml') -Raw
-foreach ($token in @('Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.3.2')) {
+foreach ($token in @('Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.4.0','Typecheck and build website','npm run typecheck','npm run build')) {
     Assert-True ($validateWorkflow -match [regex]::Escape($token)) "Validation workflow contains $token"
 }
 
@@ -199,6 +208,36 @@ $iconScript = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/New-Ne
 foreach ($token in @('New-NexRouteArtwork','New-RoundedRectanglePath','N E X R O U T E','Write-NexRouteIco','@(16, 20, 24, 32, 40, 48, 64, 128, 256)')) {
     Assert-True ($iconScript -match [regex]::Escape($token)) "Icon generator contains $token"
 }
+
+try {
+    $websitePackage = Get-Content -LiteralPath (Join-Path $root 'website/package.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($websitePackage.version -eq $expectedVersion) 'Website package version matches repository version'
+    Assert-True ([string]$websitePackage.dependencies.next -match '^16\.2') 'Website pins Next.js 16.2'
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$websitePackage.dependencies.react)) 'Website declares React'
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$websitePackage.dependencies.motion)) 'Website declares Motion'
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$websitePackage.dependencies.'lucide-react')) 'Website declares Lucide Icons'
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$websitePackage.devDependencies.tailwindcss)) 'Website declares Tailwind CSS'
+}
+catch {
+    Assert-True $false "Website package.json validates: $($_.Exception.Message)"
+}
+
+$websiteContentFiles = @(Get-ChildItem -LiteralPath (Join-Path $root 'website') -File -Recurse -Force | Where-Object {
+    $_.FullName -notmatch '[\\/](node_modules|\.next|\.vercel)[\\/]'
+})
+$websiteText = (($websiteContentFiles | Where-Object { $_.Extension -in @('.ts','.tsx','.css','.md','.json','.mjs') } | ForEach-Object {
+    Get-Content -LiteralPath $_.FullName -Raw -ErrorAction SilentlyContinue
+}) -join [Environment]::NewLine)
+
+foreach ($token in @(
+    'Onmaynec/NexRoute','Service Matrix','Strategy Lab','gh attestation verify','prefers-reduced-motion',
+    'NEXT_PUBLIC_SITE_URL','getLatestStableRelease','draft','prerelease','SoftwareApplication',
+    'sitemap','robots','FAQAccordion','ServiceMatrixDemo','StrategyLabDemo','AnimatedRouteGraph'
+)) {
+    Assert-True ($websiteText -match [regex]::Escape($token)) "Website source contains $token"
+}
+Assert-True ($websiteText -notmatch '(?i)lorem ipsum|add implementation here') 'Website contains no placeholder implementation or lorem ipsum'
+Assert-True ($websiteText -notmatch '(?i)миллион пользователей|лучший в мире|100% результат|полная анонимность') 'Website contains no unsupported marketing claims'
 
 $forbiddenExtensions = @('.exe','.dll','.sys','.bin','.zip','.rar','.7z','.ico','.lnk')
 $forbidden = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force | Where-Object {

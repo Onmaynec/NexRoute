@@ -6,134 +6,105 @@
 
 Пока нет изменений.
 
+## [0.4.0] - 2026-08-02
+
+### Added
+
+- production-ready многостраничный сайт в каталоге `website/`;
+- Next.js App Router, React, TypeScript, Tailwind CSS, Motion и Lucide Icons;
+- страницы Home, Features, Download, Docs, Security, FAQ, Changelog и кастомная 404;
+- documentation layout с sidebar, mobile drawer, search, table of contents, code copy и Previous/Next;
+- структурированная документация Getting Started, Service Matrix, Strategy Lab, Updates, Security, Diagnostics, Architecture и Compatibility;
+- GitHub API integration для стабильного release, assets, даты, release notes, stars и forks;
+- fallback-состояния без выдуманной версии при недоступности API;
+- interactive HTML/CSS product mockups Service Matrix, Strategy Lab, update flow и route graph;
+- SEO metadata, canonical URLs, Open Graph, Twitter cards, sitemap, robots, manifest и SoftwareApplication JSON-LD;
+- инструкции запуска, сборки и Vercel deployment в `website/README.md` и `docs/WEBSITE.md`;
+- отдельный website job в GitHub Actions для typecheck и production build.
+
+### Changed
+
+- repository contract теперь проверяет обязательные website routes, components, GitHub integration и отсутствие placeholder-кода;
+- README и release metadata обновлены до NexRoute 0.4.0.
+
 ## [0.3.2] - 2026-08-02
 
 ### Added
 
 - GitHub build provenance attestations для официального ZIP и соответствующего `.sha256` asset;
 - self-verification обоих release assets через `gh attestation verify` до публикации GitHub Release;
-- документация `docs/ATTESTATIONS.md` с командами проверки и границами доверия;
-- Pester-контракт для attestation permissions, версии action, списка subjects и порядка release-шагов.
+- документация `docs/ATTESTATIONS.md`;
+- Pester-контракт для attestation permissions, action version, subjects и порядка release-шагов.
 
 ### Security
 
-- SHA-256 опубликованных assets криптографически связывается с release workflow, репозиторием `Onmaynec/NexRoute` и source commit через Sigstore-backed attestation;
-- проверка provenance дополняет, но не заменяет checksum, upstream lock, patch report и будущую Windows Authenticode-подпись.
+- SHA-256 assets связывается с release workflow, репозиторием и source commit через Sigstore-backed attestation.
 
 ## [0.3.1] - 2026-08-01
 
 ### Added
 
-- встроенный stable-updater `overlay/.service/nexroute-updater.ps1`;
-- автоматическая проверка GitHub Releases перед запуском `nexroute.bat`;
-- 24-часовой cooldown через `.service/update-state.json`;
+- встроенный stable-updater;
+- автоматическая проверка GitHub Releases с 24-часовым cooldown;
 - ручной Update Center `nexroute-update.cmd`;
-- полная резервная копия установки перед обновлением;
-- rollback к последнему update-backup;
-- сохранение языка, Service Matrix state, IP-кеша и пользовательских списков;
-- Pester fixtures для проверки update, checksum mismatch, prerelease rejection, cooldown и rollback;
-- документация `docs/UPDATES.md`.
-
-### Changed
-
-- пункт `CHECK UPDATES` теперь открывает полноценный Update Center вместо простого переключателя-флага;
-- updater принимает только стабильные Releases из `Onmaynec/NexRoute`;
-- перед установкой проверяются имя assets, версия, SHA-256, обязательные файлы, 21 стратегия и 23 patch records;
-- хранится не более четырёх backup-наборов;
-- сетевой сбой updater-а не блокирует запуск текущей версии NexRoute.
+- полная резервная копия, rollback и сохранение пользовательского state;
+- updater Pester fixtures и `docs/UPDATES.md`.
 
 ### Security
 
-- draft и prerelease-релизы отклоняются;
-- checksum asset обязан содержать ровно одну валидную SHA-256 запись;
-- release asset URL ограничен официальным путём GitHub Releases проекта;
-- mutex предотвращает параллельное изменение установки двумя updater-процессами;
-- ошибка установки вызывает автоматическое восстановление предыдущего пакета.
+- draft/prerelease rejection, строгий checksum asset, официальный release path и mutex установки.
 
 ## [0.3.0] - 2026-08-01
 
 ### Added
 
-- декларативный `.service/upstream-manifest.json` для repository, tag, asset pattern, размера, SHA-256 и обязательных путей Flowseal;
-- модуль `scripts/NexRoute.Upstream.psm1` для online/offline разрешения и проверки upstream-архива;
-- `.service/upstream-lock.json` внутри Release ZIP;
-- `.service/patch-report.json` с patch ID, target, количеством операций и hashes до/после;
-- поддержка `Build-Release.ps1 -UpstreamArchive` для офлайн-сборки;
-- поддержка `-UpstreamCachePath` для сохранения уже проверенного официального архива;
-- Pester-тесты upstream manifest, path traversal, locked digest, missing files и локального release proxy;
-- CI-сценарий, который строит проект онлайн, затем повторяет сборку полностью офлайн.
-
-### Changed
-
-- базовый builder получает Flowseal через локальный verified proxy и больше не использует непроверенный download напрямую;
-- 21 стратегия, `service.bat` и Strategy Lab представлены как 23 отслеживаемые patch-targets;
-- patch anchors требуют точное ожидаемое количество совпадений;
-- Release pipeline сравнивает upstream lock и структуру online/offline пакетов;
-- PowerShell AST validation включает `.psm1`.
-
-### Security
-
-- сборка останавливается при несовпадении committed SHA-256, GitHub asset digest или asset size;
-- небезопасные `requiredPaths` с абсолютными путями и `..` отклоняются;
-- частично применённые или повторно применённые patch contracts приводят к ошибке, а не к публикации ZIP.
+- декларативный upstream manifest и locked Flowseal SHA-256;
+- online/offline upstream resolution;
+- `upstream-lock.json`, `patch-report.json` и воспроизводимый release pipeline;
+- Pester-тесты path traversal, digest mismatch, missing files и local release proxy.
 
 ## [0.2.3] - 2026-08-01
 
 ### Added
 
-- отдельные hostlist/IPSet и TCP/UDP `--new`-группы для каждого включённого сервиса;
-- schema v2 для `services-state.json` с автоматической миграцией и резервными копиями;
-- строгая семантическая проверка портов и IPv4 CIDR;
-- last-known-good кэш внешних IP-источников с TTL 14 дней;
-- `.service/ip-source-status.json` со статусами `fresh`, `cache` и `failed`;
-- privacy-safe режим `Diagnostics`;
-- поведенческий набор Pester 5.6.1;
-- универсальные release scripts и workflow.
+- изолированные hostlist/IPSet и TCP/UDP группы каждого сервиса;
+- Service Matrix state schema v2, strict ports/CIDR, 14-day last-known-good cache и privacy-safe Diagnostics;
+- universal release scripts и workflow.
 
 ### Fixed
 
-- общий домен больше не попадает одновременно во включённый и исключающий блок;
-- широкие порты Discord, WhatsApp, Instagram и других приложений больше не образуют общий cross-product с доменами/IP остальных сервисов;
-- повреждённый state JSON больше не остаётся активным без восстановления;
-- невалидные адреса наподобие `999.1.1.1/33` и порты вне `1-65535` отклоняются.
-
-### Changed
-
-- состояние хранится в объекте `{ schemaVersion, updatedAtUtc, services }`;
-- runtime теперь генерируется основным контроллером, а package entry только делегирует ему выполнение;
-- release CI использует `Build-Release.ps1`, `Test-Release.ps1` и `.github/workflows/release.yml`;
-- после успешного релиза workflow закрывает superseded issues `#7-#10` и PR `#4`.
+- общие домены больше не попадают одновременно во включённый и исключающий блок;
+- предотвращён cross-product широких портов и адресов разных сервисов;
+- повреждённое состояние восстанавливается безопасно.
 
 ## [0.2.2] - 2026-07-25
 
 ### Added
 
-- Service Matrix schema v2 с доменами, endpoints, TCP/UDP-портами, DNS-разрешением и внешними IP-источниками;
-- runtime-файлы `list-services-enabled.txt`, `ipset-services-user.txt` и `services-runtime.cmd`;
-- отдельные реальные Strategy Lab probes для web, API, CDN, media, gateway и update endpoints;
-- автоматическая переустановка активной стратегии службы `zapret` после изменения матрицы;
-- оформленные страницы Game Filter и Update Watch;
-- многоразмерная `.ico`-иконка по мотивам нового логотипа NexRoute.
+- Service Matrix schema v2;
+- runtime-файлы сервисов;
+- Strategy Lab probes;
+- автоматическая переустановка активной стратегии;
+- оформленные Game Filter и Update Watch;
+- многоразмерная иконка NexRoute.
 
 ### Fixed
 
-- устранено падение `[09] SYNC HOSTS`;
-- пользовательские строки `hosts` сохраняются вне управляемого блока;
-- `nexroute.bat` больше не считается 22-й стратегией в Strategy Lab.
+- SYNC HOSTS, сохранение пользовательских строк и исключение launcher из Strategy Lab.
 
 ## [0.2.1] - 2026-07-25
 
 ### Fixed
 
-- устранено падение пунктов `service.bat` из-за malformed `-Root`;
-- восстановлены поглощённые аргументы PowerShell и classic Control Node UI.
+- malformed `-Root` в service actions;
+- восстановлены аргументы PowerShell и classic Control Node UI.
 
 ## [0.2.0] - 2026-07-25
 
 ### Added
 
 - матрица из 15 сервисных профилей;
-- оформленные внутренние страницы и собственный значок NexRoute.
+- внутренние страницы и собственный значок NexRoute.
 
 ## [0.1.1] - 2026-07-25
 
@@ -147,5 +118,5 @@
 ### Added
 
 - структура NexRoute;
-- pinned baseline Flowseal `1.10.0`;
+- pinned baseline Flowseal 1.10.0;
 - воспроизводимая сборка и SHA-256.
