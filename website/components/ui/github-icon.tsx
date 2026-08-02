@@ -4,6 +4,7 @@ export function GitHubIcon({ className, ...props }: SVGProps<SVGSVGElement>) {
   return (
     <svg
       aria-hidden="true"
+      focusable="false"
       className={className}
       viewBox="0 0 24 24"
       fill="currentColor"
