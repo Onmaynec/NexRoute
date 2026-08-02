@@ -109,7 +109,7 @@ function Apply-ServiceMatrix {
 
         $ips = New-Object 'System.Collections.Generic.HashSet[string]'
         foreach ($entryValue in @($service.ipCidrs)) {
-            $entry = ConvertTo-ValidatedIpv4Cidr -Value ([string]$entryValue)
+            $entry = ConvertTo-ValidatedIpCidr -Value ([string]$entryValue)
             if ($entry) { [void]$ips.Add($entry) }
         }
 
@@ -132,7 +132,7 @@ function Apply-ServiceMatrix {
             $hostName = Get-EndpointHost -Target $target
             if ($hostName) { $resolveHosts.Add($hostName) }
         }
-        foreach ($entry in @(Get-ResolvedIpv4Entries -Hosts $resolveHosts.ToArray())) { [void]$ips.Add($entry) }
+        foreach ($entry in @(Get-ResolvedIpEntries -Hosts $resolveHosts.ToArray())) { [void]$ips.Add($entry) }
 
         $ipValues = [string[]]@($ips | Sort-Object)
         $hasIps = $ipValues.Count -gt 0

@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](docs/UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.4.1-24e1d6)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.5.0-24e1d6)](.service/version.txt)
 
 **Консольная система управления стратегиями обхода DPI для Windows 10 и Windows 11.**
 
@@ -15,6 +15,20 @@
 
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранную стратегию к трафику включённых сервисов.
+
+## Что изменилось в 0.5.0 🧭
+
+Версия `0.5.0` переводит NexRoute на управление стрелками без цифрового ввода и добавляет крупный набор средств автоматизации, мониторинга и диагностики.
+
+- основное меню использует `>[+]`, стрелки, Enter и Escape;
+- `[+] Check Update` после подтверждения `Y` загружает, проверяет и устанавливает стабильный релиз, выполняет post-update проверки и запускает новую версию;
+- Strategy Lab сохраняет историю, измеряет latency, jitter, packet loss и download rate, оценивает YouTube/Discord/Telegram и рекомендует лучшую стратегию;
+- доступны автоматический failover, стратегии по отдельным сервисам, мониторинг, трей и уведомления;
+- добавлены DNS diagnostics, plain DNS/DoH/DoT, сетевые профили, backup manager, export/import, custom profiles/strategies, logs и diagnostic ZIP;
+- Service Matrix принимает IPv4 и IPv6 CIDR, резолвит A/AAAA и проверяет IPv6 readiness;
+- beginner/advanced modes, светлая/тёмная темы, accent colors, hotkeys, local statistics и JSON/CSV export.
+
+Подробная архитектура: [docs/NEXT_CONTROL.md](docs/NEXT_CONTROL.md).
 
 ## Что изменилось в 0.4.1 🧪
 
@@ -62,8 +76,8 @@ npm run dev
 GitHub Actions создаёт Sigstore-backed build provenance attestation для ZIP и соответствующего `.sha256`. Оба assets проверяются до публикации GitHub Release.
 
 ```powershell
-gh attestation verify .\NexRoute-0.4.1-win-x64.zip --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.4.1-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.5.0-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.5.0-win-x64.zip.sha256 --repo Onmaynec/NexRoute
 ```
 
 Подробности: [docs/ATTESTATIONS.md](docs/ATTESTATIONS.md).
@@ -109,7 +123,7 @@ NEXROUTE_BUILD_INFO.txt
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.4.1 `
+  -Version 0.5.0 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -118,7 +132,7 @@ pwsh ./scripts/Build-Release.ps1 `
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.4.1 `
+  -Version 0.5.0 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -158,7 +172,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .service\nexroute-services.p
 
 ## Быстрый старт 🚀
 
-1. Скачайте `NexRoute-0.4.1-win-x64.zip` и `.sha256` из Releases.
+1. Скачайте `NexRoute-0.5.0-win-x64.zip` и `.sha256` из Releases.
 2. При необходимости проверьте оба файла через `gh attestation verify`.
 3. Полностью распакуйте архив в новую папку.
 4. Запустите `NexRoute.lnk`, `nexroute.bat` или `service.bat` от имени администратора.
@@ -207,4 +221,4 @@ Locked upstream, checksum updater-а и GitHub build provenance защищают
 
 ---
 
-**NexRoute 0.4.1** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64
+**NexRoute 0.5.0** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64

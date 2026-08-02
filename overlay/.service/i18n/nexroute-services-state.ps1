@@ -28,7 +28,26 @@ function Get-ServiceDefinitions {
     if (-not $document.services -or @($document.services).Count -eq 0) {
         throw 'services.json does not contain service definitions.'
     }
-    return @($document.services)
+
+    $definitions = New-Object 'System.Collections.Generic.List[object]'
+    $ids = New-Object 'System.Collections.Generic.HashSet[string]'
+    foreach ($service in @($document.services)) {
+        if (-not $ids.Add([string]$service.id)) { throw "Duplicate built-in service id: $($service.id)" }
+        $definitions.Add($service)
+    }
+
+    $customPath = Join-Path $serviceDirectory 'custom-services.json'
+    if (Test-Path -LiteralPath $customPath -PathType Leaf) {
+        $custom = Read-JsonFile -Path $customPath
+        if ([int]$custom.schemaVersion -ne 1) { throw "Unsupported custom-services.json schema: $($custom.schemaVersion)" }
+        foreach ($service in @($custom.services)) {
+            $id = [string]$service.id
+            if ([string]::IsNullOrWhiteSpace($id) -or $id -notmatch '^[a-z0-9][a-z0-9_-]{1,39}$') { throw "Invalid custom service id: $id" }
+            if (-not $ids.Add($id)) { throw "Duplicate service id across built-in and custom profiles: $id" }
+            $definitions.Add($service)
+        }
+    }
+    return $definitions.ToArray()
 }
 
 function New-DefaultState {

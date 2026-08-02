@@ -357,6 +357,13 @@ function Copy-NexRoutePreservedState {
         '.service/language.txt',
         '.service/services-state.json',
         '.service/update-state.json',
+        '.service/next-state.json',
+        '.service/custom-services.json',
+        '.service/user-list-integrity.json',
+        '.service/monitor-state.json',
+        '.service/history',
+        '.service/logs',
+        '.service/profiles',
         '.service/ip-source-cache',
         '.service/backups',
         'utils/check_updates.enabled',
@@ -774,9 +781,11 @@ try {
                     Message = 'Automatic update check is not due yet.'
                 }
             } else {
-                $result = Invoke-NexRouteInstallLatest -State $state
-                if ($result.Updated) {
-                    Write-Host ("[NexRoute] Updated to {0}. Backup: {1}" -f $result.CurrentVersion, $result.BackupPath) -ForegroundColor Green
+                # Automatic mode performs a quiet availability check only. Installation is
+                # always initiated from [+] Check Update and requires an explicit Y confirmation.
+                $result = Invoke-NexRouteCheck -State $state
+                if ($result.UpdateAvailable) {
+                    Write-Host ("[NexRoute] Update {0} is available. Open [+] Check Update to install." -f $result.LatestVersion) -ForegroundColor Yellow
                 }
             }
         }

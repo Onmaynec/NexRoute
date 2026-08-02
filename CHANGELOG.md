@@ -6,6 +6,23 @@
 
 Пока нет изменений.
 
+## [0.5.0] - 2026-08-02
+
+### Added
+
+- arrow-key `>[+]` control node without numeric menu input;
+- confirmed one-action stable update installation and automatic restart;
+- Strategy Lab scoring, sorting, history, comparison, recommendations and automatic failover;
+- per-service strategies, tray controls, notifications and continuous availability monitoring;
+- DNS/DoH/DoT management, network profiles, conflict checks, service repair and reset tools;
+- backup selection, configuration export/import, custom profiles/strategies, logs, diagnostics and statistics;
+- IPv6 CIDR, A/AAAA resolution and IPv6 readiness support.
+
+### Changed
+
+- English and Russian interface labels were fully renamed;
+- automatic background checks never install without explicit `Y` confirmation.
+
 ## [0.4.1] - 2026-08-02
 
 ### Fixed
