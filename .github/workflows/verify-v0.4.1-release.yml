@@ -1,0 +1,93 @@
+name: Verify NexRoute v0.4.1 release
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-v0.4.1-release.yml'
+
+permissions:
+  contents: write
+  pull-requests: write
+  attestations: read
+
+jobs:
+  verify:
+    if: github.head_ref == 'agent/verify-v0.4.1-release'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: v0.4.1
+      ARCHIVE: NexRoute-0.4.1-win-x64.zip
+
+    steps:
+      - name: Wait for published release
+        shell: bash
+        run: |
+          for attempt in $(seq 1 30); do
+            if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName,isDraft,isPrerelease >/tmp/release.json 2>/dev/null; then
+              break
+            fi
+            echo "Release is not visible yet (attempt $attempt/30)."
+            sleep 10
+          done
+          test -s /tmp/release.json
+          test "$(jq -r .tagName /tmp/release.json)" = "$TAG"
+          test "$(jq -r .isDraft /tmp/release.json)" = "false"
+          test "$(jq -r .isPrerelease /tmp/release.json)" = "false"
+
+      - name: Verify asset set and download
+        shell: bash
+        run: |
+          mkdir -p /tmp/nexroute-release
+          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          grep -Fx "$ARCHIVE" <<<"$assets"
+          grep -Fx "$ARCHIVE.sha256" <<<"$assets"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir /tmp/nexroute-release --pattern "$ARCHIVE" --pattern "$ARCHIVE.sha256"
+
+      - name: Verify checksum, package version and Strategy Lab BOM
+        id: package
+        shell: bash
+        run: |
+          cd /tmp/nexroute-release
+          sha256sum -c "$ARCHIVE.sha256"
+          digest=$(sha256sum "$ARCHIVE" | awk '{print $1}')
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+
+          archive = Path('/tmp/nexroute-release/NexRoute-0.4.1-win-x64.zip')
+          with ZipFile(archive) as zf:
+              version = zf.read('.service/version.txt').decode('utf-8-sig').strip()
+              if version != '0.4.1':
+                  raise SystemExit(f'Unexpected package version: {version!r}')
+              lab = zf.read('utils/test zapret.ps1')
+              if not lab.startswith(b'\xef\xbb\xbf'):
+                  raise SystemExit('Strategy Lab does not start with UTF-8 BOM')
+              text = lab.decode('utf-8-sig')
+              if 'NEXROUTE_TESTLAB_V2' not in text:
+                  raise SystemExit('Strategy Lab marker is missing')
+              if 'Рџ' in text or 'Рµ' in text:
+                  raise SystemExit('Strategy Lab still contains mojibake markers')
+              print(f'Package version: {version}')
+              print(f'Strategy Lab bytes: {len(lab)}')
+              print('Strategy Lab BOM: EF BB BF')
+          PY
+
+      - name: Verify build provenance attestations
+        shell: bash
+        run: |
+          gh attestation verify "/tmp/nexroute-release/$ARCHIVE" --repo "$GITHUB_REPOSITORY"
+          gh attestation verify "/tmp/nexroute-release/$ARCHIVE.sha256" --repo "$GITHUB_REPOSITORY"
+
+      - name: Report verification
+        shell: bash
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" --repo "$GITHUB_REPOSITORY" --body "✅ NexRoute v0.4.1 release verified. Assets: \`$ARCHIVE\` and \`$ARCHIVE.sha256\`. SHA-256: \`${{ steps.package.outputs.digest }}\`. Package version is 0.4.1; \`utils/test zapret.ps1\` starts with UTF-8 BOM \`EF BB BF\`; both build provenance attestations verified."
+
+      - name: Close verifier PR and delete branch
+        if: success()
+        shell: bash
+        run: |
+          gh pr close "${{ github.event.pull_request.number }}" --repo "$GITHUB_REPOSITORY"
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/heads/agent/verify-v0.4.1-release"
