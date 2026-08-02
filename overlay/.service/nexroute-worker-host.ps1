@@ -102,13 +102,15 @@ function Resolve-NrWorkerReplacement {
 
 function Invoke-NrHostCycle {
     param([Parameter(Mandatory)][object]$Configuration)
+    $probeFunction=${function:Test-NrServiceProbe}
+    $replacementFunction=${function:Resolve-NrWorkerReplacement}
     $probe={
         param($state)
         $service=@($Configuration.services | Where-Object { [string]$_.id -eq [string]$state.serviceId } | Select-Object -First 1)
         if ($service.Count -eq 0) { return $false }
-        return Test-NrServiceProbe -Service $service[0]
+        return [bool](& $probeFunction -Service $service[0])
     }.GetNewClosure()
-    $replacement={ param($state) Resolve-NrWorkerReplacement -State $state -Configuration $Configuration }.GetNewClosure()
+    $replacement={ param($state) & $replacementFunction -State $state -Configuration $Configuration }.GetNewClosure()
     return @(Invoke-NrWorkerSupervisorCycle -Root $Root -Probe $probe -ResolveReplacement $replacement -FailureThreshold $FailureThreshold)
 }
 
