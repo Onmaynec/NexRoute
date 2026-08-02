@@ -1,67 +1,19 @@
-name: Materialize NexRoute 0.4.0 website
+name: Fix NexRoute 0.4.0 website icon
 
 on:
   pull_request:
     branches:
       - main
     types:
-      - opened
-      - reopened
       - synchronize
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
-  materialize:
-    name: Materialize verified website payload
-    if: github.repository == 'Onmaynec/NexRoute' && github.head_ref == 'agent/nexroute-0.4.0-website' && github.event.action != 'synchronize'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout release branch
-        uses: actions/checkout@v4
-        with:
-          ref: agent/nexroute-0.4.0-website
-          fetch-depth: 0
-          show-progress: false
-
-      - name: Reconstruct and verify payload
-        shell: bash
-        run: |
-          set -euo pipefail
-          payload=/tmp/nexroute-0.4.0.tar.gz
-          cat .github/nexroute-v0.4.0-payload/part-* | tr -d '\r\n' | base64 -d > "$payload"
-          echo 'bbd00c79e7d964008e6d973a17be0d6036bee283cf0259b97566a8672282b910  /tmp/nexroute-0.4.0.tar.gz' | sha256sum --check --strict
-          tar -xzf "$payload" -C .
-          rm -rf .github/nexroute-v0.4.0-payload
-          git checkout HEAD -- .github/workflows/validate.yml
-
-      - name: Commit clean NexRoute 0.4.0 source tree
-        id: commit
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git diff --cached --check
-          git commit -m 'NexRoute 0.4.0: add official product website'
-          git push origin HEAD:agent/nexroute-0.4.0-website
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Report success
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh pr comment '${{ github.event.pull_request.number }}' --body "NexRoute 0.4.0 website materialized successfully at commit `${{ steps.commit.outputs.sha }}`. Payload SHA-256 verified. CI workflow is committed separately through the GitHub API."
-
   fix-brand-icon:
     name: Replace removed Lucide brand icon
-    if: github.repository == 'Onmaynec/NexRoute' && github.head_ref == 'agent/nexroute-0.4.0-website' && github.event.action == 'synchronize'
+    if: github.repository == 'Onmaynec/NexRoute' && github.head_ref == 'agent/nexroute-0.4.0-website'
     runs-on: ubuntu-latest
 
     steps:
@@ -100,7 +52,7 @@ jobs:
           for name, transform in patches.items():
               path = Path(name)
               original = path.read_text(encoding='utf-8')
-              updated = transform(original)
+              updated = transform(original).rstrip() + '\n'
               path.write_text(updated, encoding='utf-8')
           PY
 
