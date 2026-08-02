@@ -110,12 +110,26 @@ function Write-NexRouteRule {
 }
 
 function Write-NexRouteCentered {
-    param([string]$Value, [ConsoleColor]$Color = [ConsoleColor]::White)
-    $padding = [Math]::Max(0, [int](($script:Width - $Value.Length) / 2))
-    Write-Host ((' ' * $padding) + $Value) -ForegroundColor $Color
+    param([AllowNull()][string]$Value, [ConsoleColor]$Color = [ConsoleColor]::White)
+    if ($null -eq $Value) { $Value = '' }
+    $visible = $Value.TrimEnd()
+    $padding = [Math]::Max(0, [int](($script:Width - $visible.Length) / 2))
+    Write-Host ((' ' * $padding) + $visible) -ForegroundColor $Color
 }
 
 function Write-NexRouteLogo {
+    # Череп и надпись позиционируются как единый блок. Это не даёт
+    # хвостовым пробелам отдельных строк сдвигать визуальный центр.
+    $skull = @(
+        '        _______        ',
+        '      /         \      ',
+        '     /  _     _  \     ',
+        '    |  (_)   (_)  |    ',
+        '    |      ^      |    ',
+        '    |    \___/    |    ',
+        '     \  _______  /     ',
+        '      \/  | |  \/      '
+    )
     $logo = @(
         ' _   _  _____ __  __ ____   ___  _   _ _____ _____ ',
         '| \ | || ____|\ \/ /|  _ \ / _ \| | | |_   _| ____|',
@@ -123,9 +137,21 @@ function Write-NexRouteLogo {
         '| |\  || |___  /  \ |  _ <| |_| | |_| | | | | |___ ',
         '|_| \_||_____|/_/\_\|_| \_\\___/ \___/  |_| |_____|'
     )
+
+    $logoLines = @($logo | ForEach-Object { ([string]$_).TrimEnd() })
+    $logoWidth = [int](($logoLines | Measure-Object -Property Length -Maximum).Maximum)
+    $leftPadding = [Math]::Max(0, [int](($script:Width - $logoWidth) / 2))
+
+    foreach ($rawLine in $skull) {
+        $line = ([string]$rawLine).TrimEnd()
+        $innerPadding = [Math]::Max(0, [int](($logoWidth - $line.Length) / 2))
+        Write-Host ((' ' * $leftPadding) + (' ' * $innerPadding) + $line) -ForegroundColor Magenta
+    }
+
+    Write-Host ''
     $colors = @('Cyan', 'DarkCyan', 'Cyan', 'Magenta', 'Cyan')
-    for ($index = 0; $index -lt $logo.Count; $index++) {
-        Write-NexRouteCentered -Value $logo[$index] -Color $colors[$index]
+    for ($index = 0; $index -lt $logoLines.Count; $index++) {
+        Write-Host ((' ' * $leftPadding) + $logoLines[$index]) -ForegroundColor $colors[$index]
     }
     Write-NexRouteCentered -Value $script:Text.tagline -Color DarkGray
 }
@@ -204,7 +230,9 @@ function Write-NexRouteProgress {
     $barWidth = [Math]::Min(42, [Math]::Max(20, $script:Width - 46))
     $filled = [int][Math]::Floor($barWidth * ($Percent / 100.0))
     $bar = ('#' * $filled) + ('-' * ($barWidth - $filled))
-    $line = '  {0,-34} [{1}] {2,3}%' -f (Format-NexRouteText -Value $Label -Length 34), $bar, $Percent
+    $labelText = Format-NexRouteText -Value $Label -Length 34
+    $percentText = $Percent.ToString().PadLeft(3)
+    $line = '  ' + $labelText + ' [' + $bar + '] ' + $percentText + '%'
     $rendered = Format-NexRouteText -Value $line -Length ($script:Width - 1)
 
     try {
