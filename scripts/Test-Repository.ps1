@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $errors = New-Object 'System.Collections.Generic.List[string]'
-$expectedVersion = '0.4.0'
+$expectedVersion = '0.4.1'
 $bootstrapUnlocked = $env:NEXROUTE_BOOTSTRAP_UPSTREAM -eq '1'
 
 function Assert-True {
@@ -48,7 +48,7 @@ $required = @(
     'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1',
     'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/ReleaseAttestation.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml',
-    '.github/release-notes/v0.4.0.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/WEBSITE.md',
+    '.github/release-notes/v0.4.1.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/WEBSITE.md',
     'website/package.json','website/tsconfig.json','website/next.config.ts','website/postcss.config.mjs','website/.env.example','website/README.md','website/vercel.json',
     'website/app/layout.tsx','website/app/page.tsx','website/app/features/page.tsx','website/app/download/page.tsx',
     'website/app/docs/page.tsx','website/app/docs/[slug]/page.tsx','website/app/security/page.tsx','website/app/faq/page.tsx','website/app/changelog/page.tsx','website/app/not-found.tsx',
@@ -160,6 +160,11 @@ foreach ($token in @('upstream-lock.json','patch-report.json','Expected 23 track
     Assert-True ($releaseTest -match [regex]::Escape($token)) "Generic release test contains $token"
 }
 
+$packageTest = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-Package.ps1') -Raw
+foreach ($token in @('utils/test zapret.ps1','UTF-8 with BOM','powershell.exe','Strategy Lab does not parse in Windows PowerShell 5.1')) {
+    Assert-True ($packageTest -match [regex]::Escape($token)) "Package validation contains Strategy Lab guard: $token"
+}
+
 $serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMatrix.Tests.ps1') -Raw
 foreach ($token in @('shared domain only when all owners are disabled','backs up and replaces corrupt state','is idempotent','privacy-safe diagnostics')) {
     Assert-True ($serviceMatrixTests -match [regex]::Escape($token)) "Service Matrix Pester suite covers $token"
@@ -190,7 +195,7 @@ Assert-True ($updateLauncher -match 'nexroute-updater\.ps1') 'Launcher invokes t
 Assert-True ($updateLauncher -match '-Mode Auto') 'Launcher performs automatic update checks'
 
 $validateWorkflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/validate.yml') -Raw
-foreach ($token in @('Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.4.0','Typecheck and build website','npm run typecheck','npm run build')) {
+foreach ($token in @('Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.4.1','Typecheck and build website','npm run typecheck','npm run build')) {
     Assert-True ($validateWorkflow -match [regex]::Escape($token)) "Validation workflow contains $token"
 }
 
