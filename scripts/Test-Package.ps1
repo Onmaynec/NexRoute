@@ -55,6 +55,8 @@ $uiPath = Join-Path $extractPath '.service/nexroute-ui.ps1'
 $themePath = Join-Path $extractPath '.service/i18n/nexroute-theme.ps1'
 $theme = Get-Content -LiteralPath $themePath -Raw
 if ($theme -notmatch [regex]::Escape('| \ | || ____|\ \/ /|  _ \ / _ \| | | |_   _| ____|')) { throw 'Classic 0.1.1 logo layout is missing.' }
+if ($theme -notmatch [regex]::Escape('$logoWidth = [int](($logoLines | Measure-Object -Property Length -Maximum).Maximum)')) { throw 'The skull is not centered against the complete logo width.' }
+if ($theme -match [regex]::Escape("'  {0,-34} [{1}] {2,3}%' -f")) { throw 'Unsafe composite formatting remains in the startup progress renderer.' }
 
 $servicesPath = Join-Path $extractPath '.service/services.json'
 $controllerPath = Join-Path $extractPath '.service/nexroute-services.ps1'
@@ -80,6 +82,18 @@ if (-not $SkipRuntime) {
     $malformed = $extractPath + '\" -ActionId "deploy" -LanguageFile "' + $languagePath + '"'
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Action -Root $malformed -NonInteractive
     if ($LASTEXITCODE -ne 0) { throw 'Renderer failed to recover the malformed Root argument shown in user reports.' }
+
+    # Reproduce the real first launch. Older tests called Menu without the
+    # environment flag, so the animated path and its formatting exception were skipped.
+    $previousAnimation = [Environment]::GetEnvironmentVariable('NEXROUTE_UI_ANIMATE')
+    try {
+        [Environment]::SetEnvironmentVariable('NEXROUTE_UI_ANIMATE', '1')
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $uiPath -Mode Menu -LanguageFile $languagePath -NonInteractive
+        if ($LASTEXITCODE -ne 0) { throw 'Animated first-launch renderer failed.' }
+    }
+    finally {
+        [Environment]::SetEnvironmentVariable('NEXROUTE_UI_ANIMATE', $previousAnimation)
+    }
 
     foreach ($language in @('RU','EN')) {
         Set-Content -LiteralPath $languagePath -Value $language -Encoding ascii
