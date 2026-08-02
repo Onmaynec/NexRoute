@@ -1,0 +1,155 @@
+name: Finalize NexRoute 0.3.2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/finalize-v0.3.2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  finalize:
+    name: Finalize version and dispatch release
+    if: github.repository == 'Onmaynec/NexRoute'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Apply NexRoute 0.3.2 version metadata
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $from = '0.3.1'
+          $to = '0.3.2'
+          $utf8 = New-Object System.Text.UTF8Encoding($false)
+
+          $versionPath = '.service/version.txt'
+          $current = (Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8).Trim()
+          if ($current -ne $from -and $current -ne $to) {
+            throw "Unexpected repository version: $current"
+          }
+
+          foreach ($path in @(
+            '.service/version.txt',
+            'README.md',
+            'docs/README_EN.md',
+            'scripts/Test-Repository.ps1',
+            '.github/workflows/validate.yml'
+          )) {
+            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+              throw "Required release metadata file is missing: $path"
+            }
+            $text = [System.IO.File]::ReadAllText((Resolve-Path $path), [System.Text.Encoding]::UTF8)
+            $text = $text.Replace($from, $to)
+            [System.IO.File]::WriteAllText((Resolve-Path $path), $text, $utf8)
+          }
+
+          $readmePath = 'README.md'
+          $readme = [System.IO.File]::ReadAllText((Resolve-Path $readmePath), [System.Text.Encoding]::UTF8)
+          $readme = $readme.Replace(
+            'Полноценная кодовая подпись и provenance attestation планируются отдельно.',
+            'GitHub build provenance attestation публикуется для ZIP и checksum-файла. Она подтверждает workflow и commit сборки, но не заменяет Windows Authenticode code signing.'
+          )
+          if ($readme -notmatch 'docs/ATTESTATIONS\.md') {
+            $readme = $readme.Replace(
+              'Подробности: [docs/UPDATES.md](docs/UPDATES.md).',
+              "Подробности: [docs/UPDATES.md](docs/UPDATES.md).`n`nПроверка происхождения release assets: [docs/ATTESTATIONS.md](docs/ATTESTATIONS.md)."
+            )
+          }
+          [System.IO.File]::WriteAllText((Resolve-Path $readmePath), $readme, $utf8)
+
+          $englishPath = 'docs/README_EN.md'
+          $english = [System.IO.File]::ReadAllText((Resolve-Path $englishPath), [System.Text.Encoding]::UTF8)
+          if ($english -notmatch 'ATTESTATIONS\.md') {
+            $english += "`n`n## Build provenance attestations`n`nOfficial release ZIP and checksum assets are covered by GitHub build provenance attestations. Verification instructions: [ATTESTATIONS.md](ATTESTATIONS.md).`n"
+          }
+          [System.IO.File]::WriteAllText((Resolve-Path $englishPath), $english, $utf8)
+
+          $changelogPath = 'CHANGELOG.md'
+          $changelog = [System.IO.File]::ReadAllText((Resolve-Path $changelogPath), [System.Text.Encoding]::UTF8)
+          if ($changelog -notmatch '(?m)^## \[0\.3\.2\]') {
+            $entry = @'
+
+## [0.3.2] - 2026-08-02
+
+### Added
+
+- GitHub build provenance attestations for the official ZIP and `.sha256` release assets;
+- self-verification with `gh attestation verify` before GitHub Release publication;
+- `docs/ATTESTATIONS.md` with verification and trust-boundary guidance;
+- Pester contract tests for attestation permissions, subjects and release-step ordering.
+
+### Security
+
+- release assets are now cryptographically bound to the `Onmaynec/NexRoute` GitHub Actions workflow and source commit through Sigstore-backed attestations;
+- SHA-256 verification remains required and complements, rather than replaces, provenance verification.
+'@
+            $anchor = "## [0.3.1] - 2026-08-01"
+            if (-not $changelog.Contains($anchor)) { throw 'Unable to locate the 0.3.1 changelog anchor.' }
+            $changelog = $changelog.Replace($anchor, ($entry.TrimStart("`r", "`n") + "`n`n" + $anchor))
+          }
+          [System.IO.File]::WriteAllText((Resolve-Path $changelogPath), $changelog, $utf8)
+
+          $repositoryTestPath = 'scripts/Test-Repository.ps1'
+          $repositoryTest = [System.IO.File]::ReadAllText((Resolve-Path $repositoryTestPath), [System.Text.Encoding]::UTF8)
+          if ($repositoryTest -notmatch 'ReleaseAttestation\.Tests\.ps1') {
+            $repositoryTest = $repositoryTest.Replace(
+              "'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1',",
+              "'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/ReleaseAttestation.Tests.ps1',"
+            )
+          }
+          if ($repositoryTest -notmatch 'docs/ATTESTATIONS\.md') {
+            $repositoryTest = $repositoryTest.Replace(
+              "'docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md'",
+              "'docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md'"
+            )
+          }
+          [System.IO.File]::WriteAllText((Resolve-Path $repositoryTestPath), $repositoryTest, $utf8)
+
+          Remove-Item -LiteralPath '.github/workflows/finalize-v0.3.2.yml' -Force
+
+          if ((Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8).Trim() -ne $to) {
+            throw 'Version finalization did not produce 0.3.2.'
+          }
+
+      - name: Commit finalized release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "release: finalize NexRoute 0.3.2"
+          git push origin HEAD:main
+
+      - name: Dispatch verified release workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          expected="$(git rev-parse HEAD)"
+          for attempt in {1..12}; do
+            actual="$(git ls-remote origin refs/heads/main | cut -f1)"
+            if [[ "$actual" == "$expected" ]]; then
+              break
+            fi
+            sleep 5
+          done
+          actual="$(git ls-remote origin refs/heads/main | cut -f1)"
+          if [[ "$actual" != "$expected" ]]; then
+            echo "main did not advance to the finalized commit" >&2
+            exit 1
+          fi
+          gh workflow run release.yml --ref main
