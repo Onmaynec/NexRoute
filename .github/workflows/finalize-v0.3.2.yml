@@ -1,3 +1,4 @@
+# One-shot trigger commit: the workflow now exists on the default branch.
 name: Finalize NexRoute 0.3.2
 
 on:
