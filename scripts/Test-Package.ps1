@@ -24,7 +24,7 @@ New-Item -ItemType Directory -Path $extractPath -Force | Out-Null
 Expand-Archive -LiteralPath $zip.FullName -DestinationPath $extractPath -Force
 
 $required = @(
-    'service.bat','nexroute.bat','NexRoute.lnk','general.bat','bin/winws.exe',
+    'service.bat','nexroute.bat','NexRoute.lnk','general.bat','utils/test zapret.ps1','bin/winws.exe',
     'bin/WinDivert.dll','bin/WinDivert64.sys','.service/nexroute.ico',
     '.service/nexroute-ui.ps1','.service/nexroute-services.ps1','.service/services.json',
     '.service/services-state.json','.service/i18n/ru.json','.service/i18n/en.json',
@@ -49,6 +49,27 @@ $service = Get-Content -LiteralPath $servicePath -Raw
 if ($service -notmatch 'if "!menu_choice!"=="14" goto nexroute_services_matrix') { throw 'service.bat is missing option 14.' }
 foreach ($token in @('-Mode Menu','-Mode Action','-Mode Status','-Mode StrategyPicker','-Mode PayloadManager','-Mode IpSetSwitch','-Mode SyncIpSet','-Mode SyncHosts','-Mode TestsIntro','-Mode Services')) {
     if ($service -notmatch [regex]::Escape($token)) { throw "service.bat is missing $token" }
+}
+
+$testLabPath = Join-Path $extractPath 'utils/test zapret.ps1'
+$testLabBytes = [System.IO.File]::ReadAllBytes($testLabPath)
+if ($testLabBytes.Length -lt 3 -or $testLabBytes[0] -ne 0xEF -or $testLabBytes[1] -ne 0xBB -or $testLabBytes[2] -ne 0xBF) {
+    throw 'Strategy Lab must be encoded as UTF-8 with BOM for Windows PowerShell 5.1.'
+}
+
+$testLabTokens = $null
+$testLabParseErrors = $null
+[void][System.Management.Automation.Language.Parser]::ParseFile($testLabPath, [ref]$testLabTokens, [ref]$testLabParseErrors)
+if ($testLabParseErrors.Count -gt 0) {
+    $details = ($testLabParseErrors | ForEach-Object { "$($_.Extent.StartLineNumber):$($_.Extent.StartColumnNumber) $($_.Message)" }) -join '; '
+    throw "Strategy Lab has PowerShell syntax errors: $details"
+}
+
+if (Get-Command powershell.exe -ErrorAction SilentlyContinue) {
+    $escapedTestLabPath = $testLabPath.Replace("'", "''")
+    $probe = "`$tokens=`$null; `$errors=`$null; [void][System.Management.Automation.Language.Parser]::ParseFile('$escapedTestLabPath',[ref]`$tokens,[ref]`$errors); if (`$errors.Count -gt 0) { `$errors | ForEach-Object { Write-Error `$_.Message }; exit 1 }"
+    & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command $probe
+    if ($LASTEXITCODE -ne 0) { throw 'Strategy Lab does not parse in Windows PowerShell 5.1.' }
 }
 
 $uiPath = Join-Path $extractPath '.service/nexroute-ui.ps1'
@@ -103,6 +124,7 @@ if (-not $SkipRuntime) {
 }
 
 Write-Host "Verified package: $($zip.Name)" -ForegroundColor Green
+Write-Host "Strategy Lab: UTF-8 BOM + Windows PowerShell parser verified" -ForegroundColor Green
 Write-Host "Strategies: $($strategyFiles.Count)" -ForegroundColor Green
 Write-Host "Services: $($services.Count)" -ForegroundColor Green
 Write-Host "SHA-256: $actualHash" -ForegroundColor Green
