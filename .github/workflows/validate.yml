@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate NexRoute 0.3.2 sources
+    name: Validate NexRoute 0.4.0 sources
     runs-on: ubuntu-latest
 
     steps:
@@ -38,9 +38,40 @@ jobs:
           $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
+  website:
+    name: Typecheck and build website
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          show-progress: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install website dependencies
+        working-directory: website
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck website
+        working-directory: website
+        run: npm run typecheck
+
+      - name: Build website
+        working-directory: website
+        env:
+          NEXT_PUBLIC_SITE_URL: https://nexroute.example.invalid
+        run: npm run build
+
   build-smoke:
-    name: Build and test NexRoute 0.3.2
-    needs: validate
+    name: Build and test NexRoute 0.4.0
+    needs:
+      - validate
+      - website
     runs-on: windows-latest
 
     steps:
@@ -53,7 +84,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          if ($version -ne '0.3.2') { throw "Expected 0.3.2, got $version" }
+          if ($version -ne '0.4.0') { throw "Expected 0.4.0, got $version" }
           $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
           $result = ./scripts/Build-Package.ps1 `
             -Version $version `
@@ -90,7 +121,7 @@ jobs:
             Tee-Object -FilePath build-offline.log
           $offlineBuild = $result | Select-Object -Last 1
           if ($offlineBuild.UpstreamResolution -ne 'offline') { throw 'Offline build did not use offline resolution mode.' }
-          if (-not $offlineBuild.UpdaterIncluded) { throw 'The offline package was not finalized with the updater.' }
+          if (-not $offlineBuild.UpdaterIncluded) { throw 'Offline build was not finalized with the updater.' }
           if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Online and offline upstream hashes differ.' }
           if ([int]$offlineBuild.PatchTargetCount -ne 23) { throw 'Offline build did not apply 23 tracked patch targets.' }
 
@@ -112,14 +143,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: NexRoute-0.3.2-smoke
+          name: NexRoute-0.4.0-smoke
           path: |
             build-online.log
             package-online.log
             build-offline.log
             package-offline.log
-            artifacts/NexRoute-0.3.2-win-x64.zip
-            artifacts/NexRoute-0.3.2-win-x64.zip.sha256
+            artifacts/NexRoute-0.4.0-win-x64.zip
+            artifacts/NexRoute-0.4.0-win-x64.zip.sha256
           if-no-files-found: warn
           retention-days: 7
 
