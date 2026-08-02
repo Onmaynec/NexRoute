@@ -7,6 +7,7 @@ on:
     types:
       - opened
       - reopened
+      - synchronize
 
 permissions:
   contents: write
@@ -15,7 +16,7 @@ permissions:
 jobs:
   materialize:
     name: Materialize verified website payload
-    if: github.repository == 'Onmaynec/NexRoute' && github.head_ref == 'agent/nexroute-0.4.0-website'
+    if: github.repository == 'Onmaynec/NexRoute' && github.head_ref == 'agent/nexroute-0.4.0-website' && github.event.action != 'synchronize'
     runs-on: ubuntu-latest
 
     steps:
@@ -57,3 +58,62 @@ jobs:
         run: |
           set -euo pipefail
           gh pr comment '${{ github.event.pull_request.number }}' --body "NexRoute 0.4.0 website materialized successfully at commit `${{ steps.commit.outputs.sha }}`. Payload SHA-256 verified. CI workflow is committed separately through the GitHub API."
+
+  fix-brand-icon:
+    name: Replace removed Lucide brand icon
+    if: github.repository == 'Onmaynec/NexRoute' && github.head_ref == 'agent/nexroute-0.4.0-website' && github.event.action == 'synchronize'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/nexroute-0.4.0-website
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Apply idempotent GitHub icon fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          def add_import(text: str) -> str:
+              line = 'import { GitHubIcon } from "@/components/ui/github-icon";\n'
+              if line in text:
+                  return text
+              if text.startswith('"use client";\n\n'):
+                  return '"use client";\n\n' + line + text[len('"use client";\n\n'):]
+              return line + text
+
+          patches = {
+              'website/app/page.tsx': lambda s: add_import(s.replace('  Github,\n', '').replace('Github', 'GitHubIcon')),
+              'website/app/security/page.tsx': lambda s: add_import(s.replace('ArrowRight, CheckCircle2, Github, HardDriveDownload', 'ArrowRight, CheckCircle2, HardDriveDownload').replace('icon: Github', 'icon: GitHubIcon')),
+              'website/components/layout/site-footer.tsx': lambda s: add_import(s.replace('import { Github } from "lucide-react";\n', '').replace('<Github', '<GitHubIcon')),
+              'website/components/layout/site-header.tsx': lambda s: add_import(s.replace('Download, Github, Menu, X', 'Download, Menu, X').replace('<Github', '<GitHubIcon')),
+              'website/components/marketing/github-stats.tsx': lambda s: add_import(s.replace('GitFork, Github, Star', 'GitFork, Star').replace('<Github', '<GitHubIcon')),
+              'website/components/product/demos.tsx': lambda s: add_import(s.replace('  Github,\n', '').replace('icon: Github', 'icon: GitHubIcon')),
+              'website/content/site.ts': lambda s: s.replace('  Github,\n', '').replace('\nexport const icons = { Github };\n', '\n'),
+          }
+
+          for name, transform in patches.items():
+              path = Path(name)
+              original = path.read_text(encoding='utf-8')
+              updated = transform(original)
+              path.write_text(updated, encoding='utf-8')
+          PY
+
+      - name: Commit fix when needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add website
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git diff --cached --check
+          git commit -m 'fix: use local GitHub mark icon'
+          git push origin HEAD:agent/nexroute-0.4.0-website
