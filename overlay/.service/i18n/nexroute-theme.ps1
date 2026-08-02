@@ -119,7 +119,7 @@ function Write-NexRouteCentered {
 
 function Write-NexRouteLogo {
     # Череп и надпись позиционируются как единый блок. Это не даёт
-    # хвостовым пробелам отдельных строк сдвигать визуальный центр.
+    # пробелам отдельных строк сдвигать визуальный центр.
     $skull = @(
         '        _______        ',
         '      /         \      ',
@@ -143,7 +143,7 @@ function Write-NexRouteLogo {
     $leftPadding = [Math]::Max(0, [int](($script:Width - $logoWidth) / 2))
 
     foreach ($rawLine in $skull) {
-        $line = ([string]$rawLine).TrimEnd()
+        $line = ([string]$rawLine).Trim()
         $innerPadding = [Math]::Max(0, [int](($logoWidth - $line.Length) / 2))
         Write-Host ((' ' * $leftPadding) + (' ' * $innerPadding) + $line) -ForegroundColor Magenta
     }
