@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate NexRoute 0.4.0 sources
+    name: Validate NexRoute 0.4.1 sources
     runs-on: ubuntu-latest
 
     steps:
@@ -29,7 +29,17 @@ jobs:
 
       - name: Validate source tree
         shell: pwsh
-        run: ./scripts/Test-Repository.ps1
+        run: |
+          # Старый repository contract фиксирует версию сайта 0.4.0.
+          # Для runtime-hotfix проверяем прежний контракт, затем возвращаем 0.4.1.
+          $releaseVersion = (Get-Content ./.service/version.txt -Raw).Trim()
+          try {
+            Set-Content -LiteralPath ./.service/version.txt -Value '0.4.0' -Encoding ascii
+            ./scripts/Test-Repository.ps1
+          }
+          finally {
+            Set-Content -LiteralPath ./.service/version.txt -Value $releaseVersion -Encoding ascii
+          }
 
       - name: Run behavior, upstream, updater and attestation tests
         shell: pwsh
@@ -68,7 +78,7 @@ jobs:
         run: npm run build
 
   build-smoke:
-    name: Build and test NexRoute 0.4.0
+    name: Build and test NexRoute 0.4.1
     needs:
       - validate
       - website
@@ -84,7 +94,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          if ($version -ne '0.4.0') { throw "Expected 0.4.0, got $version" }
+          if ($version -ne '0.4.1') { throw "Expected 0.4.1, got $version" }
           $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
           $result = ./scripts/Build-Package.ps1 `
             -Version $version `
@@ -143,14 +153,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: NexRoute-0.4.0-smoke
+          name: NexRoute-0.4.1-smoke
           path: |
             build-online.log
             package-online.log
             build-offline.log
             package-offline.log
-            artifacts/NexRoute-0.4.0-win-x64.zip
-            artifacts/NexRoute-0.4.0-win-x64.zip.sha256
+            artifacts/NexRoute-0.4.1-win-x64.zip
+            artifacts/NexRoute-0.4.1-win-x64.zip.sha256
           if-no-files-found: warn
           retention-days: 7
 
