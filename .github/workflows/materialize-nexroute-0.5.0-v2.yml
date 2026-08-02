@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/materialize-nexroute-0.5.0-v2.yml'
       - '.github/scripts/materialize-nexroute-0.5.0.py'
+      - '.github/scripts/materialize-nexroute-0.5.0-test-fixes.py'
 
 permissions:
   contents: write
@@ -30,7 +31,9 @@ jobs:
           tar -xJf /tmp/nr050.tar.xz -C .
 
       - name: Patch source and release metadata
-        run: python .github/scripts/materialize-nexroute-0.5.0.py
+        run: |
+          python .github/scripts/materialize-nexroute-0.5.0.py
+          python .github/scripts/materialize-nexroute-0.5.0-test-fixes.py
 
       - name: Validate source tree
         shell: pwsh
@@ -50,6 +53,7 @@ jobs:
           rm -f .github/workflows/materialize-nexroute-0.5.0.yml
           rm -f .github/workflows/materialize-nexroute-0.5.0-v2.yml
           rm -f .github/scripts/materialize-nexroute-0.5.0.py
+          rm -f .github/scripts/materialize-nexroute-0.5.0-test-fixes.py
           rm -f .github/payloads/nr050.tar.xz.b64 .github/payloads/nr050.part*
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
