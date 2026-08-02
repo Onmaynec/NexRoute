@@ -1,0 +1,180 @@
+name: Materialize NexRoute site layout hotfix
+
+on:
+  issues:
+    types:
+      - opened
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  materialize:
+    if: github.repository == 'Onmaynec/NexRoute' && github.event.issue.title == 'Применить hotfix вёрстки сайта'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout hotfix branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/hotfix-site-layout
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Apply responsive layout fixes
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('website/components/product/demos.tsx')
+          text = path.read_text(encoding='utf-8')
+
+          if text.count('  ArrowDown,\n') != 1:
+              raise RuntimeError('ArrowDown import guard did not match exactly once')
+          text = text.replace('  ArrowDown,\n', '', 1)
+
+          update_flow = r'''export function UpdateFlow() {
+            return (
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-3">
+                {updateSteps.map((step, index) => {
+                  const Icon = step.icon;
+                  return (
+                    <div key={step.label} className="flex min-h-[170px] min-w-0 flex-col rounded-2xl border border-white/8 bg-white/[0.022] p-4">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-cyan-300/13 bg-cyan-300/[0.045] text-cyan-200">
+                        <Icon className="size-4" />
+                      </div>
+                      <p className="mt-4 break-words text-sm font-medium leading-5 text-white">{step.label}</p>
+                      <p className="mt-auto pt-4 font-mono text-[10px] uppercase tracking-[.14em] text-zinc-600">step 0{index + 1}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          }'''
+          text, count = re.subn(
+              r'export function UpdateFlow\(\) \{.*?\n\}\n\n(?=export function RollbackDemo)',
+              update_flow + '\n\n',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise RuntimeError('UpdateFlow replacement guard failed')
+
+          rollback = r'''export function RollbackDemo() {
+            return (
+              <div className="rounded-2xl border border-white/8 bg-[#060b0f] p-4 sm:p-5">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(10.5rem,1fr))] gap-3">
+                  <div className="flex min-h-[136px] min-w-0 flex-col rounded-xl border border-emerald-300/12 bg-emerald-300/[0.04] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-mono text-[10px] uppercase tracking-[.15em] text-emerald-300">VERSION A</p>
+                      <span className="font-mono text-[9px] text-zinc-700">01</span>
+                    </div>
+                    <p className="mt-auto break-words pt-5 text-sm leading-5 text-white">Рабочая установка</p>
+                  </div>
+                  <div className="flex min-h-[136px] min-w-0 flex-col rounded-xl border border-rose-300/12 bg-rose-300/[0.04] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-mono text-[10px] uppercase tracking-[.15em] text-rose-300">ОШИБКА ОБНОВЛЕНИЯ</p>
+                      <span className="font-mono text-[9px] text-zinc-700">02</span>
+                    </div>
+                    <p className="mt-auto break-words pt-5 text-sm leading-5 text-white">Установка остановлена</p>
+                  </div>
+                  <div className="flex min-h-[136px] min-w-0 flex-col rounded-xl border border-cyan-300/12 bg-cyan-300/[0.04] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-mono text-[10px] uppercase tracking-[.15em] text-cyan-300">ВОССТАНОВЛЕНО</p>
+                      <span className="flex items-center gap-2 font-mono text-[9px] text-zinc-600"><RotateCcw className="size-3.5 text-cyan-300" />03</span>
+                    </div>
+                    <p className="mt-auto break-words pt-5 text-sm leading-5 text-white">Версия A восстановлена из backup</p>
+                  </div>
+                </div>
+              </div>
+            );
+          }'''
+          text, count = re.subn(
+              r'export function RollbackDemo\(\) \{.*?\n\}\n\n(?=export function ReleaseVerificationDemo)',
+              rollback + '\n\n',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise RuntimeError('RollbackDemo replacement guard failed')
+
+          verification = r'''export function ReleaseVerificationDemo() {
+            const stages = ["Исходный коммит", "GitHub Actions", "Аттестация", "Релизный файл"];
+            return (
+              <div className="rounded-2xl border border-white/8 bg-[#060b0f] p-4 sm:p-5">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))] gap-3">
+                  {stages.map((label, index) => (
+                    <div key={label} className="flex min-h-[132px] min-w-0 flex-col items-center justify-center rounded-xl border border-white/7 bg-white/[0.02] px-3 py-4 text-center">
+                      <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-cyan-300/14 bg-cyan-300/[0.045] text-cyan-200">
+                        {index === stages.length - 1 ? <Check className="size-4" /> : <Circle className="size-3 fill-current" />}
+                      </div>
+                      <p className="mt-3 break-words text-xs leading-5 text-zinc-300">{label}</p>
+                      <p className="mt-2 font-mono text-[9px] uppercase tracking-[.14em] text-zinc-700">0{index + 1}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }'''
+          text, count = re.subn(
+              r'export function ReleaseVerificationDemo\(\) \{.*?\n\}\n\n(?=export function AnimatedRouteGraph)',
+              verification + '\n\n',
+              text,
+              count=1,
+              flags=re.S,
+          )
+          if count != 1:
+              raise RuntimeError('ReleaseVerificationDemo replacement guard failed')
+
+          path.write_text(text, encoding='utf-8', newline='\n')
+          PY
+
+      - name: Install website dependencies
+        working-directory: website
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck website
+        working-directory: website
+        run: npm run typecheck
+
+      - name: Build GitHub Pages export
+        working-directory: website
+        env:
+          GITHUB_PAGES: 'true'
+          GITHUB_TOKEN: ${{ github.token }}
+          NEXT_PUBLIC_SITE_URL: https://onmaynec.github.io/NexRoute
+          NEXT_PUBLIC_BASE_PATH: /NexRoute
+        run: npm run build
+
+      - name: Commit hotfix branch
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add website/components/product/demos.tsx
+          git commit -m 'Hotfix responsive product demo layouts'
+          git push origin HEAD:agent/hotfix-site-layout
+
+      - name: Report result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body 'Responsive hotfix применён в ветке `agent/hotfix-site-layout`. TypeScript и production static export прошли успешно.'
+          gh issue close "$ISSUE_NUMBER" --reason completed
+
+      - name: Remove one-shot workflow
+        if: always()
+        shell: bash
+        run: |
+          git fetch origin main
+          git switch main
+          git reset --hard origin/main
+          git rm .github/workflows/materialize-site-layout-hotfix.yml
+          git commit -m 'Remove one-shot site layout materializer'
+          git push origin main
