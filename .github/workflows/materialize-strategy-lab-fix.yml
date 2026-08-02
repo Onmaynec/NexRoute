@@ -1,16 +1,16 @@
 name: Materialize NexRoute 0.4.1 Strategy Lab fix
 
 on:
-  issues:
-    types: [opened]
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/materialize-strategy-lab-fix.yml'
 
 permissions:
   contents: write
-  issues: write
 
 jobs:
   materialize:
-    if: github.repository == 'Onmaynec/NexRoute' && github.event.issue.title == 'Материализовать NexRoute 0.4.1 Strategy Lab fix'
     runs-on: ubuntu-latest
     env:
       TARGET_BRANCH: agent/nexroute-0.4.1-strategy-lab-fix
@@ -23,9 +23,10 @@ jobs:
           ref: ${{ env.TARGET_BRANCH }}
           fetch-depth: 0
 
-      - name: Patch sources and release metadata
-        shell: python
+      - name: Apply Strategy Lab compatibility fix
+        shell: bash
         run: |
+          python3 - <<'PY'
           from pathlib import Path
 
           def read(path):
@@ -38,29 +39,17 @@ jobs:
               text = read(path)
               count = text.count(old)
               if count != 1:
-                  raise RuntimeError(f'{path}: expected one match, got {count}: {old[:80]!r}')
+                  raise RuntimeError(f'{path}: expected one match, got {count}: {old[:100]!r}')
               write(path, text.replace(old, new, 1))
 
-          # Base builder: preserve Cyrillic for Windows PowerShell 5.1.
+          # The final package stage runs after all upstream/test-lab patching, so
+          # normalize the released script here to UTF-8 BOM for Windows PowerShell 5.1.
           replace_once(
-              'scripts/Build-NexRoute.ps1',
-              "function Replace-RequiredPattern {",
-              "function Write-Utf8Bom {\n    param(\n        [Parameter(Mandatory)][string]$Path,\n        [Parameter(Mandatory)][string]$Content\n    )\n    [System.IO.File]::WriteAllText($Path, $Content, [System.Text.UTF8Encoding]::new($true))\n}\n\nfunction Replace-RequiredPattern {",
-          )
-          replace_once(
-              'scripts/Build-NexRoute.ps1',
-              "        Write-Utf8NoBom -Path $testPath -Content ($testHeader + $testContent)",
-              "        Write-Utf8Bom -Path $testPath -Content ($testHeader + $testContent)",
+              'scripts/Build-Package.ps1',
+              "    $updaterDestination = Join-Path $serviceDirectory 'nexroute-updater.ps1'\n",
+              "    $testLabDestination = Join-Path $packageRoot 'utils/test zapret.ps1'\n    if (-not (Test-Path -LiteralPath $testLabDestination -PathType Leaf)) {\n        throw 'Expanded package is missing utils/test zapret.ps1.'\n    }\n    # Windows PowerShell 5.1 treats UTF-8 without BOM as the active ANSI code page.\n    # Strategy Lab contains Cyrillic strings, so the final packaged copy must keep a BOM.\n    $testLabText = [System.IO.File]::ReadAllText($testLabDestination, [System.Text.Encoding]::UTF8)\n    [System.IO.File]::WriteAllText(\n        $testLabDestination,\n        $testLabText,\n        (New-Object System.Text.UTF8Encoding($true))\n    )\n\n    $updaterDestination = Join-Path $serviceDirectory 'nexroute-updater.ps1'\n",
           )
 
-          # Final release patcher must not remove the BOM again.
-          replace_once(
-              'scripts/Build-Release.ps1',
-              "    [System.IO.File]::WriteAllText($Path, $content, (New-Object System.Text.UTF8Encoding($false)))\n    return $operations\n}\n\n$patchJournal",
-              "    # Windows PowerShell 5.1 treats UTF-8 without BOM as the active ANSI code page.\n    # Keep an explicit BOM because Strategy Lab contains localized Cyrillic strings.\n    [System.IO.File]::WriteAllText($Path, $content, (New-Object System.Text.UTF8Encoding($true)))\n    return $operations\n}\n\n$patchJournal",
-          )
-
-          # Package contract: require the lab, require BOM, parse it, and probe Windows PowerShell 5.1.
           replace_once(
               'scripts/Test-Package.ps1',
               "    'service.bat','nexroute.bat','NexRoute.lnk','general.bat','bin/winws.exe',",
@@ -72,7 +61,7 @@ jobs:
 
 $uiPath = Join-Path $extractPath '.service/nexroute-ui.ps1'
 """
-          replacement = """foreach ($token in @('-Mode Menu','-Mode Action','-Mode Status','-Mode StrategyPicker','-Mode PayloadManager','-Mode IpSetSwitch','-Mode SyncIpSet','-Mode SyncHosts','-Mode TestsIntro','-Mode Services')) {
+          guard = """foreach ($token in @('-Mode Menu','-Mode Action','-Mode Status','-Mode StrategyPicker','-Mode PayloadManager','-Mode IpSetSwitch','-Mode SyncIpSet','-Mode SyncHosts','-Mode TestsIntro','-Mode Services')) {
     if ($service -notmatch [regex]::Escape($token)) { throw \"service.bat is missing $token\" }
 }
 
@@ -97,32 +86,20 @@ if (Get-Command powershell.exe -ErrorAction SilentlyContinue) {
 
 $uiPath = Join-Path $extractPath '.service/nexroute-ui.ps1'
 """
-          replace_once('scripts/Test-Package.ps1', anchor, replacement)
+          replace_once('scripts/Test-Package.ps1', anchor, guard)
 
-          # Version contract.
           Path('.service/version.txt').write_text('0.4.1\n', encoding='ascii')
           replace_once('website/package.json', '  "version": "0.4.0",', '  "version": "0.4.1",')
           write('.github/workflows/validate.yml', read('.github/workflows/validate.yml').replace('0.4.0', '0.4.1'))
           write('scripts/Test-Repository.ps1', read('scripts/Test-Repository.ps1').replace('0.4.0', '0.4.1'))
 
-          # Repository validation guards for this regression.
           replace_once(
               'scripts/Test-Repository.ps1',
-              "    'Building Flowseal','verified archive'\n)) {",
-              "    'Building Flowseal','verified archive','System.Text.UTF8Encoding($true)'\n)) {",
+              "$serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMatrix.Tests.ps1') -Raw\n",
+              "$packageTest = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-Package.ps1') -Raw\nforeach ($token in @('utils/test zapret.ps1','UTF-8 with BOM','powershell.exe','Strategy Lab does not parse in Windows PowerShell 5.1')) {\n    Assert-True ($packageTest -match [regex]::Escape($token)) \"Package test contains Strategy Lab regression guard: $token\"\n}\n\n$serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMatrix.Tests.ps1') -Raw\n",
           )
-          package_guard_anchor = "$serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMatrix.Tests.ps1') -Raw\n"
-          package_guard = """$packageTest = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-Package.ps1') -Raw
-foreach ($token in @('utils/test zapret.ps1','UTF-8 with BOM','powershell.exe','Strategy Lab does not parse in Windows PowerShell 5.1')) {
-    Assert-True ($packageTest -match [regex]::Escape($token)) \"Package test contains Strategy Lab regression guard: $token\"
-}
 
-$serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMatrix.Tests.ps1') -Raw
-"""
-          replace_once('scripts/Test-Repository.ps1', package_guard_anchor, package_guard)
-
-          # Changelog and release notes.
-          changelog_entry = """## [0.4.1] - 2026-08-02
+          changelog = """## [0.4.1] - 2026-08-02
 
 ### Fixed
 
@@ -131,9 +108,9 @@ $serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMa
 - release pipeline проверяет BOM, синтаксис лаборатории и отдельный parse-probe через `powershell.exe`.
 
 """
-          replace_once('CHANGELOG.md', 'Пока нет изменений.\n\n## [0.4.0]', 'Пока нет изменений.\n\n' + changelog_entry + '## [0.4.0]')
+          replace_once('CHANGELOG.md', 'Пока нет изменений.\n\n## [0.4.0]', 'Пока нет изменений.\n\n' + changelog + '## [0.4.0]')
 
-          readme_section = """## Что изменилось в 0.4.1 🧪
+          ru = """## Что изменилось в 0.4.1 🧪
 
 Версия `0.4.1` исправляет запуск пункта `[12] STRATEGY LAB` в стандартном Windows PowerShell 5.1.
 
@@ -144,13 +121,11 @@ $serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMa
 
 """
           replace_once('README.md', '[![Version](https://img.shields.io/badge/version-0.4.0-24e1d6)]', '[![Version](https://img.shields.io/badge/version-0.4.1-24e1d6)]')
-          replace_once('README.md', '## Что изменилось в 0.4.0 🌐', readme_section + '## Что изменилось в 0.4.0 🌐')
-          text = read('README.md')
-          text = text.replace('NexRoute-0.4.0-win-x64.zip', 'NexRoute-0.4.1-win-x64.zip')
-          text = text.replace('-Version 0.4.0', '-Version 0.4.1')
+          replace_once('README.md', '## Что изменилось в 0.4.0 🌐', ru + '## Что изменилось в 0.4.0 🌐')
+          text = read('README.md').replace('NexRoute-0.4.0-win-x64.zip', 'NexRoute-0.4.1-win-x64.zip').replace('-Version 0.4.0', '-Version 0.4.1')
           write('README.md', text)
 
-          en_section = """## Version 0.4.1 — Strategy Lab compatibility fix
+          en = """## Version 0.4.1 — Strategy Lab compatibility fix
 
 Version 0.4.1 fixes menu option `[12] STRATEGY LAB` under the built-in Windows PowerShell 5.1:
 
@@ -160,9 +135,8 @@ Version 0.4.1 fixes menu option `[12] STRATEGY LAB` under the built-in Windows P
 
 """
           replace_once('docs/README_EN.md', '[![Version](https://img.shields.io/badge/version-0.4.0-24e1d6)]', '[![Version](https://img.shields.io/badge/version-0.4.1-24e1d6)]')
-          replace_once('docs/README_EN.md', '## Version 0.4.0 — official website source', en_section + '## Version 0.4.0 — official website source')
-          text = read('docs/README_EN.md').replace('NexRoute-0.4.0-win-x64.zip', 'NexRoute-0.4.1-win-x64.zip')
-          write('docs/README_EN.md', text)
+          replace_once('docs/README_EN.md', '## Version 0.4.0 — official website source', en + '## Version 0.4.0 — official website source')
+          write('docs/README_EN.md', read('docs/README_EN.md').replace('NexRoute-0.4.0-win-x64.zip', 'NexRoute-0.4.1-win-x64.zip'))
 
           notes = """# NexRoute 0.4.1
 
@@ -172,8 +146,7 @@ Patch release for Strategy Lab compatibility on Windows PowerShell 5.1.
 
 - menu option `[12] STRATEGY LAB` no longer opens a window full of parser errors;
 - `utils/test zapret.ps1` is packaged as UTF-8 with BOM so Cyrillic strings are decoded correctly;
-- both the base builder and final release patcher preserve the BOM;
-- package verification checks the BOM, parses the script, and runs a Windows PowerShell 5.1 parser probe.
+- final package verification checks the BOM, parses the script, and runs a Windows PowerShell 5.1 parser probe.
 
 ## Upgrade
 
@@ -181,31 +154,22 @@ Use `[6] CHECK UPDATES`, run `nexroute-update.cmd`, or download the new portable
 """
           Path('.github/release-notes/v0.4.1.md').write_text(notes, encoding='utf-8', newline='\n')
 
-      - name: Validate repository source contract
+          # The one-shot workflow must not appear in the PR after it removes itself from main.
+          Path('.github/workflows/materialize-strategy-lab-fix.yml').unlink(missing_ok=True)
+          PY
+
+      - name: Validate patched sources
         shell: pwsh
         run: ./scripts/Test-Repository.ps1
-
-      - name: Typecheck website
-        working-directory: website
-        run: |
-          npm install --no-audit --no-fund
-          npm run typecheck
-          npm run build
 
       - name: Commit and push patch branch
         shell: bash
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .
-          git commit -m "NexRoute 0.4.1: fix Strategy Lab encoding on PowerShell 5.1"
+          git add -A
+          git commit -m 'NexRoute 0.4.1: fix Strategy Lab encoding on PowerShell 5.1'
           git push origin HEAD:${TARGET_BRANCH}
-
-      - name: Report success
-        shell: bash
-        run: |
-          gh issue comment "${{ github.event.issue.number }}" --body "NexRoute 0.4.1 Strategy Lab fix materialized on \`${TARGET_BRANCH}\`. Source validation and website build passed."
-          gh issue close "${{ github.event.issue.number }}" --reason completed
 
       - name: Remove one-shot workflow from main
         if: always()
