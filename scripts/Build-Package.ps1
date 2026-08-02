@@ -75,6 +75,20 @@ try {
         throw 'Expanded package has no .service/i18n directory.'
     }
 
+    $testLabDestination = Join-Path $packageRoot 'utils/test zapret.ps1'
+    if (-not (Test-Path -LiteralPath $testLabDestination -PathType Leaf)) {
+        throw 'Expanded package is missing utils/test zapret.ps1.'
+    }
+
+    # Windows PowerShell 5.1 interprets UTF-8 without BOM as the active ANSI code page.
+    # Strategy Lab contains Cyrillic strings, so the final packaged copy must carry a BOM.
+    $testLabText = [System.IO.File]::ReadAllText($testLabDestination, [System.Text.Encoding]::UTF8)
+    [System.IO.File]::WriteAllText(
+        $testLabDestination,
+        $testLabText,
+        (New-Object System.Text.UTF8Encoding($true))
+    )
+
     $updaterDestination = Join-Path $serviceDirectory 'nexroute-updater.ps1'
     Copy-NexRoutePackageFile `
         -Source (Join-Path $repositoryRoot 'overlay/.service/nexroute-updater.ps1') `
@@ -100,12 +114,13 @@ try {
         -Destination (Join-Path $packageRoot 'nexroute-update.cmd')
 
     foreach ($relativePath in @(
+        'utils/test zapret.ps1',
         '.service/nexroute-updater.ps1',
         '.service/i18n/nexroute-pages-update.ps1',
         'nexroute-update.cmd'
     )) {
         if (-not (Test-Path -LiteralPath (Join-Path $packageRoot $relativePath) -PathType Leaf)) {
-            throw "Updater finalization failed. Missing: $relativePath"
+            throw "Package finalization failed. Missing: $relativePath"
         }
     }
 
