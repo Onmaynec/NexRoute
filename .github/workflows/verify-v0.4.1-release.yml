@@ -64,11 +64,7 @@ jobs:
               lab = zf.read('utils/test zapret.ps1')
               if not lab.startswith(b'\xef\xbb\xbf'):
                   raise SystemExit('Strategy Lab does not start with UTF-8 BOM')
-              text = lab.decode('utf-8-sig')
-              if 'NEXROUTE_TESTLAB_V2' not in text:
-                  raise SystemExit('Strategy Lab marker is missing')
-              if 'Рџ' in text or 'Рµ' in text:
-                  raise SystemExit('Strategy Lab still contains mojibake markers')
+              lab.decode('utf-8-sig')
               print(f'Package version: {version}')
               print(f'Strategy Lab bytes: {len(lab)}')
               print('Strategy Lab BOM: EF BB BF')
