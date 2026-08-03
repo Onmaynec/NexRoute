@@ -5,6 +5,7 @@ $extensionModules=@(
     'nexroute-update-transaction.ps1',
     'nexroute-portable-verifier.ps1',
     'nexroute-attestation-v2.ps1',
+    'nexroute-dot.ps1',
     'nexroute-media.ps1',
     'nexroute-strategy-lab-v2.ps1',
     'nexroute-workers.ps1',
