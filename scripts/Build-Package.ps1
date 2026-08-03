@@ -50,7 +50,7 @@ function Set-NexRoutePowerShellBom {
 
 try {
     if (-not (Test-Path -LiteralPath $baseBuilder -PathType Leaf)) { throw "Base release builder was not found: $baseBuilder" }
-    if (-not (Test-Path -LiteralPath $nativeTrayBuilder -PathType Leaf)) { throw "Native tray builder was not found: $nativeTrayBuilder" }
+    if (-not (Test-Path -LiteralPath $nativeTrayBuilder -PathType Leaf)) { throw "Native Windows builder was not found: $nativeTrayBuilder" }
     $buildParameters=@{ Version=$Version; OutputDirectory=$outputPath }
     if ($UpstreamVersion) { $buildParameters.UpstreamVersion=$UpstreamVersion }
     if ($UpstreamArchive) { $buildParameters.UpstreamArchive=$UpstreamArchive }
@@ -87,15 +87,20 @@ try {
         Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot ('overlay/.service/i18n/' + $name)) -Destination (Join-Path $i18nDirectory $name)
     }
 
-    # Compile the native tray from checked-in source with the Windows .NET Framework
-    # compiler. No NuGet packages or network access are used, so offline rebuilds
-    # produce the same product surface.
-    $nativeBuildDirectory=Join-Path $tempRoot 'native-tray'
-    $nativeResult=@(& $nativeTrayBuilder -SourcePath (Join-Path $repositoryRoot 'native/NexRoute.Tray/Program.cs') -OutputDirectory $nativeBuildDirectory) | Select-Object -Last 1
-    if (-not $nativeResult -or -not (Test-Path -LiteralPath ([string]$nativeResult.executable) -PathType Leaf)) { throw 'Native tray builder returned no executable.' }
+    # Compile the native Windows controllers from checked-in source with the
+    # Windows .NET Framework compiler. No NuGet packages or network access are
+    # used, so online and offline rebuilds expose the same product surface.
+    $nativeBuildDirectory=Join-Path $tempRoot 'native-windows'
+    $nativeResult=@(& $nativeTrayBuilder `
+        -SourcePath (Join-Path $repositoryRoot 'native/NexRoute.Tray/Program.cs') `
+        -NotifierSourcePath (Join-Path $repositoryRoot 'native/NexRoute.Notifier/Program.cs') `
+        -OutputDirectory $nativeBuildDirectory) | Select-Object -Last 1
+    if (-not $nativeResult -or -not (Test-Path -LiteralPath ([string]$nativeResult.executable) -PathType Leaf)) { throw 'Native Windows builder returned no tray executable.' }
+    if (-not (Test-Path -LiteralPath ([string]$nativeResult.notifierExecutable) -PathType Leaf)) { throw 'Native Windows builder returned no notifier executable.' }
     $nativeDirectory=Join-Path $serviceDirectory 'native'
     New-Item -ItemType Directory -Path $nativeDirectory -Force | Out-Null
     Copy-NexRoutePackageFile -Source ([string]$nativeResult.executable) -Destination (Join-Path $nativeDirectory 'NexRoute.Tray.exe')
+    Copy-NexRoutePackageFile -Source ([string]$nativeResult.notifierExecutable) -Destination (Join-Path $nativeDirectory 'NexRoute.Notifier.exe')
 
     # Windows PowerShell 5.1 treats UTF-8 without BOM as the active ANSI code page.
     # Finalize every localized PowerShell module with BOM.
@@ -108,13 +113,14 @@ try {
     $required=@(
         'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','nexroute-tray-install.cmd',
         '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1',
-        '.service/nexroute-updater.ps1','.service/nexroute-worker-host.ps1','.service/portable-tools.json','.service/native/NexRoute.Tray.exe',
+        '.service/nexroute-updater.ps1','.service/nexroute-worker-host.ps1','.service/portable-tools.json',
+        '.service/native/NexRoute.Tray.exe','.service/native/NexRoute.Notifier.exe',
         '.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1',
         '.service/next/nexroute-network.ps1','.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1',
         '.service/next/nexroute-update.ps1','.service/next/nexroute-workers.ps1','.service/next/nexroute-worker-plans.ps1',
         '.service/next/nexroute-runtime-extensions.ps1','.service/next/nexroute-portable-verifier.ps1','.service/next/nexroute-attestation-v2.ps1',
         '.service/next/nexroute-dot.ps1','.service/next/nexroute-dot-snapshot-v2.ps1','.service/next/nexroute-tray-install.ps1',
-        '.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1',
+        '.service/next/nexroute-notifications.ps1','.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1',
         '.service/next/nexroute-update-transaction.ps1','utils/test zapret.ps1'
     )
     foreach ($relativePath in $required) {
@@ -146,6 +152,8 @@ try {
         DotResolverIncluded=$true
         NativeTrayIncluded=$true
         NativeTraySha256=[string]$nativeResult.sha256
+        NativeNotifierIncluded=$true
+        NativeNotifierSha256=[string]$nativeResult.notifierSha256
         Archive=$zipPath
         Checksum=$checksumPath
         Sha256=$hash.Hash.ToLowerInvariant()
