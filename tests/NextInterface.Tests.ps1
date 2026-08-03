@@ -1,13 +1,15 @@
-Describe 'NexRoute 0.5.0 arrow-key control node' {
+Describe 'NexRoute 0.6.0 arrow-key control node' {
     BeforeAll {
         $root=Split-Path -Parent $PSScriptRoot
         $common=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-common.ps1') -Raw
         $console=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-console.ps1') -Raw
         $update=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-update.ps1') -Raw
+        $updateTransaction=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-update-transaction.ps1') -Raw
         $monitor=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-monitor.ps1') -Raw
         $network=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-network.ps1') -Raw
         $management=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-management.ps1') -Raw
         $strategy=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-strategies.ps1') -Raw
+        $strategyV2=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-strategy-lab-v2.ps1') -Raw
         $serviceNetwork=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-services-network.ps1') -Raw
         $serviceState=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-services-state.ps1') -Raw
     }
@@ -27,18 +29,22 @@ Describe 'NexRoute 0.5.0 arrow-key control node' {
         }
     }
 
-    It 'requires Y confirmation and performs an install-and-restart update flow' {
+    It 'requires Y confirmation and commits or rolls back the update transaction before restart' {
         $update | Should -Match 'Confirm-NrY'
         $update | Should -Match "-Mode Install"
         $update | Should -Match 'PackageSha256'
         $update | Should -Match 'Invoke-NrPostUpdateHealthCheck'
-        $update | Should -Match 'Start-Process.+nexroute\.bat'
+        $update | Should -Match 'Complete-NrUpdateTransaction'
+        $update | Should -Match "-Mode Rollback"
+        $update | Should -Match 'Start-Process -FilePath \$launcher'
+        $updateTransaction | Should -Match 'Test-NrUpdatedControlNode'
+        $updateTransaction | Should -Match "Status rolled-back"
         $update | Should -Match 'gh.+attestation verify'
     }
 
-    It 'implements strategy scoring history recommendations and failover' {
-        foreach ($token in @('Invoke-NrStrategyLab','score','jitterMs','packetLossPercent','megabitsPerSecond','Install-NrBestStrategy','Show-NrLabHistory','Apply-NrPerServiceStrategies','automatic-failover')) {
-            ($strategy + $monitor) | Should -Match ([regex]::Escape($token))
+    It 'implements measured strategy scoring history recommendations and failover' {
+        foreach ($token in @('Invoke-NrStrategyLab','score','averageJitterMs','averagePacketLossPercent','measuredDownloadMbps','throughputReceivedBytes','youtubePlaybackReady','discordRealtimeTransportReady','telegramRealtimeTransportReady','Install-NrBestStrategy','Show-NrLabHistory','Apply-NrPerServiceStrategies','automatic-failover')) {
+            ($strategy + $strategyV2 + $monitor) | Should -Match ([regex]::Escape($token))
         }
     }
 
