@@ -14,7 +14,45 @@ Describe 'NexRoute 0.6.0 notification broker' {
         [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($message64)) | Should -Be $message
     }
 
-    It 'launches the native notifier with bounded arguments and records delivery history' {
+    It 'creates bounded escaped ToastGeneric XML without control characters' {
+        $payload=New-NrToastPayload -Title 'NexRoute <ready>' -Message "A&B`u{0001}" -Level Warning -TimeoutMilliseconds 99999 -AppId 'NexRoute.Tests'
+        $payload.appId | Should -Be 'NexRoute.Tests'
+        $payload.level | Should -Be 'warning'
+        $payload.timeoutMilliseconds | Should -Be 15000
+        $payload.xml | Should -Match 'ToastGeneric'
+        $payload.xml | Should -Match 'NexRoute &lt;ready&gt;'
+        $payload.xml | Should -Match 'A&amp;B'
+        $payload.xml | Should -Not -Match ([char]1)
+    }
+
+    It 'uses the Windows toast path first and records confirmed delivery' {
+        $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-notification-toast-'+[guid]::NewGuid().ToString('N'))
+        $script:toastPayload=$null
+        $script:nativeCalls=0
+        try {
+            New-Item -ItemType Directory -Path $fixture -Force | Out-Null
+            $result=Send-NrNotification -Root $fixture -Title 'Маршрут готов' -Message 'Защищённый сервис доступен' -Level Info -ToastRunner {
+                param($payload)
+                $script:toastPayload=$payload
+                [pscustomobject]@{ delivered=$true; setting='Enabled' }
+            } -Runner {
+                $script:nativeCalls++
+                [pscustomobject]@{ exitCode=0; processId=777 }
+            }
+
+            $result.channel | Should -Be 'windows-toast'
+            $result.attempts | Should -Be @('windows-toast')
+            $result.error | Should -BeNullOrEmpty
+            $script:nativeCalls | Should -Be 0
+            $script:toastPayload.xml | Should -Match 'Маршрут готов'
+            $script:toastPayload.timeoutMilliseconds | Should -Be 5000
+            $history=Get-Content -LiteralPath $result.historyPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $history.channel | Should -Be 'windows-toast'
+            @($history.attempts) | Should -Be @('windows-toast')
+        } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'falls back to the native balloon when toast is disabled' {
         $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-notification-native-'+[guid]::NewGuid().ToString('N'))
         $script:capturedArguments=$null
         try {
@@ -23,7 +61,7 @@ Describe 'NexRoute 0.6.0 notification broker' {
             $oldOs=$env:OS
             $env:OS='Windows_NT'
             try {
-                $result=Send-NrNotification -Root $fixture -Title 'Обновление' -Message 'Готово' -Level Warning -TimeoutMilliseconds 99999 -Runner {
+                $result=Send-NrNotification -Root $fixture -Title 'Обновление' -Message 'Готово' -Level Warning -TimeoutMilliseconds 99999 -DisableToast -Runner {
                     param($executable,$arguments)
                     $script:capturedArguments=[string[]]$arguments
                     [pscustomobject]@{ exitCode=0; processId=777 }
@@ -31,6 +69,8 @@ Describe 'NexRoute 0.6.0 notification broker' {
             } finally { $env:OS=$oldOs }
 
             $result.channel | Should -Be 'native-balloon'
+            $result.attempts | Should -Be @('windows-toast','native-balloon')
+            $result.error | Should -Match 'disabled by NexRoute configuration'
             Test-Path -LiteralPath $result.historyPath -PathType Leaf | Should -BeTrue
             $script:capturedArguments | Should -Contain '--title64'
             $script:capturedArguments | Should -Contain '--message64'
@@ -44,17 +84,18 @@ Describe 'NexRoute 0.6.0 notification broker' {
             [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($script:capturedArguments[$messageIndex+1])) | Should -Be 'Готово'
             $history=Get-Content -LiteralPath $result.historyPath -Raw -Encoding UTF8 | ConvertFrom-Json
             $history.channel | Should -Be 'native-balloon'
+            @($history.attempts) | Should -Be @('windows-toast','native-balloon')
             $history.level | Should -Be 'Warning'
             $history.processId | Should -BeGreaterThan 0
         } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'uses a fallback and retains the native failure reason when the executable is unavailable' {
+    It 'uses the final fallback and retains both toast and native failure reasons' {
         $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-notification-fallback-'+[guid]::NewGuid().ToString('N'))
         $script:fallbackCalls=0
         try {
             New-Item -ItemType Directory -Path $fixture -Force | Out-Null
-            $result=Send-NrNotification -Root $fixture -Title 'NexRoute' -Message 'Service stopped' -Level Error -Fallback {
+            $result=Send-NrNotification -Root $fixture -Title 'NexRoute' -Message 'Service stopped' -Level Error -DisableToast -Fallback {
                 param($title,$message,$level)
                 $script:fallbackCalls++
                 $title | Should -Be 'NexRoute'
@@ -62,11 +103,27 @@ Describe 'NexRoute 0.6.0 notification broker' {
                 $level | Should -Be 'Error'
             }
             $result.channel | Should -Be 'injected-fallback'
+            $result.attempts | Should -Be @('windows-toast','native-balloon','injected-fallback')
+            $result.error | Should -Match 'Toast notifications are disabled'
             $result.error | Should -Match 'Native notifier is unavailable'
             $script:fallbackCalls | Should -Be 1
             $history=Get-Content -LiteralPath $result.historyPath -Raw | ConvertFrom-Json
             $history.channel | Should -Be 'injected-fallback'
+            @($history.attempts) | Should -Be @('windows-toast','native-balloon','injected-fallback')
             $history.error | Should -Match 'Native notifier is unavailable'
+        } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'fails over when Windows reports toast delivery disabled' {
+        $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-notification-setting-'+[guid]::NewGuid().ToString('N'))
+        try {
+            New-Item -ItemType Directory -Path $fixture -Force | Out-Null
+            $result=Send-NrNotification -Root $fixture -Title 'NexRoute' -Message 'Policy test' -Level Info -ToastRunner {
+                param($payload)
+                [pscustomobject]@{ delivered=$false; setting='DisabledByGroupPolicy' }
+            } -Fallback { param($title,$message,$level) }
+            $result.channel | Should -Be 'injected-fallback'
+            $result.error | Should -Match 'DisabledByGroupPolicy'
         } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
@@ -75,7 +132,7 @@ Describe 'NexRoute 0.6.0 notification broker' {
         try {
             New-Item -ItemType Directory -Path $fixture -Force | Out-Null
             1..3 | ForEach-Object {
-                Write-NrNotificationHistory -Root $fixture -Title ('Title '+$_) -Message ('Message '+$_) -Level Info -Channel console | Out-Null
+                Write-NrNotificationHistory -Root $fixture -Title ('Title '+$_) -Message ('Message '+$_) -Level Info -Channel console -Attempts @('console') | Out-Null
             }
             $historyDirectory=Join-Path $fixture '.service/notifications/history'
             @(Get-ChildItem -LiteralPath $historyDirectory -Filter '*.json' -File) | Should -HaveCount 3
@@ -83,13 +140,22 @@ Describe 'NexRoute 0.6.0 notification broker' {
         } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'defines a native notifier that is independent of the WinRT toast API' {
+    It 'keeps the native notifier independent as the deterministic WinRT fallback' {
         $repositoryRoot=Split-Path -Parent $PSScriptRoot
         $source=Get-Content -LiteralPath (Join-Path $repositoryRoot 'native/NexRoute.Notifier/Program.cs') -Raw -Encoding UTF8
         foreach ($token in @('NotifyIcon','ShowBalloonTip','--self-test','--title64','--message64','Encoding.UTF8','ToolTipIcon.Error','ToolTipIcon.Warning')) {
             $source | Should -Match ([regex]::Escape($token))
         }
         $source | Should -Not -Match 'Windows\.UI\.Notifications|ToastNotificationManager|WinRT'
+    }
+
+    It 'implements Windows toast capability checks before using the native fallback' {
+        $repositoryRoot=Split-Path -Parent $PSScriptRoot
+        $broker=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-notifications.ps1') -Raw -Encoding UTF8
+        foreach ($token in @('ToastNotificationManager','ToastGeneric','CreateToastNotifier','notifier.Setting','NEXROUTE_DISABLE_TOAST','windows-toast','native-balloon','DisabledByGroupPolicy')) {
+            $broker | Should -Match ([regex]::Escape($token))
+        }
+        $broker.IndexOf("$attempts.Add('windows-toast')") | Should -BeLessThan $broker.IndexOf("$attempts.Add('native-balloon')")
     }
 
     It 'loads the broker after the legacy notification function' {
