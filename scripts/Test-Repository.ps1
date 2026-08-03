@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $errors = New-Object 'System.Collections.Generic.List[string]'
-$expectedVersion = '0.5.0'
+$expectedVersion = '0.6.0'
 $bootstrapUnlocked = $env:NEXROUTE_BOOTSTRAP_UPSTREAM -eq '1'
 
 function Assert-True {
@@ -35,10 +35,11 @@ $required = @(
     'overlay/nexroute.bat','overlay/nexroute-update.cmd','overlay/.service/nexroute-ui.ps1',
     'overlay/.service/nexroute-updater.ps1','overlay/.service/nexroute-services.ps1',
     'overlay/.service/nexroute-services-entry.ps1','overlay/.service/services.json',
-    'overlay/service.bat','overlay/nexroute-update.cmd','overlay/nexroute-tray.cmd',
+    'overlay/service.bat','overlay/nexroute-update.cmd','overlay/nexroute-tray.cmd','overlay/nexroute-validation.cmd',
     'overlay/.service/nexroute-console.ps1','overlay/.service/nexroute-monitor.ps1','overlay/.service/nexroute-tray.ps1',
     'overlay/.service/next/nexroute-common.ps1','overlay/.service/next/nexroute-strategies.ps1','overlay/.service/next/nexroute-network.ps1',
     'overlay/.service/next/nexroute-diagnostics.ps1','overlay/.service/next/nexroute-management.ps1','overlay/.service/next/nexroute-update.ps1',
+    'overlay/.service/next/nexroute-notifications.ps1','overlay/.service/next/nexroute-attestation-v2.ps1',
     'overlay/.service/New-NexRouteIcon.ps1','overlay/.service/i18n/ru.json','overlay/.service/i18n/en.json',
     'overlay/.service/i18n/nexroute-theme.ps1','overlay/.service/i18n/nexroute-pages.ps1',
     'overlay/.service/i18n/nexroute-pages-core.ps1','overlay/.service/i18n/nexroute-pages-network.ps1',
@@ -48,11 +49,13 @@ $required = @(
     'overlay/.service/i18n/nexroute-services-network.ps1',
     'overlay/.service/i18n/nexroute-services-runtime.ps1',
     'overlay/.service/i18n/nexroute-services-diagnostics.ps1',
-    'scripts/Build-NexRoute.ps1','scripts/Build-Release.ps1','scripts/NexRoute.Upstream.psm1',
-    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1',
+    'native/NexRoute.Tray/Program.cs','native/NexRoute.Notifier/Program.cs','native/NexRoute.Dashboard/Program.cs','native/NexRoute.Validation/Program.cs',
+    'scripts/Build-NativeTray.ps1','scripts/Build-NexRoute.ps1','scripts/Build-Package.ps1','scripts/Build-Release.ps1','scripts/New-ValidationReport.ps1','scripts/NexRoute.Upstream.psm1',
+    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1','scripts/Test-V06Desktop.ps1',
     'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/ReleaseAttestation.Tests.ps1','tests/NextInterface.Tests.ps1',
+    'tests/Notifications.Tests.ps1','tests/NativeTray.Tests.ps1','tests/ValidationReport.Tests.ps1','tests/ValidationViewer.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml',
-    '.github/release-notes/v0.5.0.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/WEBSITE.md',
+    '.github/release-notes/v0.6.0.md','docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/WEBSITE.md',
     'website/package.json','website/tsconfig.json','website/next.config.ts','website/postcss.config.mjs','website/.env.example','website/README.md','website/vercel.json',
     'website/app/layout.tsx','website/app/page.tsx','website/app/features/page.tsx','website/app/download/page.tsx',
     'website/app/docs/page.tsx','website/app/docs/[slug]/page.tsx','website/app/security/page.tsx','website/app/faq/page.tsx','website/app/changelog/page.tsx','website/app/not-found.tsx',
@@ -78,6 +81,7 @@ Assert-True ($readme -match 'nexroute-update\.cmd') 'README documents the manual
 Assert-True ($readme -match 'update-state\.json') 'README documents updater state'
 Assert-True ($readme -match 'gh attestation verify') 'README documents build provenance verification'
 Assert-True ($readme -match 'docs/ATTESTATIONS\.md') 'README links the attestation guide'
+Assert-True ($readme -match 'nexroute-validation\.cmd') 'README documents the signed validation viewer'
 Assert-True ($readme -match 'website/') 'README documents the official website source'
 Assert-True ($readme -match 'npm run dev') 'README documents website local startup'
 
@@ -173,7 +177,7 @@ $nextInterface = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nex
 $nextCommon = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-common.ps1') -Raw
 $serviceNetwork = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-services-network.ps1') -Raw
 foreach ($token in @('>[+]','UpArrow','DownArrow','Installing Config','Check Update','Confirm-NrY','Invoke-NrStrategyLab','ConvertTo-ValidatedIpCidr')) {
-    Assert-True (($nextInterface + $nextCommon + $serviceNetwork + $buildWrapper) -match [regex]::Escape($token)) "NexRoute 0.5.0 control suite contains $token"
+    Assert-True (($nextInterface + $nextCommon + $serviceNetwork + $buildWrapper) -match [regex]::Escape($token)) "NexRoute $expectedVersion control suite contains $token"
 }
 
 $serviceMatrixTests = Get-Content -LiteralPath (Join-Path $root 'tests/ServiceMatrix.Tests.ps1') -Raw
@@ -206,14 +210,24 @@ Assert-True ($updateLauncher -match 'nexroute-updater\.ps1') 'Launcher invokes t
 Assert-True ($updateLauncher -match '-Mode Auto') 'Launcher performs automatic update checks'
 
 $validateWorkflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/validate.yml') -Raw
-foreach ($token in @('Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.5.0','Typecheck and build website','npm run typecheck','npm run build')) {
+foreach ($token in @(
+    'Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.6.0',
+    'Typecheck and build website','npm run typecheck','npm run build',
+    'actions/checkout@v6','actions/setup-node@v6','actions/upload-artifact@v7',
+    'NotificationToastChannel','NotificationFallbackChannel'
+)) {
     Assert-True ($validateWorkflow -match [regex]::Escape($token)) "Validation workflow contains $token"
 }
+Assert-True ($validateWorkflow -notmatch 'actions/checkout@v4|actions/setup-node@v4|actions/upload-artifact@v4') 'Validation workflow contains no deprecated Node 20 action majors'
 
 $releaseWorkflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/release.yml') -Raw
-foreach ($token in @('id-token: write','attestations: write','artifact-metadata: write','actions/attest@v4','gh attestation verify')) {
+foreach ($token in @(
+    'id-token: write','attestations: write','artifact-metadata: write','actions/attest@v4','gh attestation verify',
+    'actions/checkout@v6','actions/upload-artifact@v7','NotificationToastChannel','NotificationFallbackChannel'
+)) {
     Assert-True ($releaseWorkflow -match [regex]::Escape($token)) "Release workflow contains $token"
 }
+Assert-True ($releaseWorkflow -notmatch 'actions/checkout@v4|actions/upload-artifact@v4') 'Release workflow contains no deprecated Node 20 action majors'
 
 $networkPages = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-pages-network.ps1') -Raw
 Assert-True ($networkPages -match 'NEXROUTE-HOSTS-BEGIN') 'SYNC HOSTS uses a managed block'
