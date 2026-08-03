@@ -19,6 +19,7 @@ on:
       - 'scripts/NexRoute.Upstream.psm1'
       - 'scripts/Test-Package.ps1'
       - 'scripts/Test-Release.ps1'
+      - 'scripts/Test-V06Desktop.ps1'
       - 'tests/**'
       - '.github/release-notes/**'
       - '.github/workflows/release.yml'
@@ -85,6 +86,7 @@ jobs:
           if ($build.UpstreamResolution -ne 'offline') { throw 'Release builder did not consume the locally verified archive.' }
           if (-not $build.UpdaterIncluded) { throw 'The release package was not finalized with the updater.' }
           if (-not $build.NativeTrayIncluded) { throw 'The release package was not finalized with the native tray controller.' }
+          if (-not $build.NativeDashboardIncluded) { throw 'The release package was not finalized with the native dashboard.' }
           if (-not $build.PortableAttestationVerifierIncluded) { throw 'The release package has no portable attestation verifier.' }
           if (-not $build.DotResolverIncluded) { throw 'The release package has no transactional DoT resolver.' }
           "NEXROUTE_UPSTREAM_CACHE=$cache" >> $env:GITHUB_ENV
@@ -92,6 +94,8 @@ jobs:
           "NEXROUTE_PATCH_TARGETS=$($build.PatchTargetCount)" >> $env:GITHUB_ENV
           "NEXROUTE_NATIVE_TRAY_SHA256=$($build.NativeTraySha256)" >> $env:GITHUB_ENV
           "NEXROUTE_NATIVE_TRAY_INCLUDED=$($build.NativeTrayIncluded)" >> $env:GITHUB_ENV
+          "NEXROUTE_NATIVE_DASHBOARD_INCLUDED=$($build.NativeDashboardIncluded)" >> $env:GITHUB_ENV
+          "NEXROUTE_NATIVE_DASHBOARD_SHA256=$($build.NativeDashboardSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_PORTABLE_VERIFIER_INCLUDED=$($build.PortableAttestationVerifierIncluded)" >> $env:GITHUB_ENV
           "NEXROUTE_DOT_RESOLVER_INCLUDED=$($build.DotResolverIncluded)" >> $env:GITHUB_ENV
 
@@ -105,6 +109,12 @@ jobs:
           "NEXROUTE_STRATEGIES=$($result.StrategyCount)" >> $env:GITHUB_ENV
           "NEXROUTE_SERVICES=$($result.ServiceCount)" >> $env:GITHUB_ENV
           "NEXROUTE_NATIVE_TRAY_EXIT_CODE=$($result.NativeTrayExitCode)" >> $env:GITHUB_ENV
+          $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $result.ExtractPath
+          if ([int]$desktop.DashboardSelfTestExitCode -ne 0) { throw 'Native dashboard self-test did not pass in the release package.' }
+          if ($desktop.DashboardSha256 -ne $env:NEXROUTE_NATIVE_DASHBOARD_SHA256) { throw 'Native dashboard digest differs from the build result.' }
+          "NEXROUTE_DASHBOARD_SELF_TEST_EXIT_CODE=$($desktop.DashboardSelfTestExitCode)" >> $env:GITHUB_ENV
+          "NEXROUTE_DASHBOARD_FIXTURE_RUN_COUNT=$($desktop.FixtureRunCount)" >> $env:GITHUB_ENV
+          "NEXROUTE_DASHBOARD_FIXTURE_RESULT_COUNT=$($desktop.FixtureResultCount)" >> $env:GITHUB_ENV
           if ($result.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Built package contains a different upstream lock.' }
           if ([int]$result.PatchTargetCount -ne 23) { throw 'Built package patch report is incomplete.' }
           if ([int]$result.NativeTrayExitCode -ne 0) { throw 'Native tray self-test did not pass in the release package.' }
@@ -122,6 +132,9 @@ jobs:
             -ServiceCount ([int]$env:NEXROUTE_SERVICES) `
             -NativeTrayIncluded ([Convert]::ToBoolean($env:NEXROUTE_NATIVE_TRAY_INCLUDED)) `
             -NativeTrayExitCode ([int]$env:NEXROUTE_NATIVE_TRAY_EXIT_CODE) `
+            -NativeDashboardIncluded ([Convert]::ToBoolean($env:NEXROUTE_NATIVE_DASHBOARD_INCLUDED)) `
+            -NativeDashboardExitCode ([int]$env:NEXROUTE_DASHBOARD_SELF_TEST_EXIT_CODE) `
+            -NativeDashboardSha256 $env:NEXROUTE_NATIVE_DASHBOARD_SHA256 `
             -PortableAttestationVerifierIncluded ([Convert]::ToBoolean($env:NEXROUTE_PORTABLE_VERIFIER_INCLUDED)) `
             -DotResolverIncluded ([Convert]::ToBoolean($env:NEXROUTE_DOT_RESOLVER_INCLUDED)) `
             -Ipv6RuntimeStatus experimental
@@ -236,6 +249,8 @@ jobs:
           Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
           Write-Host "Services: $env:NEXROUTE_SERVICES"
           Write-Host "Native tray SHA-256: $env:NEXROUTE_NATIVE_TRAY_SHA256"
+          Write-Host "Native dashboard SHA-256: $env:NEXROUTE_NATIVE_DASHBOARD_SHA256"
+          Write-Host "Dashboard fixture runs/results: $env:NEXROUTE_DASHBOARD_FIXTURE_RUN_COUNT/$env:NEXROUTE_DASHBOARD_FIXTURE_RESULT_COUNT"
           Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
           Write-Host "Validation status: $env:NEXROUTE_VALIDATION_STATUS"
           Write-Host "Validation JSON SHA-256: $env:NEXROUTE_VALIDATION_JSON_SHA256"
