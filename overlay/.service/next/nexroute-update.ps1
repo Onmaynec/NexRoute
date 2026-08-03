@@ -53,7 +53,7 @@ function Invoke-NrPostUpdateHealthCheck {
         $watch=[Diagnostics.Stopwatch]::StartNew()
         $ok=$false; $message=$null
         try {
-            $response=Invoke-WebRequest -Uri $target.Uri -UseBasicParsing -TimeoutSec 10 -Headers @{ 'User-Agent'='NexRoute-Post-Update/0.5.0' }
+            $response=Invoke-WebRequest -Uri $target.Uri -UseBasicParsing -TimeoutSec 10 -Headers @{ 'User-Agent'='NexRoute-Post-Update/0.6.0' }
             $ok=[int]$response.StatusCode -ge 200 -and [int]$response.StatusCode -lt 500
         } catch { $message=$_.Exception.Message }
         $watch.Stop()
@@ -123,14 +123,14 @@ function Invoke-NrAttestationVerification {
     $temp=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-attestation-' + [guid]::NewGuid().ToString('N'))
     try {
         New-Item -ItemType Directory -Path $temp -Force | Out-Null
-        $release=Invoke-RestMethod -Uri 'https://api.github.com/repos/Onmaynec/NexRoute/releases/latest' -Headers @{ 'User-Agent'='NexRoute-Attestation/0.5.0'; Accept='application/vnd.github+json' } -TimeoutSec 20
+        $release=Invoke-RestMethod -Uri 'https://api.github.com/repos/Onmaynec/NexRoute/releases/latest' -Headers @{ 'User-Agent'='NexRoute-Attestation/0.6.0'; Accept='application/vnd.github+json' } -TimeoutSec 20
         if ($release.draft -or $release.prerelease) { throw 'Latest release is not a stable release.' }
         $version=([string]$release.tag_name).TrimStart('v')
         $archive="NexRoute-$version-win-x64.zip"
         foreach ($name in @($archive,"$archive.sha256")) {
             $asset=@($release.assets | Where-Object { $_.name -eq $name })
             if ($asset.Count -ne 1) { throw "Release asset is missing: $name" }
-            Invoke-WebRequest -Uri $asset[0].browser_download_url -OutFile (Join-Path $temp $name) -UseBasicParsing -TimeoutSec 90 -Headers @{ 'User-Agent'='NexRoute-Attestation/0.5.0' }
+            Invoke-WebRequest -Uri $asset[0].browser_download_url -OutFile (Join-Path $temp $name) -UseBasicParsing -TimeoutSec 90 -Headers @{ 'User-Agent'='NexRoute-Attestation/0.6.0' }
         }
         & $gh.Source attestation verify (Join-Path $temp $archive) --repo Onmaynec/NexRoute
         if ($LASTEXITCODE -ne 0) { throw 'Archive attestation verification failed.' }
@@ -168,4 +168,12 @@ function Show-NrUpdateTools {
             'sha' { Show-NrMessage -Title (T 'sha') -Message $(if ($script:NrState.lastDownloadedSha256) { [string]$script:NrState.lastDownloadedSha256 } else { T 'noResults' }) -Color Cyan }
         }
     }
+}
+
+# Loaded last by nexroute-console.ps1. These extensions intentionally override
+# the legacy Strategy Lab functions after all compatibility modules are present.
+foreach ($extension in @('nexroute-media.ps1','nexroute-strategy-lab-v2.ps1')) {
+    $extensionPath=Join-Path $PSScriptRoot $extension
+    if (-not (Test-Path -LiteralPath $extensionPath -PathType Leaf)) { throw "NexRoute runtime extension is missing: $extension" }
+    . $extensionPath
 }
