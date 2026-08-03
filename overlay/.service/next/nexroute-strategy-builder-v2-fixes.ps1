@@ -64,7 +64,7 @@ function Resolve-NrStrategyBuilderPath {
 function Add-NrParsedStrategyBuilderSection {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][System.Collections.Generic.List[object]]$Sections,
+        [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[object]]$Sections,
         [Parameter(Mandatory)][System.Collections.IDictionary]$Current
     )
     if ([string]::IsNullOrWhiteSpace([string]$Current['protocol'])) {
