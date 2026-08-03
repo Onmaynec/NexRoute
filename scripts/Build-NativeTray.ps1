@@ -3,6 +3,7 @@ param(
     [string]$SourcePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'native/NexRoute.Tray/Program.cs'),
     [string]$NotifierSourcePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'native/NexRoute.Notifier/Program.cs'),
     [string]$DashboardSourcePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'native/NexRoute.Dashboard/Program.cs'),
+    [string]$ValidationSourcePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'native/NexRoute.Validation/Program.cs'),
     [string]$OutputDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/native-tray')
 )
 
@@ -12,8 +13,9 @@ if ($env:OS -ne 'Windows_NT') { throw 'Native Windows compilation requires Windo
 $source=[IO.Path]::GetFullPath($SourcePath)
 $notifierSource=[IO.Path]::GetFullPath($NotifierSourcePath)
 $dashboardSource=[IO.Path]::GetFullPath($DashboardSourcePath)
+$validationSource=[IO.Path]::GetFullPath($ValidationSourcePath)
 $output=[IO.Path]::GetFullPath($OutputDirectory)
-foreach ($requiredSource in @($source,$notifierSource,$dashboardSource)) {
+foreach ($requiredSource in @($source,$notifierSource,$dashboardSource,$validationSource)) {
     if (-not (Test-Path -LiteralPath $requiredSource -PathType Leaf)) { throw "Native Windows source is missing: $requiredSource" }
 }
 New-Item -ItemType Directory -Path $output -Force | Out-Null
@@ -97,6 +99,9 @@ $dashboard=Invoke-NrNativeCompile -Source $dashboardSource -AssemblyName 'NexRou
 ) -MutableUiFields @(
     'metricSelector','strategySelector','themeSelector','accentSelector','chart','grid','resetZoomButton'
 )
+$validation=Invoke-NrNativeCompile -Source $validationSource -AssemblyName 'NexRoute.Validation' -References @(
+    'System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll','System.Web.Extensions.dll'
+)
 
 [pscustomobject]@{
     executable=$tray.executable
@@ -108,6 +113,9 @@ $dashboard=Invoke-NrNativeCompile -Source $dashboardSource -AssemblyName 'NexRou
     dashboardExecutable=$dashboard.executable
     dashboardSize=$dashboard.size
     dashboardSha256=$dashboard.sha256
+    validationExecutable=$validation.executable
+    validationSize=$validation.size
+    validationSha256=$validation.sha256
     compiler=$csc
     framework='NET Framework 4.x'
 }
