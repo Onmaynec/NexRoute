@@ -2,6 +2,7 @@ Describe 'NexRoute 0.6.0 evidence-based conflict repair wizard' {
     BeforeAll {
         $repositoryRoot=Split-Path -Parent $PSScriptRoot
         . (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-repair-v2.ps1')
+        . (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-repair-v2-fixes.ps1')
     }
 
     It 'distinguishes recognized security products from unknown products without claiming compatibility' {
@@ -150,14 +151,18 @@ Describe 'NexRoute 0.6.0 evidence-based conflict repair wizard' {
         } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'loads the repair wizard after diagnostics and network overrides' {
+    It 'loads the repair wizard and evidence normalizer after diagnostics and network overrides' {
         $repositoryRoot=Split-Path -Parent $PSScriptRoot
         $loader=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-runtime-extensions.ps1') -Raw -Encoding UTF8
         $loader | Should -Match ([regex]::Escape('nexroute-repair-v2.ps1'))
+        $loader | Should -Match ([regex]::Escape('nexroute-repair-v2-fixes.ps1'))
         $loader.IndexOf('nexroute-repair-v2.ps1') | Should -BeGreaterThan $loader.IndexOf('nexroute-network-profiles-v2-fixes.ps1')
+        $loader.IndexOf('nexroute-repair-v2-fixes.ps1') | Should -BeGreaterThan $loader.IndexOf('nexroute-repair-v2.ps1')
         $source=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-repair-v2.ps1') -Raw -Encoding UTF8
         foreach ($token in @('Show-NrRepairWizard','Invoke-NrRepairTransaction','New-NrRepairBackup','rolled-back','rollback-failed','UNKNOWN','defender-path-exclusion')) {
             $source | Should -Match ([regex]::Escape($token))
         }
+        $fixes=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-repair-v2-fixes.ps1') -Raw -Encoding UTF8
+        $fixes | Should -Match ([regex]::Escape('ConvertTo-NrNormalizedEvidence'))
     }
 }
