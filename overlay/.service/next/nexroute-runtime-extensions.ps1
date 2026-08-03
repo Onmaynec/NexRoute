@@ -14,6 +14,7 @@ $extensionModules=@(
     'nexroute-repair-v2.ps1',
     'nexroute-repair-v2-fixes.ps1',
     'nexroute-strategy-builder-v2.ps1',
+    'nexroute-strategy-builder-v2-fixes.ps1',
     'nexroute-media.ps1',
     'nexroute-strategy-lab-v2.ps1',
     'nexroute-workers.ps1',
