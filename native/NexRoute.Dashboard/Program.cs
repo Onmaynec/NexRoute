@@ -94,14 +94,14 @@ namespace NexRoute.Dashboard
         private readonly Label runValue;
         private readonly Label bestValue;
         private readonly Label updatedValue;
-        private readonly ComboBox metricSelector;
-        private readonly ComboBox strategySelector;
-        private readonly ComboBox themeSelector;
-        private readonly ComboBox accentSelector;
-        private readonly Chart chart;
-        private readonly DataGridView grid;
+        private ComboBox metricSelector;
+        private ComboBox strategySelector;
+        private ComboBox themeSelector;
+        private ComboBox accentSelector;
+        private Chart chart;
+        private DataGridView grid;
         private readonly Button refreshButton;
-        private readonly Button resetZoomButton;
+        private Button resetZoomButton;
         private readonly Timer statusTimer;
         private readonly ToolTip toolTip;
 
