@@ -199,10 +199,6 @@ function Show-NrUpdateTools {
     }
 }
 
-# Loaded last by nexroute-console.ps1. These extensions intentionally override
-# compatibility implementations after all shared modules are present.
-foreach ($extension in @('nexroute-update-transaction.ps1','nexroute-media.ps1','nexroute-strategy-lab-v2.ps1')) {
-    $extensionPath=Join-Path $PSScriptRoot $extension
-    if (-not (Test-Path -LiteralPath $extensionPath -PathType Leaf)) { throw "NexRoute runtime extension is missing: $extension" }
-    . $extensionPath
-}
+$extensionsLoader=Join-Path $PSScriptRoot 'nexroute-runtime-extensions.ps1'
+if (-not (Test-Path -LiteralPath $extensionsLoader -PathType Leaf)) { throw 'NexRoute 0.6.0 runtime extension loader is missing.' }
+. $extensionsLoader
