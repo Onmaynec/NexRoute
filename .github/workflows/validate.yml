@@ -88,6 +88,9 @@ jobs:
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
           if ($version -ne '0.5.0') { throw "Expected 0.5.0, got $version" }
+          # UpstreamCachePath remains the supported write-through cache contract.
+          # This job now resolves the immutable asset first and passes it back as
+          # UpstreamArchive, removing the GitHub Releases API dependency.
           $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
           $resolved = ./scripts/Resolve-PinnedUpstream.ps1 -OutputPath $cache
           if ($resolved.sha256 -ne '6b7c5a66cfd055b8e361f8b5fb00f00b167260f21b1c03d589f6008417fb94a2') {
