@@ -32,7 +32,7 @@ try {
         '/nologo','/target:winexe','/optimize+','/platform:anycpu','/warn:4',
         '/reference:System.dll','/reference:System.Core.dll','/reference:System.Drawing.dll',
         '/reference:System.Windows.Forms.dll','/reference:System.ServiceProcess.dll',
-        ('/out:"'+$executable+'"'),('"'+$tempSource+'"')
+        ('/out:'+$executable),$tempSource
     )
     $outputLines=@(& $csc @arguments 2>&1)
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $executable -PathType Leaf)) {
