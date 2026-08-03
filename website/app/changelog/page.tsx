@@ -12,10 +12,36 @@ export const metadata = createMetadata(
 );
 
 const fallback = [
-  { version: "0.3.2", date: "2026-08-02", summary: "GitHub build provenance attestations для ZIP и checksum asset, self-verification до публикации Release." },
-  { version: "0.3.1", date: "2026-08-01", summary: "Stable updater, полный backup, сохранение пользовательского state и автоматический rollback." },
-  { version: "0.3.0", date: "2026-08-01", summary: "Locked upstream, patch report и воспроизводимая online/offline сборка." },
-  { version: "0.2.3", date: "2026-08-01", summary: "Изолированные Service Matrix runtime-группы, schema v2 и privacy-safe Diagnostics." },
+  {
+    version: "0.6.0",
+    date: "2026-08-03",
+    summary:
+      "Изолированные workers, deterministic failover, native tray/dashboard/viewer, four-subject attestations, signed validation reports и transactional updates.",
+  },
+  {
+    version: "0.5.0",
+    date: "2026-08-02",
+    summary:
+      "Arrow-key Control Node, Strategy Lab scoring, Service Matrix automation, monitoring, tray, DNS modes, backup и diagnostics.",
+  },
+  {
+    version: "0.4.1",
+    date: "2026-08-02",
+    summary:
+      "Windows PowerShell 5.1 compatibility для Strategy Lab, UTF-8 BOM и одинаковая online/offline package verification.",
+  },
+  {
+    version: "0.4.0",
+    date: "2026-08-02",
+    summary:
+      "Production-ready Next.js website, documentation routes, GitHub Release integration и dedicated website CI.",
+  },
+  {
+    version: "0.3.2",
+    date: "2026-08-02",
+    summary:
+      "GitHub build provenance attestations для ZIP и checksum asset, self-verification до публикации Release.",
+  },
 ];
 
 export default async function ChangelogPage() {
@@ -31,7 +57,7 @@ export default async function ChangelogPage() {
         <div className="relative space-y-6 before:absolute before:bottom-0 before:left-[19px] before:top-0 before:w-px before:bg-white/8">
           {(releases.length ? releases : fallback).map((release) => {
             const isApi = "tagName" in release;
-            const version = isApi ? release.version : release.version;
+            const version = release.version;
             const date = isApi ? release.publishedAt : release.date;
             const summary = isApi ? excerptMarkdown(release.body, 360) : release.summary;
             const href = isApi ? release.htmlUrl : `https://github.com/Onmaynec/NexRoute/releases/tag/v${version}`;
@@ -42,7 +68,10 @@ export default async function ChangelogPage() {
                 </div>
                 <div className="rounded-3xl border border-white/8 bg-white/[0.02] p-6 sm:p-7">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-3"><h2 className="text-2xl font-semibold text-white">v{version}</h2><StatusBadge status="success">stable</StatusBadge></div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-2xl font-semibold text-white">v{version}</h2>
+                      <StatusBadge status="success">stable</StatusBadge>
+                    </div>
                     <time className="text-xs text-zinc-600">{formatDate(date)}</time>
                   </div>
                   <p className="mt-4 text-sm leading-7 text-zinc-400">{summary || "Описание изменений доступно в GitHub Release."}</p>
