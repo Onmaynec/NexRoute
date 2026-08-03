@@ -94,13 +94,16 @@ try {
     $nativeResult=@(& $nativeTrayBuilder `
         -SourcePath (Join-Path $repositoryRoot 'native/NexRoute.Tray/Program.cs') `
         -NotifierSourcePath (Join-Path $repositoryRoot 'native/NexRoute.Notifier/Program.cs') `
+        -DashboardSourcePath (Join-Path $repositoryRoot 'native/NexRoute.Dashboard/Program.cs') `
         -OutputDirectory $nativeBuildDirectory) | Select-Object -Last 1
     if (-not $nativeResult -or -not (Test-Path -LiteralPath ([string]$nativeResult.executable) -PathType Leaf)) { throw 'Native Windows builder returned no tray executable.' }
     if (-not (Test-Path -LiteralPath ([string]$nativeResult.notifierExecutable) -PathType Leaf)) { throw 'Native Windows builder returned no notifier executable.' }
+    if (-not (Test-Path -LiteralPath ([string]$nativeResult.dashboardExecutable) -PathType Leaf)) { throw 'Native Windows builder returned no dashboard executable.' }
     $nativeDirectory=Join-Path $serviceDirectory 'native'
     New-Item -ItemType Directory -Path $nativeDirectory -Force | Out-Null
     Copy-NexRoutePackageFile -Source ([string]$nativeResult.executable) -Destination (Join-Path $nativeDirectory 'NexRoute.Tray.exe')
     Copy-NexRoutePackageFile -Source ([string]$nativeResult.notifierExecutable) -Destination (Join-Path $nativeDirectory 'NexRoute.Notifier.exe')
+    Copy-NexRoutePackageFile -Source ([string]$nativeResult.dashboardExecutable) -Destination (Join-Path $nativeDirectory 'NexRoute.Dashboard.exe')
 
     # Windows PowerShell 5.1 treats UTF-8 without BOM as the active ANSI code page.
     # Finalize every localized PowerShell module with BOM.
@@ -114,13 +117,17 @@ try {
         'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','nexroute-tray-install.cmd',
         '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1',
         '.service/nexroute-updater.ps1','.service/nexroute-worker-host.ps1','.service/portable-tools.json',
-        '.service/native/NexRoute.Tray.exe','.service/native/NexRoute.Notifier.exe',
+        '.service/native/NexRoute.Tray.exe','.service/native/NexRoute.Notifier.exe','.service/native/NexRoute.Dashboard.exe',
         '.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1',
         '.service/next/nexroute-network.ps1','.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1',
         '.service/next/nexroute-update.ps1','.service/next/nexroute-workers.ps1','.service/next/nexroute-worker-plans.ps1',
         '.service/next/nexroute-runtime-extensions.ps1','.service/next/nexroute-portable-verifier.ps1','.service/next/nexroute-attestation-v2.ps1',
         '.service/next/nexroute-dot.ps1','.service/next/nexroute-dot-snapshot-v2.ps1','.service/next/nexroute-tray-install.ps1',
-        '.service/next/nexroute-notifications.ps1','.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1',
+        '.service/next/nexroute-notifications.ps1','.service/next/nexroute-network-profiles-v2.ps1','.service/next/nexroute-network-profiles-v2-fixes.ps1',
+        '.service/next/nexroute-repair-v2.ps1','.service/next/nexroute-repair-v2-fixes.ps1',
+        '.service/next/nexroute-strategy-builder-v2.ps1','.service/next/nexroute-strategy-builder-v2-fixes.ps1',
+        '.service/next/nexroute-ipv6-runtime-v2.ps1','.service/next/nexroute-ipv6-runtime-v2-fixes.ps1','.service/next/nexroute-family-probe.ps1',
+        '.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1',
         '.service/next/nexroute-update-transaction.ps1','utils/test zapret.ps1'
     )
     foreach ($relativePath in $required) {
@@ -154,6 +161,8 @@ try {
         NativeTraySha256=[string]$nativeResult.sha256
         NativeNotifierIncluded=$true
         NativeNotifierSha256=[string]$nativeResult.notifierSha256
+        NativeDashboardIncluded=$true
+        NativeDashboardSha256=[string]$nativeResult.dashboardSha256
         Archive=$zipPath
         Checksum=$checksumPath
         Sha256=$hash.Hash.ToLowerInvariant()
