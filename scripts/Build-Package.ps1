@@ -74,7 +74,7 @@ try {
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-update.cmd') -Destination (Join-Path $packageRoot 'nexroute-update.cmd')
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-tray.cmd') -Destination (Join-Path $packageRoot 'nexroute-tray.cmd')
 
-    foreach ($name in @('nexroute-console.ps1','nexroute-monitor.ps1','nexroute-tray.ps1','nexroute-updater.ps1')) {
+    foreach ($name in @('nexroute-console.ps1','nexroute-monitor.ps1','nexroute-tray.ps1','nexroute-updater.ps1','nexroute-worker-host.ps1')) {
         Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot ('overlay/.service/' + $name)) -Destination (Join-Path $serviceDirectory $name)
     }
     Copy-NexRoutePackageDirectory -Source (Join-Path $repositoryRoot 'overlay/.service/next') -Destination (Join-Path $serviceDirectory 'next')
@@ -94,9 +94,11 @@ try {
     $required=@(
         'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd',
         '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1',
-        '.service/nexroute-updater.ps1','.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1',
+        '.service/nexroute-updater.ps1','.service/nexroute-worker-host.ps1','.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1',
         '.service/next/nexroute-network.ps1','.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1',
-        '.service/next/nexroute-update.ps1','utils/test zapret.ps1'
+        '.service/next/nexroute-update.ps1','.service/next/nexroute-workers.ps1','.service/next/nexroute-worker-plans.ps1',
+        '.service/next/nexroute-runtime-extensions.ps1','.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1',
+        '.service/next/nexroute-update-transaction.ps1','utils/test zapret.ps1'
     )
     foreach ($relativePath in $required) {
         if (-not (Test-Path -LiteralPath (Join-Path $packageRoot $relativePath) -PathType Leaf)) { throw "Package finalization failed. Missing: $relativePath" }
@@ -122,6 +124,7 @@ try {
         ServiceCount=[int]$baseResult.ServiceCount
         UpdaterIncluded=$true
         NextInterfaceIncluded=$true
+        WorkerRuntimeIncluded=$true
         Archive=$zipPath
         Checksum=$checksumPath
         Sha256=$hash.Hash.ToLowerInvariant()
