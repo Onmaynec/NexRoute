@@ -34,7 +34,7 @@ jobs:
       - name: Run behavior, upstream, updater and attestation tests
         shell: pwsh
         run: |
-          # Includes ServiceMatrix, UpstreamContract, Updater fixture suites and ReleaseAttestation.
+          # Includes behavioral worker, media, updater, desktop, IPv6 and provenance suites.
           $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
@@ -89,7 +89,7 @@ jobs:
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
           if ($version -ne '0.5.0') { throw "Expected 0.5.0, got $version" }
           # UpstreamCachePath remains the supported write-through cache contract.
-          # This job now resolves the immutable asset first and passes it back as
+          # This job resolves the immutable asset first and passes it back as
           # UpstreamArchive, removing the GitHub Releases API dependency.
           $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
           $resolved = ./scripts/Resolve-PinnedUpstream.ps1 -OutputPath $cache
@@ -103,19 +103,27 @@ jobs:
             Tee-Object -FilePath build-online.log
           $build = $result | Select-Object -Last 1
           if (-not $build.UpdaterIncluded) { throw 'The package was not finalized with the updater.' }
+          if (-not $build.NativeTrayIncluded -or -not $build.NativeNotifierIncluded -or -not $build.NativeDashboardIncluded) {
+            throw 'The package was not finalized with all native Windows controllers.'
+          }
           if ($build.UpstreamResolution -ne 'offline') { throw 'Builder did not consume the locally verified pinned archive.' }
           "NEXROUTE_UPSTREAM_CACHE=$cache" >> $env:GITHUB_ENV
           "NEXROUTE_UPSTREAM_SHA=$($build.UpstreamSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_PATCH_TARGETS=$($build.PatchTargetCount)" >> $env:GITHUB_ENV
+          "NEXROUTE_DASHBOARD_SHA=$($build.NativeDashboardSha256)" >> $env:GITHUB_ENV
 
       - name: Verify online package
         shell: pwsh
         run: |
+          $extract = Join-Path $env:RUNNER_TEMP 'nexroute-online-test'
           $result = ./scripts/Test-Release.ps1 `
             -ArtifactsDirectory ./artifacts `
-            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-online-test') *>&1 |
+            -ExtractDirectory $extract *>&1 |
             Tee-Object -FilePath package-online.log
           $online = $result | Select-Object -Last 1
+          $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $extract
+          if ($desktop.DashboardSelfTestExitCode -ne 0) { throw 'Online dashboard self-test did not pass.' }
+          if ($desktop.DashboardSha256 -ne $env:NEXROUTE_DASHBOARD_SHA) { throw 'Online dashboard hash differs from the build result.' }
           "NEXROUTE_SHA256=$($online.Sha256)" >> $env:GITHUB_ENV
           "NEXROUTE_STRATEGIES=$($online.StrategyCount)" >> $env:GITHUB_ENV
           "NEXROUTE_SERVICES=$($online.ServiceCount)" >> $env:GITHUB_ENV
@@ -133,18 +141,23 @@ jobs:
           $offlineBuild = $result | Select-Object -Last 1
           if ($offlineBuild.UpstreamResolution -ne 'offline') { throw 'Offline build did not use offline resolution mode.' }
           if (-not $offlineBuild.UpdaterIncluded) { throw 'Offline build was not finalized with the updater.' }
+          if (-not $offlineBuild.NativeDashboardIncluded) { throw 'Offline build did not compile the native dashboard.' }
+          if ($offlineBuild.NativeDashboardSha256 -ne $env:NEXROUTE_DASHBOARD_SHA) { throw 'Online and offline dashboard hashes differ.' }
           if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Online and offline upstream hashes differ.' }
           if ([int]$offlineBuild.PatchTargetCount -ne 23) { throw 'Offline build did not apply 23 tracked patch targets.' }
 
       - name: Verify offline package
         shell: pwsh
         run: |
+          $extract = Join-Path $env:RUNNER_TEMP 'nexroute-offline-test'
           $result = ./scripts/Test-Release.ps1 `
             -ArtifactsDirectory ./artifacts-offline `
-            -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-offline-test') `
+            -ExtractDirectory $extract `
             -SkipRuntime *>&1 |
             Tee-Object -FilePath package-offline.log
           $offline = $result | Select-Object -Last 1
+          $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $extract
+          if ($desktop.DashboardSha256 -ne $env:NEXROUTE_DASHBOARD_SHA) { throw 'Offline dashboard hash differs from the online dashboard.' }
           if ($offline.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Offline package lock differs from the online package lock.' }
           if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
           if ([int]$offline.StrategyCount -ne [int]$env:NEXROUTE_STRATEGIES) { throw 'Online and offline strategy counts differ.' }
@@ -172,4 +185,5 @@ jobs:
           Write-Host "Tracked patches: $env:NEXROUTE_PATCH_TARGETS"
           Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
           Write-Host "Services: $env:NEXROUTE_SERVICES"
+          Write-Host "Dashboard SHA-256: $env:NEXROUTE_DASHBOARD_SHA"
           Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
