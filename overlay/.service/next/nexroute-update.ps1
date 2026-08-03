@@ -72,10 +72,12 @@ function Invoke-NrCheckUpdate {
             return
         }
 
+        $fromVersion=[string]$check.CurrentVersion
+        $toVersion=[string]$check.LatestVersion
         Write-NrHeader -Title (T 'checkUpdate')
         Write-Host ('  ' + (T 'updateAvailable')) -ForegroundColor Green
-        Write-Host ('  Current: ' + [string]$check.CurrentVersion) -ForegroundColor Gray
-        Write-Host ('  Latest : ' + [string]$check.LatestVersion) -ForegroundColor Cyan
+        Write-Host ('  Current: ' + $fromVersion) -ForegroundColor Gray
+        Write-Host ('  Latest : ' + $toVersion) -ForegroundColor Cyan
         Write-Host ''
         if (-not (Confirm-NrY -Message (T 'confirmUpdate'))) {
             Show-NrMessage -Title (T 'checkUpdate') -Message (T 'updateCancelled') -Color Yellow
@@ -94,16 +96,43 @@ function Invoke-NrCheckUpdate {
             return
         }
 
+        Write-Host '  Verifying network health and the updated control node...' -ForegroundColor Cyan
         $health=Invoke-NrPostUpdateHealthCheck
+        $rollbackAction={
+            param($rootPath,$previousVersion,$targetVersion)
+            return Invoke-NrUpdaterJson -Mode Rollback
+        }.GetNewClosure()
+        $launchAction={
+            param($rootPath,$version,$status)
+            $launcher=Join-Path $rootPath 'nexroute.bat'
+            if (-not (Test-Path -LiteralPath $launcher -PathType Leaf)) { throw "NexRoute launcher is missing after transaction: $launcher" }
+            Start-Process -FilePath $launcher -WorkingDirectory $rootPath | Out-Null
+        }.GetNewClosure()
+        $transaction=Complete-NrUpdateTransaction -Root $script:NrRoot -FromVersion $fromVersion -ToVersion $toVersion -HealthResults $health -Rollback $rollbackAction -Launch $launchAction
+
         $healthy=@($health | Where-Object { $_.ok }).Count
-        Write-NrLog -Message 'Update installed and post-update probes completed' -Data @{ version=$result.CurrentVersion; sha256=$result.PackageSha256; healthy=$healthy; total=$health.Count }
+        if (-not [bool]$transaction.committed) {
+            Write-NrLog -Level ERROR -Message 'Update failed post-install verification and was rolled back' -Data @{
+                fromVersion=$fromVersion; toVersion=$toVersion; healthy=$healthy; total=$health.Count;
+                internetHealthy=$transaction.healthPolicy.internetHealthy; controlNodeExitCode=$transaction.controlNodeSmoke.exitCode
+            }
+            Send-NrNotification -Title 'NexRoute' -Message ('Update '+$toVersion+' failed verification. Version '+$fromVersion+' was restored.') -Level Warning
+            Show-NrMessage -Title (T 'operationFailed') -Message $transaction.message -Color Red -NoWait
+            Start-Sleep -Seconds 2
+            exit 2
+        }
+
+        Write-NrLog -Message 'Update transaction committed after health and control-node verification' -Data @{
+            version=$result.CurrentVersion; sha256=$result.PackageSha256; healthy=$healthy; total=$health.Count;
+            controlNodeExitCode=$transaction.controlNodeSmoke.exitCode
+        }
         Send-NrNotification -Title 'NexRoute' -Message ((T 'updateDone') + ' ' + [string]$result.CurrentVersion) -Level Info
         Write-NrHeader -Title (T 'checkUpdate')
         Write-Host ('  ' + (T 'updateDone')) -ForegroundColor Green
         Write-Host ('  SHA-256: ' + [string]$result.PackageSha256) -ForegroundColor Cyan
-        Write-Host ('  Post-update checks: {0}/{1}' -f $healthy,$health.Count) -ForegroundColor $(if ($healthy -eq $health.Count) { [ConsoleColor]::Green } else { [ConsoleColor]::Yellow })
+        Write-Host ('  Network checks: {0}/{1}' -f $healthy,$health.Count) -ForegroundColor Green
+        Write-Host ('  Control node: exit code {0}' -f $transaction.controlNodeSmoke.exitCode) -ForegroundColor Green
         Start-Sleep -Seconds 2
-        Start-Process -FilePath (Join-Path $script:NrRoot 'nexroute.bat') -WorkingDirectory $script:NrRoot | Out-Null
         exit 0
     } catch {
         Write-NrLog -Level ERROR -Message 'Update failed' -Data @{ error=$_.Exception.Message }
@@ -171,8 +200,8 @@ function Show-NrUpdateTools {
 }
 
 # Loaded last by nexroute-console.ps1. These extensions intentionally override
-# the legacy Strategy Lab functions after all compatibility modules are present.
-foreach ($extension in @('nexroute-media.ps1','nexroute-strategy-lab-v2.ps1')) {
+# compatibility implementations after all shared modules are present.
+foreach ($extension in @('nexroute-update-transaction.ps1','nexroute-media.ps1','nexroute-strategy-lab-v2.ps1')) {
     $extensionPath=Join-Path $PSScriptRoot $extension
     if (-not (Test-Path -LiteralPath $extensionPath -PathType Leaf)) { throw "NexRoute runtime extension is missing: $extension" }
     . $extensionPath
