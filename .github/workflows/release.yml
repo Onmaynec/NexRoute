@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           show-progress: false
 
@@ -86,6 +86,7 @@ jobs:
           if ($build.UpstreamResolution -ne 'offline') { throw 'Release builder did not consume the locally verified archive.' }
           if (-not $build.UpdaterIncluded) { throw 'The release package was not finalized with the updater.' }
           if (-not $build.NativeTrayIncluded) { throw 'The release package was not finalized with the native tray controller.' }
+          if (-not $build.NativeNotifierIncluded) { throw 'The release package was not finalized with the native notifier.' }
           if (-not $build.NativeDashboardIncluded) { throw 'The release package was not finalized with the native dashboard.' }
           if (-not $build.NativeValidationIncluded) { throw 'The release package was not finalized with the native validation viewer.' }
           if (-not $build.PortableAttestationVerifierIncluded) { throw 'The release package has no portable attestation verifier.' }
@@ -118,12 +119,16 @@ jobs:
           if ([int]$desktop.ValidationSelfTestExitCode -ne 0) { throw 'Native validation viewer self-test did not pass in the release package.' }
           if ($desktop.ValidationSha256 -ne $env:NEXROUTE_NATIVE_VALIDATION_SHA256) { throw 'Native validation viewer digest differs from the build result.' }
           if ([string]$desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Native validation viewer did not distinguish the matching receipt state.' }
+          if ([string]$desktop.NotificationToastChannel -ne 'windows-toast') { throw 'Release package did not prove the Windows toast channel.' }
+          if ([string]$desktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Release package did not prove the native notification fallback.' }
           "NEXROUTE_DASHBOARD_SELF_TEST_EXIT_CODE=$($desktop.DashboardSelfTestExitCode)" >> $env:GITHUB_ENV
           "NEXROUTE_DASHBOARD_FIXTURE_RUN_COUNT=$($desktop.FixtureRunCount)" >> $env:GITHUB_ENV
           "NEXROUTE_DASHBOARD_FIXTURE_RESULT_COUNT=$($desktop.FixtureResultCount)" >> $env:GITHUB_ENV
           "NEXROUTE_VALIDATION_VIEWER_SELF_TEST_EXIT_CODE=$($desktop.ValidationSelfTestExitCode)" >> $env:GITHUB_ENV
           "NEXROUTE_VALIDATION_VIEWER_CHECK_COUNT=$($desktop.ValidationCheckCount)" >> $env:GITHUB_ENV
           "NEXROUTE_VALIDATION_VIEWER_LIMITATION_COUNT=$($desktop.ValidationLimitationCount)" >> $env:GITHUB_ENV
+          "NEXROUTE_NOTIFICATION_TOAST_CHANNEL=$($desktop.NotificationToastChannel)" >> $env:GITHUB_ENV
+          "NEXROUTE_NOTIFICATION_FALLBACK_CHANNEL=$($desktop.NotificationFallbackChannel)" >> $env:GITHUB_ENV
           if ($result.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Built package contains a different upstream lock.' }
           if ([int]$result.PatchTargetCount -ne 23) { throw 'Built package patch report is incomplete.' }
           if ([int]$result.NativeTrayExitCode -ne 0) { throw 'Native tray self-test did not pass in the release package.' }
@@ -190,6 +195,7 @@ jobs:
           if ($offlineBuild.UpstreamResolution -ne 'offline') { throw 'Offline rebuild did not use offline resolution.' }
           if (-not $offlineBuild.UpdaterIncluded) { throw 'Offline rebuild was not finalized with the updater.' }
           if (-not $offlineBuild.NativeTrayIncluded) { throw 'Offline rebuild did not compile the native tray controller.' }
+          if (-not $offlineBuild.NativeNotifierIncluded) { throw 'Offline rebuild did not compile the native notifier.' }
           if (-not $offlineBuild.NativeValidationIncluded) { throw 'Offline rebuild did not compile the native validation viewer.' }
           if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Offline rebuild used a different upstream archive.' }
           $offline = ./scripts/Test-Release.ps1 `
@@ -202,9 +208,11 @@ jobs:
           $offlineDesktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $offline.ExtractPath
           if ([int]$offlineDesktop.ValidationSelfTestExitCode -ne 0) { throw 'Native validation viewer self-test failed in the offline package.' }
           if ([string]$offlineDesktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Offline validation viewer did not preserve trust-state behavior.' }
+          if ([string]$offlineDesktop.NotificationToastChannel -ne 'windows-toast') { throw 'Offline release package did not prove the Windows toast channel.' }
+          if ([string]$offlineDesktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Offline release package did not prove the native notification fallback.' }
 
       - name: Upload workflow artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: NexRoute-${{ steps.version.outputs.version }}-win-x64
           path: |
@@ -269,6 +277,7 @@ jobs:
           Write-Host "Dashboard fixture runs/results: $env:NEXROUTE_DASHBOARD_FIXTURE_RUN_COUNT/$env:NEXROUTE_DASHBOARD_FIXTURE_RESULT_COUNT"
           Write-Host "Native validation viewer SHA-256: $env:NEXROUTE_NATIVE_VALIDATION_SHA256"
           Write-Host "Validation viewer checks/limitations: $env:NEXROUTE_VALIDATION_VIEWER_CHECK_COUNT/$env:NEXROUTE_VALIDATION_VIEWER_LIMITATION_COUNT"
+          Write-Host "Notification delivery: $env:NEXROUTE_NOTIFICATION_TOAST_CHANNEL -> $env:NEXROUTE_NOTIFICATION_FALLBACK_CHANNEL"
           Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
           Write-Host "Validation status: $env:NEXROUTE_VALIDATION_STATUS"
           Write-Host "Validation JSON SHA-256: $env:NEXROUTE_VALIDATION_JSON_SHA256"
