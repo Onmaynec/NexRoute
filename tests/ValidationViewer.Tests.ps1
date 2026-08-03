@@ -25,11 +25,13 @@ Describe 'Native validation viewer contract' {
         }
     }
 
-    It 'rejects version mismatches, duplicate checks and failed required inconsistencies' {
+    It 'rejects version mismatches, duplicate checks and inconsistent overall status' {
         foreach ($token in @(
             'does not match package version',
             'Duplicate validation check id',
-            'failed required checks but overallStatus is not failed',
+            'AllowedOverallStatuses',
+            'passed-with-limitations',
+            'is inconsistent with checks; expected',
             'AllowedStatuses'
         )) {
             $source | Should -Match ([regex]::Escape($token))
