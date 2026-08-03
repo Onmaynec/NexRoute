@@ -13,12 +13,22 @@ $ErrorActionPreference='Stop'
 if (-not $Root) { $Root=Split-Path -Parent $PSScriptRoot }
 $Root=[IO.Path]::GetFullPath($Root)
 . (Join-Path $PSScriptRoot 'next/nexroute-workers.ps1')
+. (Join-Path $PSScriptRoot 'next/nexroute-family-probe.ps1')
 if (-not $ConfigPath) { $ConfigPath=Join-Path $PSScriptRoot 'service-workers.json' }
+
+function Get-NrHostPropertyValue {
+    param($Object,[Parameter(Mandatory)][string]$Name,$Default=$null)
+    if ($null -eq $Object) { return $Default }
+    $property=$Object.PSObject.Properties[$Name]
+    if ($property) { return $property.Value }
+    return $Default
+}
 
 function Read-NrWorkerConfiguration {
     if (-not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { throw "Worker configuration is missing: $ConfigPath" }
     $document=Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    if ([int]$document.schemaVersion -ne 1) { throw 'Worker configuration schemaVersion must be 1.' }
+    $schemaVersion=[int](Get-NrHostPropertyValue -Object $document -Name 'schemaVersion' -Default 0)
+    if ($schemaVersion -notin @(1,2)) { throw 'Worker configuration schemaVersion must be 1 or 2.' }
     $services=@($document.services)
     if ($services.Count -eq 0) { throw 'Worker configuration contains no services.' }
     $ids=@{}
@@ -28,10 +38,16 @@ function Read-NrWorkerConfiguration {
         $ids[$id]=$true
         if (-not $service.strategies -or @($service.strategies).Count -eq 0) { throw "Service '$id' has no strategies." }
         if (-not $service.probe -or [string]::IsNullOrWhiteSpace([string]$service.probe.uri)) { throw "Service '$id' has no probe URI." }
+        $probeFamily=[string](Get-NrHostPropertyValue -Object $service.probe -Name 'addressFamily' -Default '')
+        if ($probeFamily -and $probeFamily -notin @('ipv4','ipv6')) { throw "Service '$id' has an unsupported probe address family: $probeFamily" }
         foreach ($strategy in @($service.strategies)) {
             if ([string]::IsNullOrWhiteSpace([string]$strategy.name)) { throw "Service '$id' contains an unnamed strategy." }
             if ([string]::IsNullOrWhiteSpace([string]$strategy.executable)) { throw "Strategy '$($strategy.name)' has no executable." }
             if ($null -eq $strategy.arguments) { throw "Strategy '$($strategy.name)' has no argument array." }
+            $strategyFamily=[string](Get-NrHostPropertyValue -Object $strategy -Name 'addressFamily' -Default '')
+            if ($probeFamily -and $strategyFamily -and $probeFamily -ne $strategyFamily) {
+                throw "Service '$id' probe family '$probeFamily' differs from strategy family '$strategyFamily'."
+            }
         }
     }
     return $document
@@ -55,6 +71,7 @@ function New-NrWorkerPlanFromService {
         arguments=[string[]]@($strategy.arguments)
         filterTokens=[string[]]@($Service.filterTokens)
         strategyIndex=$StrategyIndex
+        addressFamily=[string](Get-NrHostPropertyValue -Object $strategy -Name 'addressFamily' -Default (Get-NrHostPropertyValue -Object $Service -Name 'addressFamily' -Default ''))
     }
 }
 
@@ -70,8 +87,13 @@ function Get-NrInitialWorkerPlans {
 function Test-NrServiceProbe {
     param([Parameter(Mandatory)][object]$Service)
     $uri=[Uri][string]$Service.probe.uri
-    $timeout=if ($Service.probe.timeoutSeconds) { [int]$Service.probe.timeoutSeconds } else { 8 }
+    $timeoutValue=Get-NrHostPropertyValue -Object $Service.probe -Name 'timeoutSeconds' -Default 8
+    $timeout=if ($timeoutValue) { [int]$timeoutValue } else { 8 }
+    $family=([string](Get-NrHostPropertyValue -Object $Service.probe -Name 'addressFamily' -Default '')).ToLowerInvariant()
     try {
+        if ($family -in @('ipv4','ipv6')) {
+            return Test-NrAddressFamilyProbe -Uri $uri -Family $family -TimeoutSeconds $timeout
+        }
         if ($uri.Scheme -in @('http','https')) {
             $response=Invoke-WebRequest -Uri $uri.AbsoluteUri -UseBasicParsing -TimeoutSec $timeout -Headers @{ 'User-Agent'='NexRoute-WorkerHost/0.6.0'; 'Cache-Control'='no-cache' }
             return [int]$response.StatusCode -ge 200 -and [int]$response.StatusCode -lt 500
@@ -138,5 +160,5 @@ switch ($Mode) {
 }
 if ($Mode -ne 'Supervise') {
     if ($Json) { $result | ConvertTo-Json -Depth 12 }
-    else { $result | Format-Table serviceId,strategy,pid,generation,status -AutoSize }
+    else { $result | Format-Table serviceId,strategy,pid,generation,status,addressFamily -AutoSize }
 }
