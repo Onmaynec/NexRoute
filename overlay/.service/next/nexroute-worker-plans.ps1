@@ -142,10 +142,14 @@ function New-NrServiceWorkerConfiguration {
                 sourceFile=$candidate.Name
             })
         }
+        $filterTokens=[string[]]@(
+            ('hostlist:'+$filterFiles.hostList.ToLowerInvariant())
+            ('ipset:'+$filterFiles.ipset.ToLowerInvariant())
+        )
         $services.Add([ordered]@{
             id=$serviceId
             enabled=$true
-            filterTokens=@('hostlist:'+$filterFiles.hostList.ToLowerInvariant(),'ipset:'+$filterFiles.ipset.ToLowerInvariant())
+            filterTokens=$filterTokens
             filterFiles=[ordered]@{ hostlist=$filterFiles.hostList; ipset=$filterFiles.ipset; hostEntries=$filterFiles.hostEntries; ipEntries=$filterFiles.ipEntries }
             probe=[ordered]@{ uri=Get-NrServiceProbeUri -Definition $definitionMap[$serviceId]; timeoutSeconds=8 }
             strategies=$strategyPlans.ToArray()
@@ -229,7 +233,7 @@ function Apply-NrPerServiceStrategies {
     }
     $supervisorPid=Start-NrPerServiceWorkerRuntime -ConfigurationPath $configurationPath
     foreach ($service in $configuration.services) {
-        Save-NrStrategyHistory -Action 'per-service-worker-start' -Strategy ([string]$service.strategies[0].name) -Details @{ service=[string]$service.id; supervisorPid=$supervisorPid; fallbackCount=@($service.strategies).Count-1 }
+        Save-NrStrategyHistory -Action 'per-service-worker-start' -Strategy ([string]$service.strategies[0].name) -Details @{ service=[string]$service.id; supervisorPid=$supervisorPid; fallbackCount=(@($service.strategies).Count-1) }
     }
     Send-NrNotification -Title 'NexRoute' -Message ('Started '+@($configuration.services).Count+' isolated service workers.') -Level Info
     return [pscustomobject]@{ configurationPath=$configurationPath; serviceCount=@($configuration.services).Count; supervisorPid=$supervisorPid }
