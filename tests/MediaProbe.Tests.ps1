@@ -2,6 +2,7 @@ Describe 'NexRoute 0.6.0 media and throughput probes' {
     BeforeAll {
         $root=Split-Path -Parent $PSScriptRoot
         . (Join-Path $root 'overlay/.service/next/nexroute-media.ps1')
+        $script:server=$null
         $script:fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-media-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $script:fixture -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $script:fixture 'media') -Force | Out-Null
@@ -16,7 +17,7 @@ Describe 'NexRoute 0.6.0 media and throughput probes' {
         $script:port=Get-Random -Minimum 22000 -Maximum 42000
         $python=(Get-Command python3 -ErrorAction SilentlyContinue)
         if (-not $python) { $python=Get-Command python -ErrorAction Stop }
-        $script:server=Start-Process -FilePath $python.Source -ArgumentList @('-m','http.server',[string]$script:port,'--bind','127.0.0.1','--directory',$script:fixture) -PassThru -WindowStyle Hidden
+        $script:server=Start-Process -FilePath $python.Source -ArgumentList @('-m','http.server',[string]$script:port,'--bind','127.0.0.1','--directory',$script:fixture) -PassThru
         $ready=$false
         for ($attempt=0;$attempt -lt 30;$attempt++) {
             try {
@@ -28,8 +29,8 @@ Describe 'NexRoute 0.6.0 media and throughput probes' {
     }
 
     AfterAll {
-        if ($script:server -and -not $script:server.HasExited) { Stop-Process -Id $script:server.Id -Force -ErrorAction SilentlyContinue }
-        Remove-Item -LiteralPath $script:fixture -Recurse -Force -ErrorAction SilentlyContinue
+        if ($null -ne $script:server -and -not $script:server.HasExited) { Stop-Process -Id $script:server.Id -Force -ErrorAction SilentlyContinue }
+        if ($script:fixture) { Remove-Item -LiteralPath $script:fixture -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
     It 'streams a multi-megabyte payload and calculates throughput from received bytes' {
