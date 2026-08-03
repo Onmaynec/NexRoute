@@ -24,13 +24,15 @@ New-Item -ItemType Directory -Path $extractPath -Force | Out-Null
 Expand-Archive -LiteralPath $zip.FullName -DestinationPath $extractPath -Force
 
 $required = @(
-    'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','NexRoute.lnk','general.bat','utils/test zapret.ps1','bin/winws.exe',
-    'bin/WinDivert.dll','bin/WinDivert64.sys','.service/nexroute.ico',
+    'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','nexroute-tray-install.cmd','NexRoute.lnk','general.bat','utils/test zapret.ps1','bin/winws.exe',
+    'bin/WinDivert.dll','bin/WinDivert64.sys','.service/nexroute.ico','.service/native/NexRoute.Tray.exe','.service/portable-tools.json',
     '.service/nexroute-ui.ps1','.service/nexroute-services.ps1','.service/services.json',
     '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1','.service/nexroute-worker-host.ps1',
     '.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1','.service/next/nexroute-network.ps1',
     '.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1','.service/next/nexroute-update.ps1',
     '.service/next/nexroute-workers.ps1','.service/next/nexroute-worker-plans.ps1','.service/next/nexroute-runtime-extensions.ps1',
+    '.service/next/nexroute-portable-verifier.ps1','.service/next/nexroute-attestation-v2.ps1',
+    '.service/next/nexroute-dot.ps1','.service/next/nexroute-dot-snapshot-v2.ps1','.service/next/nexroute-tray-install.ps1',
     '.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1','.service/next/nexroute-update-transaction.ps1',
     '.service/services-state.json','.service/i18n/ru.json','.service/i18n/en.json',
     '.service/i18n/nexroute-theme.ps1','.service/i18n/nexroute-pages.ps1',
@@ -62,6 +64,24 @@ $controlNodeSmoke = Test-NrUpdatedControlNode -Root $extractPath -TimeoutSeconds
 if (-not [bool]$controlNodeSmoke.passed) {
     throw "Built package control node smoke failed with exit code $($controlNodeSmoke.exitCode): $($controlNodeSmoke.message)"
 }
+
+$nativeTrayPath=Join-Path $extractPath '.service/native/NexRoute.Tray.exe'
+$nativeTrayFile=Get-Item -LiteralPath $nativeTrayPath
+if ($nativeTrayFile.Length -lt 10000) { throw "Native tray executable is unexpectedly small: $($nativeTrayFile.Length) bytes." }
+$nativeTrayAssembly=[Reflection.AssemblyName]::GetAssemblyName($nativeTrayPath)
+if ([string]$nativeTrayAssembly.Name -ne 'NexRoute.Tray') { throw "Unexpected native tray assembly name: $($nativeTrayAssembly.Name)" }
+$nativeTraySelfTest=Start-Process -FilePath $nativeTrayPath -ArgumentList @('--self-test','--root',$extractPath) -WorkingDirectory $extractPath -WindowStyle Hidden -Wait -PassThru
+if ($nativeTraySelfTest.ExitCode -ne 0) { throw "Native tray self-test failed with exit code $($nativeTraySelfTest.ExitCode)." }
+$trayLauncher=Get-Content -LiteralPath (Join-Path $extractPath 'nexroute-tray.cmd') -Raw
+if ($trayLauncher -notmatch 'NexRoute\.Tray\.exe' -or $trayLauncher -notmatch 'nexroute-tray\.ps1') { throw 'Tray launcher does not provide native-first startup with PowerShell fallback.' }
+$trayInstaller=Get-Content -LiteralPath (Join-Path $extractPath '.service/next/nexroute-tray-install.ps1') -Raw
+foreach ($token in @('Register-ScheduledTask','LogonType Interactive','MultipleInstances IgnoreNew','NexRoute Native Tray')) {
+    if ($trayInstaller -notmatch [regex]::Escape($token)) { throw "Native tray installer is missing lifecycle contract: $token" }
+}
+
+$portableManifest=Get-Content -LiteralPath (Join-Path $extractPath '.service/portable-tools.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ([string]$portableManifest.tools.githubCli.sha256 -ne '35d7fe05c4dd1411ffda1e73dfc7c6f44b75c936ca51fa6595c657fdc0350cec') { throw 'Portable GitHub verifier trust pin is missing from the package.' }
+if ([string]$portableManifest.tools.dnsproxy.sha256 -ne '2ca72d0e3a7a888b8643578236a9dd3c2d0cf501b24150521418abcdfe522ae2') { throw 'DoT resolver trust pin is missing from the package.' }
 
 $allBatchFiles = @(Get-ChildItem -LiteralPath $extractPath -Filter '*.bat' -File)
 foreach ($batchFile in $allBatchFiles) {
@@ -152,6 +172,7 @@ if (-not $SkipRuntime) {
 
 Write-Host "Verified package: $($zip.Name)" -ForegroundColor Green
 Write-Host "Control node: service.bat --status passed (exit code $($controlNodeSmoke.exitCode))" -ForegroundColor Green
+Write-Host "Native tray: self-test passed, assembly $($nativeTrayAssembly.Name), $($nativeTrayFile.Length) bytes" -ForegroundColor Green
 Write-Host "Strategy Lab: UTF-8 BOM + Windows PowerShell parser verified" -ForegroundColor Green
 Write-Host "Strategies: $($strategyFiles.Count)" -ForegroundColor Green
 Write-Host "Services: $($services.Count)" -ForegroundColor Green
@@ -165,4 +186,6 @@ Write-Host "SHA-256: $actualHash" -ForegroundColor Green
     StrategyCount = $strategyFiles.Count
     ServiceCount = $services.Count
     ControlNodeExitCode = $controlNodeSmoke.exitCode
+    NativeTrayExitCode = $nativeTraySelfTest.ExitCode
+    NativeTraySha256 = (Get-FileHash -LiteralPath $nativeTrayPath -Algorithm SHA256).Hash.ToLowerInvariant()
 }
