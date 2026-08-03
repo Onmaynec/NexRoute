@@ -1,10 +1,31 @@
-# Сборка и публикация Releases 📦
+# Сборка и публикация NexRoute 0.6.0 📦
 
 ## Политика
 
-Исполняемые компоненты NexRoute публикуются только в GitHub Releases. В Git запрещены `.exe`, `.dll`, `.sys`, `.bin`, `.ico`, `.lnk` и архивы.
+Исполняемые компоненты публикуются только через GitHub Releases. В Git запрещены generated `.exe`, `.dll`, `.sys`, `.bin`, `.ico`, `.lnk` и архивы.
 
-Каждый Release собирается заново из `main`. Flowseal фиксируется manifest-ом, значок и ярлык генерируются во время сборки, а все изменения upstream-файлов записываются в patch report.
+Release собирается заново из `main` и считается готовым только после прохождения automated acceptance gate. Hardware- и ISP-dependent возможности не превращаются в `passed` без реального evidence: они остаются `experimental` или `unsupported` в signed validation report.
+
+Критерии версии: [RELEASE_0.6.0_ACCEPTANCE.md](RELEASE_0.6.0_ACCEPTANCE.md).
+
+## Каноническая версия
+
+Единственный package version source:
+
+```text
+.service/version.txt
+```
+
+Для 0.6.0 это значение обязано совпадать с:
+
+- `website/package.json`;
+- README и CHANGELOG;
+- release notes `v0.6.0.md`;
+- smoke artifact names;
+- package `.service/version.txt`;
+- validation report `version`.
+
+`Test-Repository.ps1` блокирует рассинхронизацию.
 
 ## Подготовка окружения
 
@@ -16,34 +37,51 @@ pwsh ./scripts/Test-Repository.ps1
 Invoke-Pester -Path ./tests -CI -Output Detailed
 ```
 
-## Онлайн-сборка
+## Immutable upstream
+
+`.service/upstream-manifest.json` фиксирует:
+
+- `Flowseal/zapret-discord-youtube`;
+- tag `1.10.0`;
+- единственный допустимый archive asset;
+- committed SHA-256;
+- минимальный размер;
+- required paths.
+
+Release builder использует предварительно проверенный локальный archive. Имя файла без совпадающего digest и структуры недостаточно.
+
+## Online build через verified cache
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.3.0 `
+  -Version 0.6.0 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
 
 pwsh ./scripts/Test-Release.ps1 `
   -ArtifactsDirectory ./artifacts `
   -ExtractDirectory ./artifacts-test
+
+pwsh ./scripts/Test-V06Desktop.ps1 `
+  -ExtractDirectory ./artifacts-test
 ```
 
-Результат:
+Package build компилирует системным .NET Framework compiler:
 
 ```text
-artifacts/
-├── NexRoute-0.3.0-win-x64.zip
-└── NexRoute-0.3.0-win-x64.zip.sha256
+.service/native/NexRoute.Tray.exe
+.service/native/NexRoute.Notifier.exe
+.service/native/NexRoute.Dashboard.exe
+.service/native/NexRoute.Validation.exe
 ```
 
-## Офлайн-повтор
+Компиляция не использует NuGet, `dotnet restore` или build-time rewrite Dashboard source.
 
-Проверенный archive из `-UpstreamCachePath` можно использовать без сети:
+## Полностью offline rebuild
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.3.0 `
+  -Version 0.6.0 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
 
@@ -51,22 +89,12 @@ pwsh ./scripts/Test-Release.ps1 `
   -ArtifactsDirectory ./artifacts-offline `
   -ExtractDirectory ./artifacts-offline-test `
   -SkipRuntime
+
+pwsh ./scripts/Test-V06Desktop.ps1 `
+  -ExtractDirectory ./artifacts-offline-test
 ```
 
-Офлайн-сборка не отключает проверки: archive name, size, SHA-256, required paths и patch contract остаются обязательными.
-
-## Upstream contract
-
-`.service/upstream-manifest.json` фиксирует:
-
-- `Flowseal/zapret-discord-youtube`;
-- tag `1.10.0`;
-- единственный допустимый ZIP asset;
-- committed SHA-256;
-- минимальный размер;
-- обязательные файлы внутри архива.
-
-При online build дополнительно проверяются GitHub asset size и `digest`, если поле предоставлено API. Base builder получает архив через локальный verified proxy.
+Offline rebuild выполняет те же package, native desktop, notification и Validation Viewer fixtures. Online/offline upstream digest, patch target count, strategy count и service count обязаны совпадать.
 
 ## Patch provenance
 
@@ -79,76 +107,116 @@ Release ZIP содержит:
 NEXROUTE_BUILD_INFO.txt
 ```
 
-Patch report должен содержать ровно 23 target-а:
+Patch report содержит ровно 23 target-а:
 
 - 21 реальную Flowseal strategy;
 - `service.bat`;
 - `utils/test zapret.ps1`.
 
-Для каждой записи обязательны уникальный ID, относительный target, число операций и разные SHA-256 до/после.
+Для каждой записи обязательны unique ID, relative target, operation count и разные before/after SHA-256.
 
-## Что проверяет package test
+## Package-level acceptance
 
-- версия пакета совпадает с `.service/version.txt`;
-- upstream lock совпадает с manifest;
-- locked archive сообщает 21 strategy;
-- patch report содержит 23 уникальные записи;
-- все strategy BAT имеют Service Matrix V4 hooks;
-- `service.bat` имеет refresh/reinstall V4 contract;
-- Strategy Lab подключает динамические targets V4;
-- 15 Service Matrix profiles валидны;
-- отдельные service hostlist/IPSet не смешиваются;
-- privacy-safe Diagnostics создаётся;
-- EN/RU UI запускается через Windows PowerShell;
-- multi-resolution icon создан;
-- ZIP checksum совпадает с независимо вычисленным SHA-256.
+`Test-Release.ps1` и `Test-V06Desktop.ps1` проверяют:
 
-## GitHub Actions
+- package version и archive name;
+- checksum и upstream lock;
+- 23 tracked patch targets, 21 strategy и 15 service profiles;
+- Windows PowerShell 5.1 parsing и Strategy Lab BOM;
+- native assembly names, hashes и deterministic self-tests;
+- Dashboard reading Strategy Lab history fixture;
+- Validation Viewer schema/product/version/status checks;
+- trust transition `attestation-not-verified -> attestation-receipt-matched`;
+- notification delivery contract `windows-toast -> native-balloon`;
+- отсутствие temporary history files;
+- required launchers и portable verifier.
 
-Workflow `Validate repository` выполняет:
+## Signed validation report
 
-1. source validation и PowerShell AST parsing `.ps1`/`.psm1`;
-2. Pester Service Matrix tests;
-3. Pester upstream contract tests;
-4. online Windows build с сохранением verified upstream cache;
-5. package verification;
-6. полный offline rebuild из cache;
-7. повторную package verification;
-8. сравнение upstream SHA, patch targets, стратегий и сервисов;
-9. загрузку логов и smoke ZIP.
+После package verification workflow создаёт:
 
-Workflow `Build and publish NexRoute` повторяет все критические проверки из `main`, публикует только online-пакет и не создаёт Release, если committed upstream SHA отсутствует или не совпадает.
+```text
+NexRoute-0.6.0-validation.json
+NexRoute-0.6.0-validation.md
+```
+
+JSON schema v1 содержит:
+
+- repository/workflow/commit provenance;
+- Windows runner environment;
+- release identities и native binary hashes;
+- required automated checks;
+- explicit `passed`, `experimental`, `unsupported` или `failed` status;
+- limitations без ложного hardware success.
+
+Failed required check блокирует publication.
+
+## Release assets
+
+Финальный Release содержит четыре связанных файла:
+
+```text
+NexRoute-0.6.0-win-x64.zip
+NexRoute-0.6.0-win-x64.zip.sha256
+NexRoute-0.6.0-validation.json
+NexRoute-0.6.0-validation.md
+```
+
+Все четыре subjects входят в одну GitHub artifact attestation. Workflow проверяет каждую attestation до `gh release create`.
+
+## GitHub Actions gate
+
+Pull request workflow выполняет:
+
+1. repository contract и PowerShell AST parsing;
+2. полный Pester behavioral suite;
+3. website typecheck и production/static build;
+4. Windows online package build;
+5. online package и desktop verification;
+6. полностью offline rebuild;
+7. offline package и desktop verification;
+8. upload smoke archive и diagnostics logs.
+
+Release workflow из `main` дополнительно:
+
+1. повторяет source, behavior, package и offline gates;
+2. генерирует signed validation JSON/Markdown;
+3. attests ZIP, checksum и оба reports;
+4. проверяет четыре attestations;
+5. публикует Release;
+6. закрывает superseded tracking items только после успешного publication.
 
 ## Публичный Release
 
-1. обновить `.service/version.txt`, README и CHANGELOG;
-2. обновить `.service/upstream-manifest.json`, когда меняется Flowseal asset;
-3. добавить `.github/release-notes/vX.Y.Z.md`;
-4. убедиться, что dependent PR основан на уже принятой предыдущей версии;
-5. слить PR в `main`;
-6. release workflow создаст tag `vX.Y.Z`, ZIP и `.sha256` после успешных online/offline проверок.
+1. обновить `.service/version.txt`, website package, README и CHANGELOG;
+2. добавить `.github/release-notes/vX.Y.Z.md`;
+3. обновить acceptance contract;
+4. убедиться, что PR CI полностью зелёный;
+5. проверить explicit hardware/ISP limitations;
+6. слить PR в `main`;
+7. release workflow создаст tag, assets, validation reports и attestations.
 
-Не создавайте tag вручную до успешного merge: workflow является единственным владельцем автоматической публикации.
+Не создавайте tag вручную: release workflow является владельцем автоматической публикации.
 
 ## Release checklist ✅
 
-- [ ] repository validation проходит
-- [ ] все Pester tests проходят
-- [ ] upstream manifest содержит 64-символьный SHA-256
-- [ ] online и offline upstream SHA совпадают
-- [ ] upstream lock сообщает 21 strategy
-- [ ] patch report содержит 23 уникальных target-а
-- [ ] 15 сервисов присутствуют и валидны
-- [ ] RU/EN интерфейс запускается
-- [ ] managed-блоки не удаляют пользовательские строки
-- [ ] Windows smoke-build проходит
-- [ ] установка/удаление службы проверены вручную
-- [ ] YouTube и Discord проверены на реальной сети
-- [ ] SHA-256 опубликован
-- [ ] THIRD_PARTY_NOTICES присутствует в архиве
+- [ ] repository version равен 0.6.0 во всех canonical surfaces
+- [ ] PowerShell AST parsing проходит
+- [ ] все Pester acceptance tests проходят
+- [ ] website typecheck и build проходят
+- [ ] upstream manifest содержит committed SHA-256
+- [ ] online/offline upstream SHA совпадает
+- [ ] patch report содержит 23 unique targets
+- [ ] 21 strategy и 15 service profiles валидны
+- [ ] native tray/notifier/dashboard/viewer скомпилированы
+- [ ] online/offline desktop self-tests проходят
+- [ ] notification channels подтверждены
+- [ ] validation trust states подтверждены
+- [ ] signed report не содержит failed required checks
+- [ ] четыре assets attested и verified
+- [ ] release notes и limitations актуальны
+- [ ] THIRD_PARTY_NOTICES присутствует
 
-## Откат 🔙
+## Откат Release 🔙
 
-Не заменяйте содержимое уже опубликованного ZIP без изменения версии. При критической ошибке создайте новую patch-версию и временно пометьте проблемный Release как pre-release или удалите его assets.
-
-При неожиданном изменении upstream asset сборка должна упасть по SHA-256. Сначала выясните причину; не обновляйте lock автоматически без анализа содержимого.
+Не заменяйте содержимое опубликованного asset без новой версии. При критической ошибке создайте patch release. Не обновляйте upstream lock автоматически: сначала проверьте причину изменения digest и содержимое archive.
