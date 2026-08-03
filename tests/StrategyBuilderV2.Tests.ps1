@@ -2,6 +2,7 @@ Describe 'NexRoute 0.6.0 safe Strategy Builder v2' {
     BeforeAll {
         $repositoryRoot=Split-Path -Parent $PSScriptRoot
         . (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-strategy-builder-v2.ps1')
+        . (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-strategy-builder-v2-fixes.ps1')
         $script:builderFixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-builder-'+[guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path (Join-Path $script:builderFixture 'bin') -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $script:builderFixture 'lists') -Force | Out-Null
@@ -167,11 +168,15 @@ Describe 'NexRoute 0.6.0 safe Strategy Builder v2' {
         $repositoryRoot=Split-Path -Parent $PSScriptRoot
         $loader=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-runtime-extensions.ps1') -Raw -Encoding UTF8
         $loader | Should -Match ([regex]::Escape('nexroute-strategy-builder-v2.ps1'))
+        $loader | Should -Match ([regex]::Escape('nexroute-strategy-builder-v2-fixes.ps1'))
         $loader.IndexOf('nexroute-strategy-builder-v2.ps1') | Should -BeGreaterThan $loader.IndexOf('nexroute-repair-v2-fixes.ps1')
-        $loader.IndexOf('nexroute-strategy-builder-v2.ps1') | Should -BeLessThan $loader.IndexOf('nexroute-strategy-lab-v2.ps1')
+        $loader.IndexOf('nexroute-strategy-builder-v2-fixes.ps1') | Should -BeGreaterThan $loader.IndexOf('nexroute-strategy-builder-v2.ps1')
+        $loader.IndexOf('nexroute-strategy-builder-v2-fixes.ps1') | Should -BeLessThan $loader.IndexOf('nexroute-strategy-lab-v2.ps1')
         $source=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-strategy-builder-v2.ps1') -Raw -Encoding UTF8
         foreach ($token in @('Show-NrStrategyBuilder','Select-NrBuilderMultipleValues','UpArrow','DownArrow','Spacebar','New-NrStrategyWorkerCommand','ConvertFrom-NrStrategyBuilderTokens','Save-NrCustomStrategy')) {
             $source | Should -Match ([regex]::Escape($token))
         }
+        $fixes=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-strategy-builder-v2-fixes.ps1') -Raw -Encoding UTF8
+        $fixes | Should -Match ([regex]::Escape("ContainsKey('end')"))
     }
 }
