@@ -14,6 +14,7 @@ $ProgressPreference = 'SilentlyContinue'
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot
 $baseBuilder = Join-Path $PSScriptRoot 'Build-Release.ps1'
+$nativeTrayBuilder = Join-Path $PSScriptRoot 'Build-NativeTray.ps1'
 if (-not $Version) {
     $Version = (Get-Content -LiteralPath (Join-Path $repositoryRoot '.service/version.txt') -Raw -Encoding UTF8).Trim()
 }
@@ -49,6 +50,7 @@ function Set-NexRoutePowerShellBom {
 
 try {
     if (-not (Test-Path -LiteralPath $baseBuilder -PathType Leaf)) { throw "Base release builder was not found: $baseBuilder" }
+    if (-not (Test-Path -LiteralPath $nativeTrayBuilder -PathType Leaf)) { throw "Native tray builder was not found: $nativeTrayBuilder" }
     $buildParameters=@{ Version=$Version; OutputDirectory=$outputPath }
     if ($UpstreamVersion) { $buildParameters.UpstreamVersion=$UpstreamVersion }
     if ($UpstreamArchive) { $buildParameters.UpstreamArchive=$UpstreamArchive }
@@ -73,6 +75,7 @@ try {
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/service.bat') -Destination (Join-Path $packageRoot 'service.bat')
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-update.cmd') -Destination (Join-Path $packageRoot 'nexroute-update.cmd')
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-tray.cmd') -Destination (Join-Path $packageRoot 'nexroute-tray.cmd')
+    Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-tray-install.cmd') -Destination (Join-Path $packageRoot 'nexroute-tray-install.cmd')
 
     foreach ($name in @('nexroute-console.ps1','nexroute-monitor.ps1','nexroute-tray.ps1','nexroute-updater.ps1','nexroute-worker-host.ps1')) {
         Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot ('overlay/.service/' + $name)) -Destination (Join-Path $serviceDirectory $name)
@@ -84,6 +87,16 @@ try {
         Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot ('overlay/.service/i18n/' + $name)) -Destination (Join-Path $i18nDirectory $name)
     }
 
+    # Compile the native tray from checked-in source with the Windows .NET Framework
+    # compiler. No NuGet packages or network access are used, so offline rebuilds
+    # produce the same product surface.
+    $nativeBuildDirectory=Join-Path $tempRoot 'native-tray'
+    $nativeResult=@(& $nativeTrayBuilder -SourcePath (Join-Path $repositoryRoot 'native/NexRoute.Tray/Program.cs') -OutputDirectory $nativeBuildDirectory) | Select-Object -Last 1
+    if (-not $nativeResult -or -not (Test-Path -LiteralPath ([string]$nativeResult.executable) -PathType Leaf)) { throw 'Native tray builder returned no executable.' }
+    $nativeDirectory=Join-Path $serviceDirectory 'native'
+    New-Item -ItemType Directory -Path $nativeDirectory -Force | Out-Null
+    Copy-NexRoutePackageFile -Source ([string]$nativeResult.executable) -Destination (Join-Path $nativeDirectory 'NexRoute.Tray.exe')
+
     # Windows PowerShell 5.1 treats UTF-8 without BOM as the active ANSI code page.
     # Finalize every localized PowerShell module with BOM.
     foreach ($scriptFile in @(Get-ChildItem -LiteralPath $serviceDirectory -Filter '*.ps1' -File -Recurse)) { Set-NexRoutePowerShellBom -Path $scriptFile.FullName }
@@ -93,13 +106,14 @@ try {
     Set-NexRoutePowerShellBom -Path $testLabDestination
 
     $required=@(
-        'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd',
+        'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','nexroute-tray-install.cmd',
         '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1',
-        '.service/nexroute-updater.ps1','.service/nexroute-worker-host.ps1','.service/portable-tools.json',
+        '.service/nexroute-updater.ps1','.service/nexroute-worker-host.ps1','.service/portable-tools.json','.service/native/NexRoute.Tray.exe',
         '.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1',
         '.service/next/nexroute-network.ps1','.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1',
         '.service/next/nexroute-update.ps1','.service/next/nexroute-workers.ps1','.service/next/nexroute-worker-plans.ps1',
         '.service/next/nexroute-runtime-extensions.ps1','.service/next/nexroute-portable-verifier.ps1','.service/next/nexroute-attestation-v2.ps1',
+        '.service/next/nexroute-dot.ps1','.service/next/nexroute-dot-snapshot-v2.ps1','.service/next/nexroute-tray-install.ps1',
         '.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1',
         '.service/next/nexroute-update-transaction.ps1','utils/test zapret.ps1'
     )
@@ -129,6 +143,9 @@ try {
         NextInterfaceIncluded=$true
         WorkerRuntimeIncluded=$true
         PortableAttestationVerifierIncluded=$true
+        DotResolverIncluded=$true
+        NativeTrayIncluded=$true
+        NativeTraySha256=[string]$nativeResult.sha256
         Archive=$zipPath
         Checksum=$checksumPath
         Sha256=$hash.Hash.ToLowerInvariant()
