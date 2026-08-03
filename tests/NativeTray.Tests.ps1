@@ -13,6 +13,7 @@ Describe 'NexRoute 0.6.0 native Windows tray controller' {
     It 'implements a native single-instance NotifyIcon controller with live service actions' {
         foreach ($token in @(
             'NotifyIcon','ContextMenuStrip','ServiceController','BuildMutexName','Enable NexRoute','Disable NexRoute','Restart NexRoute',
+            'Open Dashboard','Open Validation Report','OpenValidationReport','NexRoute.Validation.exe',
             'Open Control Center','Check Update','Open Logs','Ctrl+Alt+N','RegisterHotKey','UnregisterHotKey','ShowBalloonTip'
         )) {
             $source | Should -Match ([regex]::Escape($token))
@@ -20,6 +21,11 @@ Describe 'NexRoute 0.6.0 native Windows tray controller' {
         $source | Should -Match '--self-test'
         $source | Should -Match 'Service state changed'
         $source | Should -Match 'Verb = "runas"'
+    }
+
+    It 'requires the dashboard and validation viewer in its deterministic self-test' {
+        $source | Should -Match ([regex]::Escape('Path.Combine(".service", "native", "NexRoute.Dashboard.exe")'))
+        $source | Should -Match ([regex]::Escape('Path.Combine(".service", "native", "NexRoute.Validation.exe")'))
     }
 
     It 'compiles without NuGet or network dependencies using the Windows framework compiler' {
