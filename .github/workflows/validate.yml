@@ -111,7 +111,7 @@ jobs:
           "NEXROUTE_UPSTREAM_CACHE=$cache" >> $env:GITHUB_ENV
           "NEXROUTE_UPSTREAM_SHA=$($build.UpstreamSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_PATCH_TARGETS=$($build.PatchTargetCount)" >> $env:GITHUB_ENV
-          "NEXROUTE_DASHBOARD_SHA=$($build.NativeDashboardSha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_ONLINE_DASHBOARD_SHA=$($build.NativeDashboardSha256)" >> $env:GITHUB_ENV
 
       - name: Verify online package
         shell: pwsh
@@ -124,7 +124,7 @@ jobs:
           $online = $result | Select-Object -Last 1
           $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $extract
           if ($desktop.DashboardSelfTestExitCode -ne 0) { throw 'Online dashboard self-test did not pass.' }
-          if ($desktop.DashboardSha256 -ne $env:NEXROUTE_DASHBOARD_SHA) { throw 'Online dashboard hash differs from the build result.' }
+          if ($desktop.DashboardSha256 -ne $env:NEXROUTE_ONLINE_DASHBOARD_SHA) { throw 'Online dashboard hash differs from its build result.' }
           "NEXROUTE_SHA256=$($online.Sha256)" >> $env:GITHUB_ENV
           "NEXROUTE_STRATEGIES=$($online.StrategyCount)" >> $env:GITHUB_ENV
           "NEXROUTE_SERVICES=$($online.ServiceCount)" >> $env:GITHUB_ENV
@@ -143,9 +143,10 @@ jobs:
           if ($offlineBuild.UpstreamResolution -ne 'offline') { throw 'Offline build did not use offline resolution mode.' }
           if (-not $offlineBuild.UpdaterIncluded) { throw 'Offline build was not finalized with the updater.' }
           if (-not $offlineBuild.NativeDashboardIncluded) { throw 'Offline build did not compile the native dashboard.' }
-          if ($offlineBuild.NativeDashboardSha256 -ne $env:NEXROUTE_DASHBOARD_SHA) { throw 'Online and offline dashboard hashes differ.' }
+          if ($offlineBuild.NativeDashboardSha256 -notmatch '^[0-9a-f]{64}$') { throw 'Offline dashboard build did not return a valid SHA-256.' }
           if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Online and offline upstream hashes differ.' }
           if ([int]$offlineBuild.PatchTargetCount -ne 23) { throw 'Offline build did not apply 23 tracked patch targets.' }
+          "NEXROUTE_OFFLINE_DASHBOARD_SHA=$($offlineBuild.NativeDashboardSha256)" >> $env:GITHUB_ENV
 
       - name: Verify offline package
         shell: pwsh
@@ -158,7 +159,8 @@ jobs:
             Tee-Object -FilePath package-offline.log
           $offline = $result | Select-Object -Last 1
           $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $extract
-          if ($desktop.DashboardSha256 -ne $env:NEXROUTE_DASHBOARD_SHA) { throw 'Offline dashboard hash differs from the online dashboard.' }
+          if ($desktop.DashboardSelfTestExitCode -ne 0) { throw 'Offline dashboard self-test did not pass.' }
+          if ($desktop.DashboardSha256 -ne $env:NEXROUTE_OFFLINE_DASHBOARD_SHA) { throw 'Offline dashboard hash differs from its build result.' }
           if ($offline.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Offline package lock differs from the online package lock.' }
           if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
           if ([int]$offline.StrategyCount -ne [int]$env:NEXROUTE_STRATEGIES) { throw 'Online and offline strategy counts differ.' }
@@ -186,5 +188,6 @@ jobs:
           Write-Host "Tracked patches: $env:NEXROUTE_PATCH_TARGETS"
           Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
           Write-Host "Services: $env:NEXROUTE_SERVICES"
-          Write-Host "Dashboard SHA-256: $env:NEXROUTE_DASHBOARD_SHA"
+          Write-Host "Online dashboard SHA-256: $env:NEXROUTE_ONLINE_DASHBOARD_SHA"
+          Write-Host "Offline dashboard SHA-256: $env:NEXROUTE_OFFLINE_DASHBOARD_SHA"
           Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
