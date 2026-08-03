@@ -38,6 +38,9 @@ Version 0.6.0 is not considered complete when a function name or menu entry mere
 - Notifications have a toast path and a deterministic fallback when toast is disabled or unavailable.
 - Light/dark themes and accent colors affect an actual desktop UI, not only console colors.
 - Statistics charts are interactive and read the same local history used by the TUI.
+- A compiled Validation Viewer exposes every signed-report check and limitation without converting `experimental` or `unsupported` into success.
+- Imported report JSON is informational until its schema, package version and local attestation-verification receipt are consistent.
+- Wrong-product, wrong-version, duplicate-check, unsupported-status and failed-required inconsistencies are rejected before display.
 
 ## Conflict and repair wizard
 
@@ -88,3 +91,5 @@ Version 0.6.0 is not considered complete when a function name or menu entry mere
 The release workflow must fail unless all automated acceptance tests pass. Hardware-dependent checks must be attached to the release as a signed validation report. Unverified capabilities must be marked experimental or unsupported in the UI and release notes.
 
 The workflow must generate and attest both `NexRoute-<version>-validation.json` and `NexRoute-<version>-validation.md`. The JSON report uses schema version 1 and records release identities, runner/OS provenance, required automated checks and explicit `passed`, `experimental`, `unsupported` or `failed` statuses. Any failed required check blocks publication; experimental and unsupported checks remain visible limitations rather than false successes.
+
+The online and fully offline package builds must both compile `NexRoute.Validation.exe`, verify its SHA-256, run its deterministic report fixture, prove the unverified and receipt-matched trust states, and include the result as required check `native-validation.self-test` in the signed validation report. Release notes must exist before publication and must repeat the hardware/ISP limitations from the report.
