@@ -52,13 +52,26 @@ function Connect-NrFamilyTcpClient {
     }
 }
 
+function Set-NrStreamTimeouts {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][IO.Stream]$Stream,
+        [ValidateRange(1,120)][int]$TimeoutSeconds=8,
+        [switch]$Read,
+        [switch]$Write
+    )
+    if (-not $Stream.CanTimeout) { return }
+    if ($Read) { $Stream.ReadTimeout=$TimeoutSeconds*1000 }
+    if ($Write) { $Stream.WriteTimeout=$TimeoutSeconds*1000 }
+}
+
 function Read-NrHttpStatusLine {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][IO.Stream]$Stream,
         [ValidateRange(1,120)][int]$TimeoutSeconds=8
     )
-    $Stream.ReadTimeout=$TimeoutSeconds*1000
+    Set-NrStreamTimeouts -Stream $Stream -TimeoutSeconds $TimeoutSeconds -Read
     $bytes=New-Object 'System.Collections.Generic.List[byte]'
     while ($bytes.Count -lt 4096) {
         $value=$Stream.ReadByte()
@@ -110,8 +123,7 @@ function Invoke-NrAddressFamilyProbe {
                     if ($TlsFactory) { $stream=& $TlsFactory $stream $Uri.DnsSafeHost $TimeoutSeconds }
                     else {
                         $ssl=[Net.Security.SslStream]::new($stream,$false)
-                        $ssl.ReadTimeout=$TimeoutSeconds*1000
-                        $ssl.WriteTimeout=$TimeoutSeconds*1000
+                        Set-NrStreamTimeouts -Stream $ssl -TimeoutSeconds $TimeoutSeconds -Read -Write
                         $ssl.AuthenticateAsClient($Uri.DnsSafeHost)
                         $stream=$ssl
                     }
@@ -119,7 +131,7 @@ function Invoke-NrAddressFamilyProbe {
                 $path=if ([string]::IsNullOrWhiteSpace($Uri.PathAndQuery)) { '/' } else { $Uri.PathAndQuery }
                 $request="GET $path HTTP/1.1`r`nHost: $($Uri.DnsSafeHost)`r`nUser-Agent: NexRoute-WorkerHost/0.6.0`r`nAccept: */*`r`nCache-Control: no-cache`r`nConnection: close`r`n`r`n"
                 $requestBytes=[Text.Encoding]::ASCII.GetBytes($request)
-                $stream.WriteTimeout=$TimeoutSeconds*1000
+                Set-NrStreamTimeouts -Stream $stream -TimeoutSeconds $TimeoutSeconds -Write
                 $stream.Write($requestBytes,0,$requestBytes.Length)
                 $stream.Flush()
                 $statusLine=Read-NrHttpStatusLine -Stream $stream -TimeoutSeconds $TimeoutSeconds
