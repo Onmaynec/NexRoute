@@ -62,11 +62,11 @@ Describe 'NexRoute 0.6.0 address-family probes' {
                 return $client
             }
             $result=Invoke-NrAddressFamilyProbe -Uri ([Uri]'http://fixture.invalid/generate_204') -Family ipv4 -Resolver $resolver -Connector $connector
-            $result.ok | Should -BeTrue
+            $result.ok | Should -BeTrue -Because $result.reason
             $result.statusCode | Should -Be 204
             $result.address | Should -Be '127.0.0.1'
             $script:connectedAddress | Should -Be '127.0.0.1'
-            $script:probeStream.Position | Should -BeGreaterThan $requestBytes.Length
+            [Text.Encoding]::ASCII.GetString($buffer,0,$requestBytes.Length) | Should -Be $request
         } finally { $script:probeStream.Dispose() }
     }
 
