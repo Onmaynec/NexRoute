@@ -23,7 +23,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function Get-NrValidationValue {
+function Get-NrValidationText {
     [CmdletBinding()]
     param(
         [AllowNull()][AllowEmptyString()][object]$Value,
@@ -35,7 +35,7 @@ function Get-NrValidationValue {
     return $text.Trim()
 }
 
-function Test-NrValidationIsWindows {
+function Test-NrValidationWindows {
     [CmdletBinding()]
     param()
     try {
@@ -47,16 +47,45 @@ function Test-NrValidationIsWindows {
     }
 }
 
-function Test-NrValidationIsAdministrator {
+function Get-NrValidationEnvironment {
     [CmdletBinding()]
-    param([bool]$RunningOnWindows)
-    if (-not $RunningOnWindows) { return $false }
+    param()
+
+    $isWindows = Test-NrValidationWindows
+    $isAdministrator = $false
+    if ($isWindows) {
+        try {
+            $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+            $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+            $isAdministrator = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+        } catch { }
+    }
+
+    $osDescription = 'unknown'
+    $osArchitecture = if ([Environment]::Is64BitOperatingSystem) { 'X64' } else { 'X86' }
+    $processArchitecture = if ([Environment]::Is64BitProcess) { 'X64' } else { 'X86' }
     try {
-        $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
-        $principal = New-Object Security.Principal.WindowsPrincipal($identity)
-        return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    } catch {
-        return $false
+        $osDescription = [Runtime.InteropServices.RuntimeInformation]::OSDescription
+        $osArchitecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
+        $processArchitecture = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString()
+    } catch { }
+
+    $windowsBuild = $null
+    if ($isWindows) {
+        try { $windowsBuild = [Environment]::OSVersion.Version.Build } catch { }
+    }
+
+    return [pscustomobject][ordered]@{
+        isWindows = $isWindows
+        isAdministrator = $isAdministrator
+        osDescription = Get-NrValidationText -Value $osDescription
+        osArchitecture = Get-NrValidationText -Value $osArchitecture
+        processArchitecture = Get-NrValidationText -Value $processArchitecture
+        windowsBuild = $windowsBuild
+        powershellVersion = $PSVersionTable.PSVersion.ToString()
+        powershellEdition = Get-NrValidationText -Value $PSVersionTable.PSEdition
+        runnerName = Get-NrValidationText -Value $env:RUNNER_NAME
+        runnerEnvironment = Get-NrValidationText -Value $env:RUNNER_ENVIRONMENT
     }
 }
 
@@ -73,6 +102,7 @@ function New-NrValidationCheck {
         [AllowNull()][string]$Evidence,
         [AllowNull()][string]$Limitation
     )
+
     return [pscustomobject][ordered]@{
         id = $Id
         category = $Category
@@ -81,46 +111,6 @@ function New-NrValidationCheck {
         summary = $Summary
         evidence = $Evidence
         limitation = $Limitation
-    }
-}
-
-function Get-NrValidationEnvironment {
-    [CmdletBinding()]
-    param()
-    $runningOnWindows = Test-NrValidationIsWindows
-    $osDescription = 'unknown'
-    $osArchitecture = 'unknown'
-    $processArchitecture = 'unknown'
-    try {
-        $osDescription = [Runtime.InteropServices.RuntimeInformation]::OSDescription
-        $osArchitecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString()
-        $processArchitecture = [Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString()
-    } catch {
-        if ($runningOnWindows) {
-            $osDescription = Get-NrValidationValue -Value (Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Caption -ErrorAction SilentlyContinue)
-        }
-        $osArchitecture = if ([Environment]::Is64BitOperatingSystem) { 'X64' } else { 'X86' }
-        $processArchitecture = if ([Environment]::Is64BitProcess) { 'X64' } else { 'X86' }
-    }
-
-    $windowsBuild = $null
-    if ($runningOnWindows) {
-        try {
-            $windowsBuild = [Environment]::OSVersion.Version.Build
-        } catch { }
-    }
-
-    return [pscustomobject][ordered]@{
-        isWindows = $runningOnWindows
-        isAdministrator = Test-NrValidationIsAdministrator -RunningOnWindows $runningOnWindows
-        osDescription = Get-NrValidationValue -Value $osDescription
-        osArchitecture = Get-NrValidationValue -Value $osArchitecture
-        processArchitecture = Get-NrValidationValue -Value $processArchitecture
-        windowsBuild = $windowsBuild
-        powershellVersion = $PSVersionTable.PSVersion.ToString()
-        powershellEdition = Get-NrValidationValue -Value $PSVersionTable.PSEdition
-        runnerName = Get-NrValidationValue -Value $env:RUNNER_NAME
-        runnerEnvironment = Get-NrValidationValue -Value $env:RUNNER_ENVIRONMENT
     }
 }
 
@@ -147,108 +137,108 @@ function New-NrValidationReportDocument {
     )
 
     $environment = Get-NrValidationEnvironment
-    $checks = New-Object 'System.Collections.Generic.List[object]'
+    $checks = @()
 
     $packageHashValid = $PackageSha256 -match '^[0-9a-fA-F]{64}$'
-    $checks.Add((New-NrValidationCheck -Id 'package.sha256' -Category 'release' `
+    $checks += New-NrValidationCheck -Id 'package.sha256' -Category 'release' `
         -Status $(if ($packageHashValid) { 'passed' } else { 'failed' }) -Required $true `
         -Summary 'The release package has a verified SHA-256 digest.' `
         -Evidence $(if ($packageHashValid) { $PackageSha256.ToLowerInvariant() } else { 'Missing or invalid package digest.' }) `
-        -Limitation $(if ($packageHashValid) { $null } else { 'The release must not be published without a verified package digest.' })))
+        -Limitation $(if ($packageHashValid) { $null } else { 'The release must not be published without a verified package digest.' })
 
     $upstreamHashValid = $UpstreamSha256 -match '^[0-9a-fA-F]{64}$'
-    $checks.Add((New-NrValidationCheck -Id 'upstream.pin' -Category 'supply-chain' `
+    $checks += New-NrValidationCheck -Id 'upstream.pin' -Category 'supply-chain' `
         -Status $(if ($upstreamHashValid) { 'passed' } else { 'failed' }) -Required $true `
         -Summary 'The pinned upstream archive identity is recorded.' `
         -Evidence $(if ($upstreamHashValid) { $UpstreamSha256.ToLowerInvariant() } else { 'Missing or invalid upstream digest.' }) `
-        -Limitation $(if ($upstreamHashValid) { $null } else { 'The source archive cannot be reproduced or verified.' })))
+        -Limitation $(if ($upstreamHashValid) { $null } else { 'The source archive cannot be reproduced or verified.' })
 
     $patchesValid = $PatchTargetCount -eq 23
-    $checks.Add((New-NrValidationCheck -Id 'patches.contract' -Category 'supply-chain' `
+    $checks += New-NrValidationCheck -Id 'patches.contract' -Category 'supply-chain' `
         -Status $(if ($patchesValid) { 'passed' } else { 'failed' }) -Required $true `
         -Summary 'All tracked upstream patch targets were applied.' `
         -Evidence "$PatchTargetCount tracked patch target(s)." `
-        -Limitation $(if ($patchesValid) { $null } else { 'Expected exactly 23 tracked patch targets.' })))
+        -Limitation $(if ($patchesValid) { $null } else { 'Expected exactly 23 tracked patch targets.' })
 
-    $catalogValid = $StrategyCount -gt 0 -and $ServiceCount -gt 0
-    $checks.Add((New-NrValidationCheck -Id 'package.catalogs' -Category 'package' `
-        -Status $(if ($catalogValid) { 'passed' } else { 'failed' }) -Required $true `
+    $catalogsValid = $StrategyCount -gt 0 -and $ServiceCount -gt 0
+    $checks += New-NrValidationCheck -Id 'package.catalogs' -Category 'package' `
+        -Status $(if ($catalogsValid) { 'passed' } else { 'failed' }) -Required $true `
         -Summary 'The verified package contains strategy and service catalogs.' `
         -Evidence "$StrategyCount strategies; $ServiceCount services." `
-        -Limitation $(if ($catalogValid) { $null } else { 'The package catalogs are empty or were not verified.' })))
+        -Limitation $(if ($catalogsValid) { $null } else { 'The package catalogs are empty or were not verified.' })
 
-    $traySelfTestValid = $NativeTrayIncluded -and $NativeTrayExitCode -eq 0
-    $checks.Add((New-NrValidationCheck -Id 'native-tray.self-test' -Category 'desktop' `
-        -Status $(if ($traySelfTestValid) { 'passed' } else { 'failed' }) -Required $true `
+    $trayValid = $NativeTrayIncluded -and $NativeTrayExitCode -eq 0
+    $checks += New-NrValidationCheck -Id 'native-tray.self-test' -Category 'desktop' `
+        -Status $(if ($trayValid) { 'passed' } else { 'failed' }) -Required $true `
         -Summary 'The compiled native tray controller passed its deterministic self-test.' `
         -Evidence "included=$NativeTrayIncluded; exitCode=$NativeTrayExitCode" `
-        -Limitation $(if ($traySelfTestValid) { $null } else { 'The native tray binary is missing or its self-test failed.' })))
+        -Limitation $(if ($trayValid) { $null } else { 'The native tray binary is missing or its self-test failed.' })
 
     $dashboardHashValid = $NativeDashboardSha256 -match '^[0-9a-fA-F]{64}$'
-    $dashboardSelfTestValid = $NativeDashboardIncluded -and $NativeDashboardExitCode -eq 0 -and $dashboardHashValid
-    $checks.Add((New-NrValidationCheck -Id 'native-dashboard.self-test' -Category 'desktop' `
-        -Status $(if ($dashboardSelfTestValid) { 'passed' } else { 'failed' }) -Required $true `
+    $dashboardValid = $NativeDashboardIncluded -and $NativeDashboardExitCode -eq 0 -and $dashboardHashValid
+    $checks += New-NrValidationCheck -Id 'native-dashboard.self-test' -Category 'desktop' `
+        -Status $(if ($dashboardValid) { 'passed' } else { 'failed' }) -Required $true `
         -Summary 'The compiled native dashboard loaded Strategy Lab history and passed its deterministic self-test.' `
-        -Evidence "included=$NativeDashboardIncluded; exitCode=$NativeDashboardExitCode; sha256=$(Get-NrValidationValue -Value $NativeDashboardSha256)" `
-        -Limitation $(if ($dashboardSelfTestValid) { $null } else { 'The native dashboard is missing, has no verified digest or failed to read its history fixture.' })))
+        -Evidence "included=$NativeDashboardIncluded; exitCode=$NativeDashboardExitCode; sha256=$(Get-NrValidationText -Value $NativeDashboardSha256)" `
+        -Limitation $(if ($dashboardValid) { $null } else { 'The native dashboard is missing, has no verified digest or failed to read its history fixture.' })
 
-    $checks.Add((New-NrValidationCheck -Id 'attestation.portable-verifier' -Category 'supply-chain' `
+    $checks += New-NrValidationCheck -Id 'attestation.portable-verifier' -Category 'supply-chain' `
         -Status $(if ($PortableAttestationVerifierIncluded) { 'passed' } else { 'failed' }) -Required $true `
         -Summary 'The package includes the pinned portable attestation verifier.' `
         -Evidence "included=$PortableAttestationVerifierIncluded" `
-        -Limitation $(if ($PortableAttestationVerifierIncluded) { $null } else { 'Release provenance cannot be verified without an external installation.' })))
+        -Limitation $(if ($PortableAttestationVerifierIncluded) { $null } else { 'Release provenance cannot be verified without an external installation.' })
 
-    $checks.Add((New-NrValidationCheck -Id 'dns.dot-resolver' -Category 'networking' `
+    $checks += New-NrValidationCheck -Id 'dns.dot-resolver' -Category 'networking' `
         -Status $(if ($DotResolverIncluded) { 'passed' } else { 'failed' }) -Required $true `
         -Summary 'The package includes the pinned transactional DNS-over-TLS resolver.' `
         -Evidence "included=$DotResolverIncluded" `
-        -Limitation $(if ($DotResolverIncluded) { $null } else { 'DNS-over-TLS must not be advertised without the bundled resolver.' })))
+        -Limitation $(if ($DotResolverIncluded) { $null } else { 'DNS-over-TLS must not be advertised without the bundled resolver.' })
 
-    $checks.Add((New-NrValidationCheck -Id 'windows.runner' -Category 'environment' `
+    $checks += New-NrValidationCheck -Id 'windows.runner' -Category 'environment' `
         -Status $(if ($environment.isWindows) { 'passed' } else { 'unsupported' }) -Required $false `
         -Summary 'The validation report records the Windows execution environment.' `
         -Evidence $environment.osDescription `
-        -Limitation $(if ($environment.isWindows) { $null } else { 'Windows-only integration behavior was not exercised on this runner.' })))
+        -Limitation $(if ($environment.isWindows) { $null } else { 'Windows-only integration behavior was not exercised on this runner.' })
 
-    $checks.Add((New-NrValidationCheck -Id 'native-tray.interactive' -Category 'desktop' `
+    $checks += New-NrValidationCheck -Id 'native-tray.interactive' -Category 'desktop' `
         -Status 'experimental' -Required $false `
         -Summary 'Interactive tray rendering, startup registration and crash recovery require a signed-in Windows desktop session.' `
         -Evidence 'Automated binary self-test passed; no interactive desktop session is available in hosted CI.' `
-        -Limitation 'Validate on Windows 10 and Windows 11 with Explorer and notifications enabled and disabled.'))
+        -Limitation 'Validate on Windows 10 and Windows 11 with Explorer and notifications enabled and disabled.'
 
-    $checks.Add((New-NrValidationCheck -Id 'native-dashboard.interactive' -Category 'desktop' `
+    $checks += New-NrValidationCheck -Id 'native-dashboard.interactive' -Category 'desktop' `
         -Status 'experimental' -Required $false `
         -Summary 'Dashboard theme switching, accent colors, chart zoom and mouse interaction require a signed-in Windows desktop session.' `
         -Evidence 'The dashboard self-test loaded real Strategy Lab fixture data and verified the compiled assembly.' `
-        -Limitation 'Validate light/dark themes, accents and chart interaction on Windows 10 and Windows 11.'))
+        -Limitation 'Validate light/dark themes, accents and chart interaction on Windows 10 and Windows 11.'
 
-    $dohCommandAvailable = $false
+    $dohAvailable = $false
     if ($environment.isWindows) {
-        $dohCommandAvailable = $null -ne (Get-Command Set-DnsClientDohServerAddress -ErrorAction SilentlyContinue)
+        $dohAvailable = $null -ne (Get-Command Set-DnsClientDohServerAddress -ErrorAction SilentlyContinue)
     }
-    $checks.Add((New-NrValidationCheck -Id 'dns.doh-platform' -Category 'networking' `
-        -Status $(if ($dohCommandAvailable) { 'experimental' } else { 'unsupported' }) -Required $false `
+    $checks += New-NrValidationCheck -Id 'dns.doh-platform' -Category 'networking' `
+        -Status $(if ($dohAvailable) { 'experimental' } else { 'unsupported' }) -Required $false `
         -Summary 'Windows encrypted DNS capability is reported without claiming a live resolver path.' `
-        -Evidence "Set-DnsClientDohServerAddress available=$dohCommandAvailable" `
-        -Limitation $(if ($dohCommandAvailable) { 'A live adapter and resolver verification is still required.' } else { 'This Windows environment does not expose the required DoH cmdlet.' })))
+        -Evidence "Set-DnsClientDohServerAddress available=$dohAvailable" `
+        -Limitation $(if ($dohAvailable) { 'A live adapter and resolver verification is still required.' } else { 'This Windows environment does not expose the required DoH cmdlet.' })
 
-    $checks.Add((New-NrValidationCheck -Id 'network.adapter-events' -Category 'networking' `
+    $checks += New-NrValidationCheck -Id 'network.adapter-events' -Category 'networking' `
         -Status $(if ($environment.isWindows) { 'experimental' } else { 'unsupported' }) -Required $false `
         -Summary 'Adapter arrival, removal and profile migration require physical or virtual adapter events.' `
         -Evidence 'Synthetic event and restart reconciliation tests are part of the automated suite.' `
-        -Limitation 'Validate with Ethernet, Wi-Fi and public/private profile transitions on Windows.'))
+        -Limitation 'Validate with Ethernet, Wi-Fi and public/private profile transitions on Windows.'
 
-    $checks.Add((New-NrValidationCheck -Id 'runtime.ipv4-live' -Category 'runtime' `
+    $checks += New-NrValidationCheck -Id 'runtime.ipv4-live' -Category 'runtime' `
         -Status 'experimental' -Required $false `
         -Summary 'IPv4 worker plans are behavior-tested, but a live ISP DPI path is environment-dependent.' `
         -Evidence 'Synthetic worker and package smoke tests passed.' `
-        -Limitation 'No hosted CI runner can prove bypass behavior for a specific ISP.'))
+        -Limitation 'No hosted CI runner can prove bypass behavior for a specific ISP.'
 
-    $checks.Add((New-NrValidationCheck -Id 'runtime.ipv6-live' -Category 'runtime' `
+    $checks += New-NrValidationCheck -Id 'runtime.ipv6-live' -Category 'runtime' `
         -Status $Ipv6RuntimeStatus -Required $false `
         -Summary 'IPv6 worker support is reported separately from CIDR parsing and AAAA resolution.' `
         -Evidence 'IPv4-only, IPv6-only and dual-stack synthetic worker tests are part of the automated suite.' `
-        -Limitation $(if ($Ipv6RuntimeStatus -eq 'passed') { $null } else { 'Validate against an IPv6-capable Windows host and network before claiming full IPv6 bypass.' })))
+        -Limitation $(if ($Ipv6RuntimeStatus -eq 'passed') { $null } else { 'Validate against an IPv6-capable Windows host and network before claiming full IPv6 bypass.' })
 
     $requiredFailures = @($checks | Where-Object { $_.required -and $_.status -eq 'failed' })
     $limitations = @($checks | Where-Object { $_.status -in @('experimental','unsupported','failed') } | ForEach-Object {
@@ -273,23 +263,23 @@ function New-NrValidationReportDocument {
         overallStatus = $overallStatus
         generatedAtUtc = [DateTime]::UtcNow.ToString('o')
         provenance = [pscustomobject][ordered]@{
-            repository = Get-NrValidationValue -Value $env:GITHUB_REPOSITORY -Fallback 'Onmaynec/NexRoute'
-            commit = Get-NrValidationValue -Value $env:GITHUB_SHA
-            workflow = Get-NrValidationValue -Value $env:GITHUB_WORKFLOW
-            runId = Get-NrValidationValue -Value $env:GITHUB_RUN_ID
-            runAttempt = Get-NrValidationValue -Value $env:GITHUB_RUN_ATTEMPT
+            repository = Get-NrValidationText -Value $env:GITHUB_REPOSITORY -Fallback 'Onmaynec/NexRoute'
+            commit = Get-NrValidationText -Value $env:GITHUB_SHA
+            workflow = Get-NrValidationText -Value $env:GITHUB_WORKFLOW
+            runId = Get-NrValidationText -Value $env:GITHUB_RUN_ID
+            runAttempt = Get-NrValidationText -Value $env:GITHUB_RUN_ATTEMPT
         }
         environment = $environment
         release = [pscustomobject][ordered]@{
-            packageSha256 = Get-NrValidationValue -Value $PackageSha256
-            upstreamSha256 = Get-NrValidationValue -Value $UpstreamSha256
+            packageSha256 = Get-NrValidationText -Value $PackageSha256
+            upstreamSha256 = Get-NrValidationText -Value $UpstreamSha256
             patchTargetCount = $PatchTargetCount
             strategyCount = $StrategyCount
             serviceCount = $ServiceCount
-            nativeDashboardSha256 = Get-NrValidationValue -Value $NativeDashboardSha256
+            nativeDashboardSha256 = Get-NrValidationText -Value $NativeDashboardSha256
         }
-        checks = @($checks)
-        limitations = $limitations
+        checks = [object[]]$checks
+        limitations = [object[]]$limitations
     }
 }
 
@@ -297,38 +287,44 @@ function ConvertTo-NrValidationMarkdown {
     [CmdletBinding()]
     param([Parameter(Mandatory=$true)][object]$Report)
 
-    $lines = New-Object 'System.Collections.Generic.List[string]'
-    $lines.Add("# NexRoute $($Report.version) validation report")
-    $lines.Add('')
-    $lines.Add("- Overall status: **$($Report.overallStatus)**")
-    $lines.Add("- Generated (UTC): $($Report.generatedAtUtc)")
-    $lines.Add("- Repository: $($Report.provenance.repository)")
-    $lines.Add("- Commit: $($Report.provenance.commit)")
-    $lines.Add("- Workflow run: $($Report.provenance.runId) (attempt $($Report.provenance.runAttempt))")
-    $lines.Add("- OS: $($Report.environment.osDescription)")
-    $lines.Add("- PowerShell: $($Report.environment.powershellVersion)")
-    $lines.Add('')
-    $lines.Add('## Checks')
-    $lines.Add('')
-    $lines.Add('| Check | Status | Required | Evidence | Limitation |')
-    $lines.Add('|---|---|---:|---|---|')
-    foreach ($check in $Report.checks) {
-        $evidence = (Get-NrValidationValue -Value $check.evidence -Fallback '-').Replace('|','\|').Replace("`r",' ').Replace("`n",' ')
-        $limitation = (Get-NrValidationValue -Value $check.limitation -Fallback '-').Replace('|','\|').Replace("`r",' ').Replace("`n",' ')
-        $summary = (Get-NrValidationValue -Value $check.summary).Replace('|','\|').Replace("`r",' ').Replace("`n",' ')
-        $lines.Add("| $($check.id) — $summary | **$($check.status)** | $($check.required) | $evidence | $limitation |")
+    $lines = @(
+        "# NexRoute $($Report.version) validation report",
+        '',
+        "- Overall status: **$($Report.overallStatus)**",
+        "- Generated (UTC): $($Report.generatedAtUtc)",
+        "- Repository: $($Report.provenance.repository)",
+        "- Commit: $($Report.provenance.commit)",
+        "- Workflow run: $($Report.provenance.runId) (attempt $($Report.provenance.runAttempt))",
+        "- OS: $($Report.environment.osDescription)",
+        "- PowerShell: $($Report.environment.powershellVersion)",
+        '',
+        '## Checks',
+        '',
+        '| Check | Status | Required | Evidence | Limitation |',
+        '|---|---|---:|---|---|'
+    )
+
+    foreach ($check in @($Report.checks)) {
+        $summary = (Get-NrValidationText -Value $check.summary).Replace('|','\|').Replace("`r",' ').Replace("`n",' ')
+        $evidence = (Get-NrValidationText -Value $check.evidence -Fallback '-').Replace('|','\|').Replace("`r",' ').Replace("`n",' ')
+        $limitation = (Get-NrValidationText -Value $check.limitation -Fallback '-').Replace('|','\|').Replace("`r",' ').Replace("`n",' ')
+        $lines += "| $($check.id) — $summary | **$($check.status)** | $($check.required) | $evidence | $limitation |"
     }
-    $lines.Add('')
-    $lines.Add('## Release identities')
-    $lines.Add('')
-    $lines.Add("- Package SHA-256: $($Report.release.packageSha256)")
-    $lines.Add("- Upstream SHA-256: $($Report.release.upstreamSha256)")
-    $lines.Add("- Patch targets: $($Report.release.patchTargetCount)")
-    $lines.Add("- Strategies: $($Report.release.strategyCount)")
-    $lines.Add("- Services: $($Report.release.serviceCount)")
-    $lines.Add("- Native dashboard SHA-256: $($Report.release.nativeDashboardSha256)")
-    $lines.Add('')
-    $lines.Add('This report is generated by the release workflow and is included in the same GitHub artifact attestation as the release package. Experimental and unsupported rows are explicit limitations, not successful hardware validation.')
+
+    $lines += @(
+        '',
+        '## Release identities',
+        '',
+        "- Package SHA-256: $($Report.release.packageSha256)",
+        "- Upstream SHA-256: $($Report.release.upstreamSha256)",
+        "- Patch targets: $($Report.release.patchTargetCount)",
+        "- Strategies: $($Report.release.strategyCount)",
+        "- Services: $($Report.release.serviceCount)",
+        "- Native dashboard SHA-256: $($Report.release.nativeDashboardSha256)",
+        '',
+        'This report is generated by the release workflow and is included in the same GitHub artifact attestation as the release package. Experimental and unsupported rows are explicit limitations, not successful hardware validation.'
+    )
+
     return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
@@ -338,14 +334,15 @@ function Write-NrValidationUtf8File {
         [Parameter(Mandatory=$true)][string]$Path,
         [Parameter(Mandatory=$true)][string]$Content
     )
+
     $directory = Split-Path -Parent $Path
     if (-not (Test-Path -LiteralPath $directory -PathType Container)) {
         New-Item -ItemType Directory -Path $directory -Force | Out-Null
     }
+
     $temporaryPath = "$Path.$([Guid]::NewGuid().ToString('N')).tmp"
-    $encoding = New-Object Text.UTF8Encoding($false)
     try {
-        [IO.File]::WriteAllText($temporaryPath,$Content,$encoding)
+        [IO.File]::WriteAllText($temporaryPath,$Content,(New-Object Text.UTF8Encoding($false)))
         Move-Item -LiteralPath $temporaryPath -Destination $Path -Force
     } finally {
         if (Test-Path -LiteralPath $temporaryPath -PathType Leaf) {
@@ -360,12 +357,11 @@ function Write-NrValidationReport {
         [Parameter(Mandatory=$true)][object]$Report,
         [Parameter(Mandatory=$true)][string]$OutputDirectory
     )
+
     $jsonPath = Join-Path $OutputDirectory "NexRoute-$($Report.version)-validation.json"
     $markdownPath = Join-Path $OutputDirectory "NexRoute-$($Report.version)-validation.md"
-    $json = $Report | ConvertTo-Json -Depth 10
-    $markdown = ConvertTo-NrValidationMarkdown -Report $Report
-    Write-NrValidationUtf8File -Path $jsonPath -Content ($json + [Environment]::NewLine)
-    Write-NrValidationUtf8File -Path $markdownPath -Content $markdown
+    Write-NrValidationUtf8File -Path $jsonPath -Content (($Report | ConvertTo-Json -Depth 10) + [Environment]::NewLine)
+    Write-NrValidationUtf8File -Path $markdownPath -Content (ConvertTo-NrValidationMarkdown -Report $Report)
 
     return [pscustomobject][ordered]@{
         OverallStatus = $Report.overallStatus
@@ -378,6 +374,7 @@ function Write-NrValidationReport {
 
 if (-not $NoMain) {
     if ([string]::IsNullOrWhiteSpace($Version)) { throw 'Version is required.' }
+
     $report = New-NrValidationReportDocument `
         -Version $Version `
         -PackageSha256 $PackageSha256 `
