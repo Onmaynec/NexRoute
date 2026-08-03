@@ -82,7 +82,8 @@ namespace NexRoute.Tray
                 "nexroute.bat",
                 "service.bat",
                 Path.Combine(".service", "version.txt"),
-                Path.Combine(".service", "native", "NexRoute.Dashboard.exe")
+                Path.Combine(".service", "native", "NexRoute.Dashboard.exe"),
+                Path.Combine(".service", "native", "NexRoute.Validation.exe")
             };
             var missing = required.Where(delegate(string relative) { return !File.Exists(Path.Combine(root, relative)); }).ToArray();
             string version = "unknown";
@@ -135,6 +136,7 @@ namespace NexRoute.Tray
             menu.Items.Add(restartItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(new ToolStripMenuItem("Open Dashboard", null, delegate { OpenDashboard(); }));
+            menu.Items.Add(new ToolStripMenuItem("Open Validation Report", null, delegate { OpenValidationReport(); }));
             menu.Items.Add(new ToolStripMenuItem("Open Control Center", null, delegate { OpenControlCenter(); }));
             menu.Items.Add(new ToolStripMenuItem("Check Update", null, delegate { OpenUpdater(); }));
             menu.Items.Add(new ToolStripMenuItem("Open Logs", null, delegate { OpenLogs(); }));
@@ -268,6 +270,12 @@ namespace NexRoute.Tray
         private void OpenDashboard()
         {
             string executable = Path.Combine(root, ".service", "native", "NexRoute.Dashboard.exe");
+            StartFile(executable, "--root \"" + root.Replace("\"", "\\\"") + "\"", false);
+        }
+
+        private void OpenValidationReport()
+        {
+            string executable = Path.Combine(root, ".service", "native", "NexRoute.Validation.exe");
             StartFile(executable, "--root \"" + root.Replace("\"", "\\\"") + "\"", false);
         }
 
