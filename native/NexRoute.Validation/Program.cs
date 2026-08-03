@@ -275,6 +275,7 @@ namespace NexRoute.Validation
     internal static class ValidationLoader
     {
         private static readonly string[] AllowedStatuses = { "passed", "experimental", "unsupported", "failed" };
+        private static readonly string[] AllowedOverallStatuses = { "passed", "passed-with-limitations", "failed" };
 
         internal static string ReadPackageVersion(string root)
         {
@@ -344,6 +345,8 @@ namespace NexRoute.Validation
             {
                 throw new InvalidDataException("Report version " + document.version + " does not match package version " + packageVersion + ".");
             }
+            string overallStatus = Clean(document.overallStatus).ToLowerInvariant();
+            if (!AllowedOverallStatuses.Contains(overallStatus)) throw new InvalidDataException("Unsupported validation overallStatus: " + document.overallStatus);
             if (document.checks == null || document.checks.Count == 0) throw new InvalidDataException("The report contains no checks.");
             var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (ValidationCheck check in document.checks)
@@ -353,9 +356,15 @@ namespace NexRoute.Validation
                 if (!AllowedStatuses.Contains(Clean(check.status).ToLowerInvariant())) throw new InvalidDataException("Unsupported validation status for " + check.id + ": " + check.status);
             }
             int failedRequired = document.checks.Count(delegate(ValidationCheck check) { return check.required && string.Equals(check.status, "failed", StringComparison.OrdinalIgnoreCase); });
-            if (failedRequired > 0 && !string.Equals(document.overallStatus, "failed", StringComparison.OrdinalIgnoreCase))
+            int limitationCount = document.checks.Count(delegate(ValidationCheck check)
             {
-                throw new InvalidDataException("The report contains failed required checks but overallStatus is not failed.");
+                string status = Clean(check.status).ToLowerInvariant();
+                return status == "experimental" || status == "unsupported" || status == "failed";
+            });
+            string expectedOverallStatus = failedRequired > 0 ? "failed" : limitationCount > 0 ? "passed-with-limitations" : "passed";
+            if (!string.Equals(overallStatus, expectedOverallStatus, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("The report overallStatus " + overallStatus + " is inconsistent with checks; expected " + expectedOverallStatus + ".");
             }
         }
 
