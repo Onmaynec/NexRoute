@@ -17,6 +17,9 @@ Describe 'NexRoute 0.6.0 signed validation report' {
             -ServiceCount 15 `
             -NativeTrayIncluded $true `
             -NativeTrayExitCode 0 `
+            -NativeDashboardIncluded $true `
+            -NativeDashboardExitCode 0 `
+            -NativeDashboardSha256 ('c' * 64) `
             -PortableAttestationVerifierIncluded $true `
             -DotResolverIncluded $true `
             -Ipv6RuntimeStatus experimental
@@ -34,6 +37,8 @@ Describe 'NexRoute 0.6.0 signed validation report' {
         $json.version | Should -Be '0.6.0'
         $json.release.patchTargetCount | Should -Be 23
         @($json.checks | Where-Object id -eq 'native-tray.self-test').status | Should -Be 'passed'
+        @($json.checks | Where-Object id -eq 'native-dashboard.self-test').status | Should -Be 'passed'
+        $json.release.nativeDashboardSha256 | Should -Be ('c' * 64)
 
         $markdown = Get-Content -LiteralPath $result.MarkdownPath -Raw -Encoding UTF8
         $markdown | Should -Match 'passed-with-limitations'
@@ -50,11 +55,15 @@ Describe 'NexRoute 0.6.0 signed validation report' {
             -ServiceCount 15 `
             -NativeTrayIncluded $true `
             -NativeTrayExitCode 0 `
+            -NativeDashboardIncluded $true `
+            -NativeDashboardExitCode 0 `
+            -NativeDashboardSha256 ('c' * 64) `
             -PortableAttestationVerifierIncluded $true `
             -DotResolverIncluded $true `
             -Ipv6RuntimeStatus unsupported
 
         @($report.checks | Where-Object id -eq 'native-tray.interactive').status | Should -Be 'experimental'
+        @($report.checks | Where-Object id -eq 'native-dashboard.interactive').status | Should -Be 'experimental'
         @($report.checks | Where-Object id -eq 'runtime.ipv4-live').status | Should -Be 'experimental'
         @($report.checks | Where-Object id -eq 'runtime.ipv6-live').status | Should -Be 'unsupported'
         $report.overallStatus | Should -Be 'passed-with-limitations'
@@ -70,6 +79,9 @@ Describe 'NexRoute 0.6.0 signed validation report' {
             -ServiceCount 0 `
             -NativeTrayIncluded $false `
             -NativeTrayExitCode 1 `
+            -NativeDashboardIncluded $false `
+            -NativeDashboardExitCode 1 `
+            -NativeDashboardSha256 'invalid' `
             -PortableAttestationVerifierIncluded $false `
             -DotResolverIncluded $false
 
@@ -83,6 +95,8 @@ Describe 'NexRoute 0.6.0 signed validation report' {
         foreach ($token in @(
             'Generate hardware and OS validation report',
             'New-ValidationReport.ps1',
+            'Test-V06Desktop.ps1',
+            'NEXROUTE_DASHBOARD_SELF_TEST_EXIT_CODE',
             'NexRoute-${{ steps.version.outputs.version }}-validation.json',
             'NexRoute-${{ steps.version.outputs.version }}-validation.md',
             'actions/attest@v4',
