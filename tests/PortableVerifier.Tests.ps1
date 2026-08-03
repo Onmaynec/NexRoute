@@ -9,6 +9,9 @@ Describe 'NexRoute 0.6.0 portable attestation verifier' {
             $source=Join-Path $Path 'source'
             New-Item -ItemType Directory -Path (Join-Path $source 'bin') -Force | Out-Null
             [IO.File]::WriteAllBytes((Join-Path $source 'bin/gh.exe'),[Text.Encoding]::UTF8.GetBytes('fixture-gh-executable'))
+            $padding=New-Object byte[] 1100000
+            for ($index=0;$index -lt $padding.Length;$index++) { $padding[$index]=[byte]($index % 251) }
+            [IO.File]::WriteAllBytes((Join-Path $source 'bin/padding.dat'),$padding)
             $archive=Join-Path $Path 'gh_fixture.zip'
             if ($UnsafeEntry) {
                 $stream=[IO.File]::Open($archive,[IO.FileMode]::Create)
@@ -26,14 +29,13 @@ Describe 'NexRoute 0.6.0 portable attestation verifier' {
 
         function New-NrPortableVerifierManifest {
             param([string]$Path,[string]$ArchivePath,[string]$ExpectedSha)
-            $size=(Get-Item -LiteralPath $ArchivePath).Length
             $manifest=[ordered]@{
                 schemaVersion=1
                 tools=[ordered]@{
                     githubCli=[ordered]@{
                         version='2.97.0'; tag='v2.97.0'; repository='cli/cli'; assetName='gh_fixture.zip';
                         assetUrl='https://github.com/cli/cli/releases/download/v2.97.0/gh_2.97.0_windows_amd64.zip';
-                        sha256=$ExpectedSha; minimumBytes=[Math]::Max(1,$size-1); executableRelativePath='bin/gh.exe'; purpose='fixture'
+                        sha256=$ExpectedSha; minimumBytes=1000000; executableRelativePath='bin/gh.exe'; purpose='fixture'
                     }
                 }
             }
