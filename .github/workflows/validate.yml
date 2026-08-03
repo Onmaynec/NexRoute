@@ -12,12 +12,12 @@ permissions:
 
 jobs:
   validate:
-    name: Validate NexRoute 0.5.0 sources
+    name: Validate NexRoute 0.6.0 sources
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           show-progress: false
 
@@ -45,14 +45,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           show-progress: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
+          package-manager-cache: false
 
       - name: Install website dependencies
         working-directory: website
@@ -69,7 +70,7 @@ jobs:
         run: npm run build
 
   build-smoke:
-    name: Build and test NexRoute 0.5.0
+    name: Build and test NexRoute 0.6.0
     needs:
       - validate
       - website
@@ -80,7 +81,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           show-progress: false
 
@@ -88,7 +89,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          if ($version -ne '0.5.0') { throw "Expected 0.5.0, got $version" }
+          if ($version -ne '0.6.0') { throw "Expected 0.6.0, got $version" }
           # UpstreamCachePath remains the supported write-through cache contract.
           # This job resolves the immutable asset first and passes it back as
           # UpstreamArchive, removing the GitHub Releases API dependency.
@@ -129,10 +130,14 @@ jobs:
           if ($desktop.ValidationSelfTestExitCode -ne 0) { throw 'Online validation viewer self-test did not pass.' }
           if ($desktop.ValidationSha256 -ne $env:NEXROUTE_ONLINE_VALIDATION_SHA) { throw 'Online validation viewer hash differs from its build result.' }
           if ($desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Online validation viewer trust-state fixture failed.' }
+          if ($desktop.NotificationToastChannel -ne 'windows-toast') { throw 'Online package did not prove the Windows toast channel.' }
+          if ($desktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Online package did not prove the native notification fallback.' }
           "NEXROUTE_SHA256=$($online.Sha256)" >> $env:GITHUB_ENV
           "NEXROUTE_STRATEGIES=$($online.StrategyCount)" >> $env:GITHUB_ENV
           "NEXROUTE_SERVICES=$($online.ServiceCount)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_UPSTREAM_SHA=$($online.UpstreamSha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_ONLINE_TOAST_CHANNEL=$($desktop.NotificationToastChannel)" >> $env:GITHUB_ENV
+          "NEXROUTE_ONLINE_FALLBACK_CHANNEL=$($desktop.NotificationFallbackChannel)" >> $env:GITHUB_ENV
 
       - name: Rebuild completely offline from verified cache
         shell: pwsh
@@ -171,23 +176,27 @@ jobs:
           if ($desktop.ValidationSelfTestExitCode -ne 0) { throw 'Offline validation viewer self-test did not pass.' }
           if ($desktop.ValidationSha256 -ne $env:NEXROUTE_OFFLINE_VALIDATION_SHA) { throw 'Offline validation viewer hash differs from its build result.' }
           if ($desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Offline validation viewer trust-state fixture failed.' }
+          if ($desktop.NotificationToastChannel -ne 'windows-toast') { throw 'Offline package did not prove the Windows toast channel.' }
+          if ($desktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Offline package did not prove the native notification fallback.' }
           if ($offline.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Offline package lock differs from the online package lock.' }
           if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
           if ([int]$offline.StrategyCount -ne [int]$env:NEXROUTE_STRATEGIES) { throw 'Online and offline strategy counts differ.' }
           if ([int]$offline.ServiceCount -ne [int]$env:NEXROUTE_SERVICES) { throw 'Online and offline service counts differ.' }
+          "NEXROUTE_OFFLINE_TOAST_CHANNEL=$($desktop.NotificationToastChannel)" >> $env:GITHUB_ENV
+          "NEXROUTE_OFFLINE_FALLBACK_CHANNEL=$($desktop.NotificationFallbackChannel)" >> $env:GITHUB_ENV
 
       - name: Upload logs and smoke package
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
-          name: NexRoute-0.5.0-smoke
+          name: NexRoute-0.6.0-smoke
           path: |
             build-online.log
             package-online.log
             build-offline.log
             package-offline.log
-            artifacts/NexRoute-0.5.0-win-x64.zip
-            artifacts/NexRoute-0.5.0-win-x64.zip.sha256
+            artifacts/NexRoute-0.6.0-win-x64.zip
+            artifacts/NexRoute-0.6.0-win-x64.zip.sha256
           if-no-files-found: warn
           retention-days: 7
 
@@ -202,4 +211,6 @@ jobs:
           Write-Host "Offline dashboard SHA-256: $env:NEXROUTE_OFFLINE_DASHBOARD_SHA"
           Write-Host "Online validation viewer SHA-256: $env:NEXROUTE_ONLINE_VALIDATION_SHA"
           Write-Host "Offline validation viewer SHA-256: $env:NEXROUTE_OFFLINE_VALIDATION_SHA"
+          Write-Host "Online notification channels: $env:NEXROUTE_ONLINE_TOAST_CHANNEL -> $env:NEXROUTE_ONLINE_FALLBACK_CHANNEL"
+          Write-Host "Offline notification channels: $env:NEXROUTE_OFFLINE_TOAST_CHANNEL -> $env:NEXROUTE_OFFLINE_FALLBACK_CHANNEL"
           Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
