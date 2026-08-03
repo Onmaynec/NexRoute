@@ -50,6 +50,16 @@ function New-NrToastPayload {
     }
 }
 
+function Assert-NrToastSetting {
+    [CmdletBinding()]
+    param([AllowNull()][AllowEmptyString()][string]$Setting)
+    $knownSettings=@('Enabled','DisabledForApplication','DisabledForUser','DisabledByGroupPolicy','DisabledByManifest')
+    if ([string]::IsNullOrWhiteSpace($Setting)) { throw 'Toast notification setting is unavailable.' }
+    if ($Setting -eq 'Enabled') { return 'Enabled' }
+    $normalized=if ($knownSettings -contains $Setting) { $Setting } else { 'Unknown('+$Setting+')' }
+    throw "Toast notifications are disabled or unavailable: $normalized."
+}
+
 function Invoke-NrWindowsToastNotification {
     [CmdletBinding()]
     param(
@@ -64,9 +74,7 @@ function Invoke-NrWindowsToastNotification {
     if ($Runner) {
         $result=& $Runner $payload
         if ($null -eq $result) { throw 'Toast runner returned no delivery result.' }
-        if ($result.PSObject.Properties['setting'] -and [string]$result.setting -ne 'Enabled') {
-            throw "Toast notifications are disabled: $($result.setting)."
-        }
+        if ($result.PSObject.Properties['setting']) { Assert-NrToastSetting -Setting ([string]$result.setting) | Out-Null }
         if (-not $result.PSObject.Properties['delivered'] -or -not [bool]$result.delivered) {
             throw 'Toast runner did not confirm delivery.'
         }
@@ -84,8 +92,7 @@ function Invoke-NrWindowsToastNotification {
     $toast=New-Object Windows.UI.Notifications.ToastNotification $document
     $toast.ExpirationTime=[DateTimeOffset]::Now.AddMilliseconds($payload.timeoutMilliseconds)
     $notifier=[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($payload.appId)
-    $setting=[string]$notifier.Setting
-    if ($setting -ne 'Enabled') { throw "Toast notifications are disabled: $setting." }
+    $setting=Assert-NrToastSetting -Setting ([string]$notifier.Setting)
     $notifier.Show($toast)
     return [pscustomobject]@{ delivered=$true; channel='windows-toast'; appId=$payload.appId; setting=$setting; payload=$payload }
 }
