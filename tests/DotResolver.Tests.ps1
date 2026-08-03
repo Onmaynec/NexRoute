@@ -118,7 +118,7 @@ Describe 'NexRoute 0.6.0 transactional DNS-over-TLS resolver' {
         $script:events=New-Object 'System.Collections.Generic.List[string]'
         try {
             New-Item -ItemType Directory -Path $fixture -Force | Out-Null
-            $result=Invoke-NrDotTransaction -Root $fixture -Provider $script:provider -Adapters @([pscustomobject]@{ ifIndex=8; Name='Wi-Fi' }) -Executable 'dnsproxy.exe' -Arguments @() `
+            $result=Invoke-NrDotTransaction -Root $fixture -Provider $script:provider -Adapters @([pscustomobject]@{ ifIndex=8; Name='Wi-Fi' }) -Executable 'dnsproxy.exe' -Arguments @('-u','tls://cloudflare-dns.com:853') `
                 -SnapshotReader { param($adapters) @([pscustomobject]@{ interfaceIndex=8; interfaceAlias='Wi-Fi'; addressFamily='IPv4'; serverAddresses=@('198.51.100.53') }) } `
                 -RuntimeStarter { param($rootPath,$executable,$arguments) $script:events.Add('start'); [pscustomobject]@{ pid=5000 } } `
                 -LoopbackSetter { param($adapters) $script:events.Add('loopback') } `
@@ -140,7 +140,7 @@ Describe 'NexRoute 0.6.0 transactional DNS-over-TLS resolver' {
         $script:events=New-Object 'System.Collections.Generic.List[string]'
         try {
             New-Item -ItemType Directory -Path $fixture -Force | Out-Null
-            $result=Invoke-NrDotTransaction -Root $fixture -Provider $script:provider -Adapters @([pscustomobject]@{ ifIndex=9; Name='Ethernet' }) -Executable 'dnsproxy.exe' -Arguments @() `
+            $result=Invoke-NrDotTransaction -Root $fixture -Provider $script:provider -Adapters @([pscustomobject]@{ ifIndex=9; Name='Ethernet' }) -Executable 'dnsproxy.exe' -Arguments @('-u','tls://cloudflare-dns.com:853') `
                 -SnapshotReader { param($adapters) @([pscustomobject]@{ interfaceIndex=9; interfaceAlias='Ethernet'; addressFamily='IPv4'; serverAddresses=@('203.0.113.53') }) } `
                 -RuntimeStarter { param($rootPath,$executable,$arguments) [pscustomobject]@{ pid=6000 } } `
                 -LoopbackSetter { param($adapters) $script:events.Add('loopback') } `
