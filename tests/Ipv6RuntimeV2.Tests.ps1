@@ -4,6 +4,7 @@ Describe 'NexRoute 0.6.0 IPv4 IPv6 dual-stack runtime' {
         . (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-workers.ps1')
         function Apply-NrPerServiceStrategies { }
         . (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-ipv6-runtime-v2.ps1')
+        . (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-ipv6-runtime-v2-fixes.ps1')
         $script:ipv6Fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-ipv6-'+[guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path (Join-Path $script:ipv6Fixture 'bin') -Force | Out-Null
         New-Item -ItemType Directory -Path (Join-Path $script:ipv6Fixture 'lists') -Force | Out-Null
@@ -35,13 +36,13 @@ Describe 'NexRoute 0.6.0 IPv4 IPv6 dual-stack runtime' {
                             name='general.bat'; executable=$script:winws; sourceFile='general.bat'
                             arguments=@(
                                 '--filter-tcp=80,443',
-                                '--hostlist='+$script:hostlist,
-                                '--ipset='+$script:ipset,
+                                ('--hostlist='+$script:hostlist),
+                                ('--ipset='+$script:ipset),
                                 '--dpi-desync=fake,multisplit',
                                 '--new',
                                 '--filter-udp=443',
-                                '--hostlist='+$script:hostlist,
-                                '--ipset='+$script:ipset,
+                                ('--hostlist='+$script:hostlist),
+                                ('--ipset='+$script:ipset),
                                 '--dpi-desync=fake'
                             )
                         }
@@ -187,10 +188,14 @@ Start-Sleep -Seconds 30
         $repositoryRoot=Split-Path -Parent $PSScriptRoot
         $loader=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-runtime-extensions.ps1') -Raw -Encoding UTF8
         $loader | Should -Match ([regex]::Escape('nexroute-ipv6-runtime-v2.ps1'))
+        $loader | Should -Match ([regex]::Escape('nexroute-ipv6-runtime-v2-fixes.ps1'))
         $loader.IndexOf('nexroute-ipv6-runtime-v2.ps1') | Should -BeGreaterThan $loader.IndexOf('nexroute-worker-plans.ps1')
+        $loader.IndexOf('nexroute-ipv6-runtime-v2-fixes.ps1') | Should -BeGreaterThan $loader.IndexOf('nexroute-ipv6-runtime-v2.ps1')
         $source=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-ipv6-runtime-v2.ps1') -Raw -Encoding UTF8
         foreach ($token in @('--filter-l3=','ipv4','ipv6','DualStack','upstream-capability-missing','Show-NrIpv6RuntimeStatus','ipv6-capability.json')) {
             $source | Should -Match ([regex]::Escape($token))
         }
+        $fixes=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-ipv6-runtime-v2-fixes.ps1') -Raw -Encoding UTF8
+        $fixes | Should -Match ([regex]::Escape('Malformed winws argument: --ipset has no path.'))
     }
 }
