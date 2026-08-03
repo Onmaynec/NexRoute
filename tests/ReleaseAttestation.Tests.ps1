@@ -15,7 +15,7 @@ Describe 'NexRoute 0.6.0 release artifact attestations' {
         $workflow | Should -Match 'uses: actions/attest@v4'
     }
 
-    It 'attests the package checksum and both validation report formats together' {
+    It 'attests the release archive and its checksum file plus both validation report formats' {
         foreach ($subject in @(
             'artifacts/${{ steps.version.outputs.archive }}',
             'artifacts/${{ steps.version.outputs.archive }}.sha256',
