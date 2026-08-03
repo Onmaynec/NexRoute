@@ -25,12 +25,31 @@ $candidates=@(
 $csc=$candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
 if (-not $csc) { throw 'The .NET Framework C# compiler was not found.' }
 
+function Convert-NrMutableUiFields {
+    param(
+        [Parameter(Mandatory)][string]$Content,
+        [Parameter(Mandatory)][string[]]$FieldNames
+    )
+    $result=$Content
+    foreach ($fieldName in $FieldNames) {
+        $escaped=[regex]::Escape($fieldName)
+        $pattern="(?m)^(\s*private\s+)readonly(\s+[^;\r\n]+\s+$escaped\s*;)"
+        $match=[regex]::Match($result,$pattern)
+        if (-not $match.Success) {
+            throw "Expected readonly UI field declaration was not found: $fieldName"
+        }
+        $result=[regex]::Replace($result,$pattern,'$1$2',1)
+    }
+    return $result
+}
+
 function Invoke-NrNativeCompile {
     param(
         [Parameter(Mandatory)][string]$Source,
         [Parameter(Mandatory)][string]$AssemblyName,
         [Parameter(Mandatory)][string[]]$References,
-        [switch]$AddTimerAlias
+        [switch]$AddTimerAlias,
+        [string[]]$MutableUiFields=@()
     )
     $executable=Join-Path $output ($AssemblyName+'.exe')
     Remove-Item -LiteralPath $executable -Force -ErrorAction SilentlyContinue
@@ -39,6 +58,9 @@ function Invoke-NrNativeCompile {
         $content=[IO.File]::ReadAllText($Source,[Text.Encoding]::UTF8)
         if ($AddTimerAlias) {
             $content=$content.Replace('using System.Threading;',"using System.Threading;`r`nusing Timer = System.Windows.Forms.Timer;")
+        }
+        if ($MutableUiFields.Count -gt 0) {
+            $content=Convert-NrMutableUiFields -Content $content -FieldNames $MutableUiFields
         }
         [IO.File]::WriteAllText($temporary,$content,[Text.UTF8Encoding]::new($true))
         $arguments=New-Object 'System.Collections.Generic.List[string]'
@@ -72,6 +94,8 @@ $notifier=Invoke-NrNativeCompile -Source $notifierSource -AssemblyName 'NexRoute
 $dashboard=Invoke-NrNativeCompile -Source $dashboardSource -AssemblyName 'NexRoute.Dashboard' -References @(
     'System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll','System.ServiceProcess.dll',
     'System.Web.Extensions.dll','System.Windows.Forms.DataVisualization.dll'
+) -MutableUiFields @(
+    'metricSelector','strategySelector','themeSelector','accentSelector','chart','grid','resetZoomButton'
 )
 
 [pscustomobject]@{
