@@ -2,6 +2,7 @@ Describe 'NexRoute 0.6.0 native Windows tray controller' {
     BeforeAll {
         $root=Split-Path -Parent $PSScriptRoot
         $source=Get-Content -LiteralPath (Join-Path $root 'native/NexRoute.Tray/Program.cs') -Raw -Encoding UTF8
+        $dashboardSource=Get-Content -LiteralPath (Join-Path $root 'native/NexRoute.Dashboard/Program.cs') -Raw -Encoding UTF8
         $builder=Get-Content -LiteralPath (Join-Path $root 'scripts/Build-NativeTray.ps1') -Raw -Encoding UTF8
         $installer=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-tray-install.ps1') -Raw -Encoding UTF8
         $launcher=Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute-tray.cmd') -Raw -Encoding UTF8
@@ -28,13 +29,18 @@ Describe 'NexRoute 0.6.0 native Windows tray controller' {
         $source | Should -Match ([regex]::Escape('Path.Combine(".service", "native", "NexRoute.Validation.exe")'))
     }
 
-    It 'compiles without NuGet or network dependencies using the Windows framework compiler' {
+    It 'compiles repository sources directly without NuGet network access or source rewriting' {
         $builder | Should -Match 'Microsoft\.NET/Framework64/v4\.0\.30319/csc\.exe'
         $builder | Should -Match '/target:winexe'
         $builder | Should -Match 'System\.Windows\.Forms\.dll'
         $builder | Should -Match 'System\.ServiceProcess\.dll'
         $builder | Should -Match "AssemblyName\]::GetAssemblyName"
         $builder | Should -Not -Match 'nuget|dotnet restore|Invoke-WebRequest|Download'
+        $builder | Should -Not -Match 'Convert-NrMutableUiFields|MutableUiFields|Expected readonly UI field declaration'
+        foreach ($field in @('metricSelector','strategySelector','themeSelector','accentSelector','chart','grid','resetZoomButton')) {
+            $dashboardSource | Should -Match ("private\s+(?:ComboBox|Chart|DataGridView|Button)\s+"+[regex]::Escape($field)+"\s*;")
+            $dashboardSource | Should -Not -Match ("private\s+readonly\s+[^;]+\s+"+[regex]::Escape($field)+"\s*;")
+        }
     }
 
     It 'installs one interactive highest-privilege logon task and manages its lifecycle' {
