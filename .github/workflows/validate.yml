@@ -104,7 +104,7 @@ jobs:
             Tee-Object -FilePath build-online.log
           $build = $result | Select-Object -Last 1
           if (-not $build.UpdaterIncluded) { throw 'The package was not finalized with the updater.' }
-          if (-not $build.NativeTrayIncluded -or -not $build.NativeNotifierIncluded -or -not $build.NativeDashboardIncluded) {
+          if (-not $build.NativeTrayIncluded -or -not $build.NativeNotifierIncluded -or -not $build.NativeDashboardIncluded -or -not $build.NativeValidationIncluded) {
             throw 'The package was not finalized with all native Windows controllers.'
           }
           if ($build.UpstreamResolution -ne 'offline') { throw 'Builder did not consume the locally verified pinned archive.' }
@@ -112,6 +112,7 @@ jobs:
           "NEXROUTE_UPSTREAM_SHA=$($build.UpstreamSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_PATCH_TARGETS=$($build.PatchTargetCount)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_DASHBOARD_SHA=$($build.NativeDashboardSha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_ONLINE_VALIDATION_SHA=$($build.NativeValidationSha256)" >> $env:GITHUB_ENV
 
       - name: Verify online package
         shell: pwsh
@@ -125,6 +126,9 @@ jobs:
           $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $extract
           if ($desktop.DashboardSelfTestExitCode -ne 0) { throw 'Online dashboard self-test did not pass.' }
           if ($desktop.DashboardSha256 -ne $env:NEXROUTE_ONLINE_DASHBOARD_SHA) { throw 'Online dashboard hash differs from its build result.' }
+          if ($desktop.ValidationSelfTestExitCode -ne 0) { throw 'Online validation viewer self-test did not pass.' }
+          if ($desktop.ValidationSha256 -ne $env:NEXROUTE_ONLINE_VALIDATION_SHA) { throw 'Online validation viewer hash differs from its build result.' }
+          if ($desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Online validation viewer trust-state fixture failed.' }
           "NEXROUTE_SHA256=$($online.Sha256)" >> $env:GITHUB_ENV
           "NEXROUTE_STRATEGIES=$($online.StrategyCount)" >> $env:GITHUB_ENV
           "NEXROUTE_SERVICES=$($online.ServiceCount)" >> $env:GITHUB_ENV
@@ -143,10 +147,13 @@ jobs:
           if ($offlineBuild.UpstreamResolution -ne 'offline') { throw 'Offline build did not use offline resolution mode.' }
           if (-not $offlineBuild.UpdaterIncluded) { throw 'Offline build was not finalized with the updater.' }
           if (-not $offlineBuild.NativeDashboardIncluded) { throw 'Offline build did not compile the native dashboard.' }
+          if (-not $offlineBuild.NativeValidationIncluded) { throw 'Offline build did not compile the native validation viewer.' }
           if ($offlineBuild.NativeDashboardSha256 -notmatch '^[0-9a-f]{64}$') { throw 'Offline dashboard build did not return a valid SHA-256.' }
+          if ($offlineBuild.NativeValidationSha256 -notmatch '^[0-9a-f]{64}$') { throw 'Offline validation viewer build did not return a valid SHA-256.' }
           if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Online and offline upstream hashes differ.' }
           if ([int]$offlineBuild.PatchTargetCount -ne 23) { throw 'Offline build did not apply 23 tracked patch targets.' }
           "NEXROUTE_OFFLINE_DASHBOARD_SHA=$($offlineBuild.NativeDashboardSha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_OFFLINE_VALIDATION_SHA=$($offlineBuild.NativeValidationSha256)" >> $env:GITHUB_ENV
 
       - name: Verify offline package
         shell: pwsh
@@ -161,6 +168,9 @@ jobs:
           $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $extract
           if ($desktop.DashboardSelfTestExitCode -ne 0) { throw 'Offline dashboard self-test did not pass.' }
           if ($desktop.DashboardSha256 -ne $env:NEXROUTE_OFFLINE_DASHBOARD_SHA) { throw 'Offline dashboard hash differs from its build result.' }
+          if ($desktop.ValidationSelfTestExitCode -ne 0) { throw 'Offline validation viewer self-test did not pass.' }
+          if ($desktop.ValidationSha256 -ne $env:NEXROUTE_OFFLINE_VALIDATION_SHA) { throw 'Offline validation viewer hash differs from its build result.' }
+          if ($desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Offline validation viewer trust-state fixture failed.' }
           if ($offline.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Offline package lock differs from the online package lock.' }
           if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
           if ([int]$offline.StrategyCount -ne [int]$env:NEXROUTE_STRATEGIES) { throw 'Online and offline strategy counts differ.' }
@@ -190,4 +200,6 @@ jobs:
           Write-Host "Services: $env:NEXROUTE_SERVICES"
           Write-Host "Online dashboard SHA-256: $env:NEXROUTE_ONLINE_DASHBOARD_SHA"
           Write-Host "Offline dashboard SHA-256: $env:NEXROUTE_OFFLINE_DASHBOARD_SHA"
+          Write-Host "Online validation viewer SHA-256: $env:NEXROUTE_ONLINE_VALIDATION_SHA"
+          Write-Host "Offline validation viewer SHA-256: $env:NEXROUTE_OFFLINE_VALIDATION_SHA"
           Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
