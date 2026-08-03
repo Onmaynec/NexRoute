@@ -27,9 +27,10 @@ $required = @(
     'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','NexRoute.lnk','general.bat','utils/test zapret.ps1','bin/winws.exe',
     'bin/WinDivert.dll','bin/WinDivert64.sys','.service/nexroute.ico',
     '.service/nexroute-ui.ps1','.service/nexroute-services.ps1','.service/services.json',
-    '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1',
+    '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1','.service/nexroute-worker-host.ps1',
     '.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1','.service/next/nexroute-network.ps1',
     '.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1','.service/next/nexroute-update.ps1',
+    '.service/next/nexroute-workers.ps1','.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1','.service/next/nexroute-update-transaction.ps1',
     '.service/services-state.json','.service/i18n/ru.json','.service/i18n/en.json',
     '.service/i18n/nexroute-theme.ps1','.service/i18n/nexroute-pages.ps1',
     '.service/i18n/nexroute-services-ui.ps1','.service/language.txt','.service/version.txt',
@@ -39,20 +40,27 @@ foreach ($relativePath in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $extractPath $relativePath) -PathType Leaf)) { throw "Built package is missing $relativePath" }
 }
 
-$nextScripts = @(Get-ChildItem -LiteralPath (Join-Path $extractPath '.service') -Filter '*.ps1' -File -Recurse | Where-Object { $_.FullName -match '[\\/]next[\\/]|nexroute-(console|monitor|tray)\.ps1$' })
+$nextScripts = @(Get-ChildItem -LiteralPath (Join-Path $extractPath '.service') -Filter '*.ps1' -File -Recurse | Where-Object { $_.FullName -match '[\\/]next[\\/]|nexroute-(console|monitor|tray|worker-host)\.ps1$' })
 foreach ($nextScript in $nextScripts) {
     $tokens = $null
     $parseErrors = $null
     [void][System.Management.Automation.Language.Parser]::ParseFile($nextScript.FullName, [ref]$tokens, [ref]$parseErrors)
     if ($parseErrors.Count -gt 0) {
         $details = ($parseErrors | ForEach-Object { "$($_.Extent.StartLineNumber):$($_.Extent.StartColumnNumber) $($_.Message)" }) -join '; '
-        throw "NexRoute 0.5.0 script has syntax errors: $($nextScript.Name): $details"
+        throw "NexRoute 0.6.0 script has syntax errors: $($nextScript.Name): $details"
     }
 }
 $newService = Get-Content -LiteralPath (Join-Path $extractPath 'service.bat') -Raw
 if ($newService -notmatch 'nexroute-console\.ps1') { throw 'service.bat does not launch the arrow-key control node.' }
 $nextConsole = Get-Content -LiteralPath (Join-Path $extractPath '.service/next/nexroute-common.ps1') -Raw
 if ($nextConsole -notmatch [regex]::Escape('>[+]') -or $nextConsole -notmatch "'UpArrow'" -or $nextConsole -notmatch "'DownArrow'") { throw 'Arrow-key [+] menu contract is missing.' }
+
+$transactionPath = Join-Path $extractPath '.service/next/nexroute-update-transaction.ps1'
+. $transactionPath
+$controlNodeSmoke = Test-NrUpdatedControlNode -Root $extractPath -TimeoutSeconds 30
+if (-not [bool]$controlNodeSmoke.passed) {
+    throw "Built package control node smoke failed with exit code $($controlNodeSmoke.exitCode): $($controlNodeSmoke.message)"
+}
 
 $allBatchFiles = @(Get-ChildItem -LiteralPath $extractPath -Filter '*.bat' -File)
 foreach ($batchFile in $allBatchFiles) {
@@ -142,6 +150,7 @@ if (-not $SkipRuntime) {
 }
 
 Write-Host "Verified package: $($zip.Name)" -ForegroundColor Green
+Write-Host "Control node: service.bat --status passed (exit code $($controlNodeSmoke.exitCode))" -ForegroundColor Green
 Write-Host "Strategy Lab: UTF-8 BOM + Windows PowerShell parser verified" -ForegroundColor Green
 Write-Host "Strategies: $($strategyFiles.Count)" -ForegroundColor Green
 Write-Host "Services: $($services.Count)" -ForegroundColor Green
@@ -154,4 +163,5 @@ Write-Host "SHA-256: $actualHash" -ForegroundColor Green
     Sha256 = $actualHash
     StrategyCount = $strategyFiles.Count
     ServiceCount = $services.Count
+    ControlNodeExitCode = $controlNodeSmoke.exitCode
 }
