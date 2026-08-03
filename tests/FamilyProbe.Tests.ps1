@@ -44,7 +44,12 @@ Describe 'NexRoute 0.6.0 address-family probes' {
     }
 
     It 'parses an HTTP response through the selected IPv4 connection' {
-        $script:probeStream=[IO.MemoryStream]::new([Text.Encoding]::ASCII.GetBytes("HTTP/1.1 204 No Content`r`nContent-Length: 0`r`n`r`n"))
+        $request="GET /generate_204 HTTP/1.1`r`nHost: fixture.invalid`r`nUser-Agent: NexRoute-WorkerHost/0.6.0`r`nAccept: */*`r`nCache-Control: no-cache`r`nConnection: close`r`n`r`n"
+        $requestBytes=[Text.Encoding]::ASCII.GetBytes($request)
+        $responseBytes=[Text.Encoding]::ASCII.GetBytes("HTTP/1.1 204 No Content`r`nContent-Length: 0`r`n`r`n")
+        $buffer=New-Object byte[] ($requestBytes.Length+$responseBytes.Length)
+        [Array]::Copy($responseBytes,0,$buffer,$requestBytes.Length,$responseBytes.Length)
+        $script:probeStream=[IO.MemoryStream]::new($buffer)
         $script:connectedAddress=$null
         try {
             $resolver={ param($hostName) @([Net.IPAddress]::Parse('::1'),[Net.IPAddress]::Parse('127.0.0.1')) }
@@ -61,6 +66,7 @@ Describe 'NexRoute 0.6.0 address-family probes' {
             $result.statusCode | Should -Be 204
             $result.address | Should -Be '127.0.0.1'
             $script:connectedAddress | Should -Be '127.0.0.1'
+            $script:probeStream.Position | Should -BeGreaterThan $requestBytes.Length
         } finally { $script:probeStream.Dispose() }
     }
 
