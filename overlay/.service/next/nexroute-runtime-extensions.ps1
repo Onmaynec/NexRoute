@@ -9,6 +9,7 @@ $extensionModules=@(
     'nexroute-dot.ps1',
     'nexroute-dot-snapshot-v2.ps1',
     'nexroute-notifications.ps1',
+    'nexroute-network-profiles-v2.ps1',
     'nexroute-media.ps1',
     'nexroute-strategy-lab-v2.ps1',
     'nexroute-workers.ps1',
