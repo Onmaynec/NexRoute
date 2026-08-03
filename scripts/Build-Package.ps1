@@ -76,6 +76,7 @@ try {
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-update.cmd') -Destination (Join-Path $packageRoot 'nexroute-update.cmd')
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-tray.cmd') -Destination (Join-Path $packageRoot 'nexroute-tray.cmd')
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-tray-install.cmd') -Destination (Join-Path $packageRoot 'nexroute-tray-install.cmd')
+    Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-validation.cmd') -Destination (Join-Path $packageRoot 'nexroute-validation.cmd')
 
     foreach ($name in @('nexroute-console.ps1','nexroute-monitor.ps1','nexroute-tray.ps1','nexroute-updater.ps1','nexroute-worker-host.ps1')) {
         Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot ('overlay/.service/' + $name)) -Destination (Join-Path $serviceDirectory $name)
@@ -95,15 +96,18 @@ try {
         -SourcePath (Join-Path $repositoryRoot 'native/NexRoute.Tray/Program.cs') `
         -NotifierSourcePath (Join-Path $repositoryRoot 'native/NexRoute.Notifier/Program.cs') `
         -DashboardSourcePath (Join-Path $repositoryRoot 'native/NexRoute.Dashboard/Program.cs') `
+        -ValidationSourcePath (Join-Path $repositoryRoot 'native/NexRoute.Validation/Program.cs') `
         -OutputDirectory $nativeBuildDirectory) | Select-Object -Last 1
     if (-not $nativeResult -or -not (Test-Path -LiteralPath ([string]$nativeResult.executable) -PathType Leaf)) { throw 'Native Windows builder returned no tray executable.' }
     if (-not (Test-Path -LiteralPath ([string]$nativeResult.notifierExecutable) -PathType Leaf)) { throw 'Native Windows builder returned no notifier executable.' }
     if (-not (Test-Path -LiteralPath ([string]$nativeResult.dashboardExecutable) -PathType Leaf)) { throw 'Native Windows builder returned no dashboard executable.' }
+    if (-not (Test-Path -LiteralPath ([string]$nativeResult.validationExecutable) -PathType Leaf)) { throw 'Native Windows builder returned no validation executable.' }
     $nativeDirectory=Join-Path $serviceDirectory 'native'
     New-Item -ItemType Directory -Path $nativeDirectory -Force | Out-Null
     Copy-NexRoutePackageFile -Source ([string]$nativeResult.executable) -Destination (Join-Path $nativeDirectory 'NexRoute.Tray.exe')
     Copy-NexRoutePackageFile -Source ([string]$nativeResult.notifierExecutable) -Destination (Join-Path $nativeDirectory 'NexRoute.Notifier.exe')
     Copy-NexRoutePackageFile -Source ([string]$nativeResult.dashboardExecutable) -Destination (Join-Path $nativeDirectory 'NexRoute.Dashboard.exe')
+    Copy-NexRoutePackageFile -Source ([string]$nativeResult.validationExecutable) -Destination (Join-Path $nativeDirectory 'NexRoute.Validation.exe')
 
     # Windows PowerShell 5.1 treats UTF-8 without BOM as the active ANSI code page.
     # Finalize every localized PowerShell module with BOM.
@@ -114,10 +118,10 @@ try {
     Set-NexRoutePowerShellBom -Path $testLabDestination
 
     $required=@(
-        'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','nexroute-tray-install.cmd',
+        'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','nexroute-tray-install.cmd','nexroute-validation.cmd',
         '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1',
         '.service/nexroute-updater.ps1','.service/nexroute-worker-host.ps1','.service/portable-tools.json',
-        '.service/native/NexRoute.Tray.exe','.service/native/NexRoute.Notifier.exe','.service/native/NexRoute.Dashboard.exe',
+        '.service/native/NexRoute.Tray.exe','.service/native/NexRoute.Notifier.exe','.service/native/NexRoute.Dashboard.exe','.service/native/NexRoute.Validation.exe',
         '.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1',
         '.service/next/nexroute-network.ps1','.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1',
         '.service/next/nexroute-update.ps1','.service/next/nexroute-workers.ps1','.service/next/nexroute-worker-plans.ps1',
@@ -163,6 +167,8 @@ try {
         NativeNotifierSha256=[string]$nativeResult.notifierSha256
         NativeDashboardIncluded=$true
         NativeDashboardSha256=[string]$nativeResult.dashboardSha256
+        NativeValidationIncluded=$true
+        NativeValidationSha256=[string]$nativeResult.validationSha256
         Archive=$zipPath
         Checksum=$checksumPath
         Sha256=$hash.Hash.ToLowerInvariant()
