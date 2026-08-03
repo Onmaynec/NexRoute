@@ -15,6 +15,8 @@ param(
     [bool]$NativeValidationIncluded = $false,
     [int]$NativeValidationExitCode = -1,
     [string]$NativeValidationSha256,
+    [int]$NotificationContractExitCode = -1,
+    [string]$NotificationContractEvidence,
     [bool]$PortableAttestationVerifierIncluded = $false,
     [bool]$DotResolverIncluded = $false,
     [ValidateSet('passed','experimental','unsupported','failed')]
@@ -82,6 +84,95 @@ function Get-NrValidationEnvironment {
     }
 }
 
+function Invoke-NrNotificationContractSelfTest {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
+        [Parameter(Mandatory=$true)][string]$ArtifactsDirectory
+    )
+
+    if (-not (Test-NrValidationWindows)) {
+        throw 'The packaged notification contract requires a Windows runner.'
+    }
+
+    $artifactRoot = [IO.Path]::GetFullPath($ArtifactsDirectory)
+    $archivePath = Join-Path $artifactRoot "NexRoute-$Version-win-x64.zip"
+    if (-not (Test-Path -LiteralPath $archivePath -PathType Leaf)) {
+        throw "Release archive is missing for notification validation: $archivePath"
+    }
+
+    $extractRoot = Join-Path ([IO.Path]::GetTempPath()) ('nexroute-notification-contract-' + [guid]::NewGuid().ToString('N'))
+    try {
+        Expand-Archive -LiteralPath $archivePath -DestinationPath $extractRoot -Force
+        $brokers = @(Get-ChildItem -LiteralPath $extractRoot -Filter 'nexroute-notifications.ps1' -File -Recurse | Where-Object {
+            $_.FullName.Replace('/','\') -match '\\.service\\next\\nexroute-notifications\.ps1$'
+        })
+        if ($brokers.Count -ne 1) {
+            throw "Expected one packaged notification broker, found $($brokers.Count)."
+        }
+
+        $brokerPath = $brokers[0].FullName
+        $packageRoot = $brokers[0].Directory.Parent.Parent.FullName
+        $notifierPath = Join-Path $packageRoot '.service/native/NexRoute.Notifier.exe'
+        if (-not (Test-Path -LiteralPath $notifierPath -PathType Leaf)) {
+            throw "Packaged native notifier is missing: $notifierPath"
+        }
+        $notifierAssembly = [Reflection.AssemblyName]::GetAssemblyName($notifierPath)
+        if ([string]$notifierAssembly.Name -ne 'NexRoute.Notifier') {
+            throw "Unexpected packaged notifier assembly: $($notifierAssembly.Name)"
+        }
+
+        . $brokerPath
+        $toastResult = Send-NrNotification -Root $packageRoot -Title 'NexRoute notification contract' `
+            -Message 'Toast delivery fixture' -Level Info -ToastRunner {
+                param($payload)
+                if ([string]$payload.level -ne 'info' -or [int]$payload.timeoutMilliseconds -ne 5000) {
+                    throw 'Toast payload normalization failed.'
+                }
+                if ([string]$payload.xml -notmatch 'ToastGeneric') { throw 'Toast payload is not ToastGeneric XML.' }
+                [pscustomobject]@{ delivered=$true; setting='Enabled' }
+            } -Runner { throw 'Native fallback must not run after confirmed toast delivery.' }
+        if ([string]$toastResult.channel -ne 'windows-toast') {
+            throw "Expected windows-toast, got $($toastResult.channel)."
+        }
+        if ((@($toastResult.attempts) -join ',') -ne 'windows-toast') {
+            throw "Unexpected toast attempt order: $(@($toastResult.attempts) -join ',')."
+        }
+
+        $fallbackResult = Send-NrNotification -Root $packageRoot -Title 'NexRoute notification contract' `
+            -Message 'Policy fallback fixture' -Level Warning -ToastRunner {
+                [pscustomobject]@{ delivered=$false; setting='DisabledByGroupPolicy' }
+            } -Runner {
+                param($executable,$arguments)
+                if ([IO.Path]::GetFullPath($executable) -ne [IO.Path]::GetFullPath($notifierPath)) {
+                    throw 'Fallback used an unexpected notifier executable.'
+                }
+                if ($arguments -notcontains '--title64' -or $arguments -notcontains '--message64') {
+                    throw 'Fallback notifier arguments are incomplete.'
+                }
+                [pscustomobject]@{ exitCode=0; processId=4242 }
+            }
+        if ([string]$fallbackResult.channel -ne 'native-balloon') {
+            throw "Expected native-balloon fallback, got $($fallbackResult.channel)."
+        }
+        if ((@($fallbackResult.attempts) -join ',') -ne 'windows-toast,native-balloon') {
+            throw "Unexpected fallback attempt order: $(@($fallbackResult.attempts) -join ',')."
+        }
+        if ([string]$fallbackResult.error -notmatch 'DisabledByGroupPolicy') {
+            throw 'The policy-disabled reason was not preserved in notification history.'
+        }
+
+        [pscustomobject][ordered]@{
+            ExitCode = 0
+            Evidence = 'toast=windows-toast; policyFallback=native-balloon; attempts=windows-toast,native-balloon; setting=DisabledByGroupPolicy'
+            ToastChannel = [string]$toastResult.channel
+            FallbackChannel = [string]$fallbackResult.channel
+        }
+    } finally {
+        Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function New-NrValidationCheck {
     param(
         [Parameter(Mandatory=$true)][string]$Id,
@@ -121,6 +212,8 @@ function New-NrValidationReportDocument {
         [bool]$NativeValidationIncluded,
         [int]$NativeValidationExitCode,
         [string]$NativeValidationSha256,
+        [int]$NotificationContractExitCode = -1,
+        [string]$NotificationContractEvidence,
         [bool]$PortableAttestationVerifierIncluded,
         [bool]$DotResolverIncluded,
         [ValidateSet('passed','experimental','unsupported','failed')]
@@ -177,6 +270,12 @@ function New-NrValidationReportDocument {
         "included=$NativeValidationIncluded; exitCode=$NativeValidationExitCode; sha256=$(Get-NrValidationText $NativeValidationSha256)" `
         $(if ($validationOk) {$null} else {'The release must not publish without a working UI that exposes experimental and unsupported capability claims.'})
 
+    $notificationOk = $NotificationContractExitCode -eq 0
+    $checks += & $add 'notifications.delivery-contract' 'desktop' $(if ($notificationOk) {'passed'} else {'failed'}) $true `
+        'The extracted release package proved ToastGeneric delivery and deterministic native fallback for a policy-disabled toast channel.' `
+        $(if ($notificationOk) {Get-NrValidationText $NotificationContractEvidence 'toast=windows-toast; policyFallback=native-balloon'} else {Get-NrValidationText $NotificationContractEvidence "exitCode=$NotificationContractExitCode"}) `
+        $(if ($notificationOk) {$null} else {'The release must not publish when notification delivery can silently disappear or skip its native fallback.'})
+
     $checks += & $add 'attestation.portable-verifier' 'supply-chain' `
         $(if ($PortableAttestationVerifierIncluded) {'passed'} else {'failed'}) $true `
         'The package includes the pinned portable attestation verifier.' `
@@ -195,6 +294,11 @@ function New-NrValidationReportDocument {
         'Interactive tray rendering, startup registration and crash recovery require a signed-in Windows desktop session.' `
         'Automated binary self-test passed; no interactive desktop session is available in hosted CI.' `
         'Validate on Windows 10 and Windows 11 with Explorer and notifications enabled and disabled.'
+
+    $checks += & $add 'notifications.interactive' 'desktop' 'experimental' $false `
+        'Actual toast and balloon rendering still require a signed-in Windows desktop session and user notification settings.' `
+        'The packaged broker proved payload construction, policy detection, attempt ordering and native fallback without claiming visible delivery.' `
+        'Validate visible toast and balloon rendering on Windows 10 and Windows 11 with notifications enabled, user-disabled and policy-disabled.'
 
     $checks += & $add 'native-dashboard.interactive' 'desktop' 'experimental' $false `
         'Dashboard theme switching, accent colors, chart zoom and mouse interaction require a signed-in Windows desktop session.' `
@@ -327,6 +431,16 @@ function Write-NrValidationReport {
 
 if (-not $NoMain) {
     if ([string]::IsNullOrWhiteSpace($Version)) { throw 'Version is required.' }
+    if ($NotificationContractExitCode -lt 0) {
+        try {
+            $notificationContract = Invoke-NrNotificationContractSelfTest -Version $Version -ArtifactsDirectory $OutputDirectory
+            $NotificationContractExitCode = [int]$notificationContract.ExitCode
+            $NotificationContractEvidence = [string]$notificationContract.Evidence
+        } catch {
+            $NotificationContractExitCode = 1
+            $NotificationContractEvidence = $_.Exception.Message
+        }
+    }
     $report = New-NrValidationReportDocument -Version $Version -PackageSha256 $PackageSha256 `
         -UpstreamSha256 $UpstreamSha256 -PatchTargetCount $PatchTargetCount -StrategyCount $StrategyCount `
         -ServiceCount $ServiceCount -NativeTrayIncluded $NativeTrayIncluded -NativeTrayExitCode $NativeTrayExitCode `
@@ -334,6 +448,8 @@ if (-not $NoMain) {
         -NativeDashboardSha256 $NativeDashboardSha256 `
         -NativeValidationIncluded $NativeValidationIncluded -NativeValidationExitCode $NativeValidationExitCode `
         -NativeValidationSha256 $NativeValidationSha256 `
+        -NotificationContractExitCode $NotificationContractExitCode `
+        -NotificationContractEvidence $NotificationContractEvidence `
         -PortableAttestationVerifierIncluded $PortableAttestationVerifierIncluded `
         -DotResolverIncluded $DotResolverIncluded -Ipv6RuntimeStatus $Ipv6RuntimeStatus
     $result = Write-NrValidationReport $report $OutputDirectory
