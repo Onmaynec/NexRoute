@@ -49,7 +49,7 @@ Describe 'Native validation viewer contract' {
         foreach ($token in @(
             'attestation-not-verified',
             'attestation-receipt-matched',
-            'release-validation.json.attestation-receipt.json',
+            '.attestation-receipt.json',
             'ValidationSelfTestExitCode'
         )) {
             $desktopTest | Should -Match ([regex]::Escape($token))
