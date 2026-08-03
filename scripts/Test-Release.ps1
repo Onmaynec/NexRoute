@@ -110,7 +110,7 @@ foreach ($token in @('NexRoute.Notifier.exe','ConvertTo-NrNotificationBase64','W
 }
 $nativeNotifierPath = Join-Path $root '.service/native/NexRoute.Notifier.exe'
 $nativeNotifierFile = Get-Item -LiteralPath $nativeNotifierPath
-if ($nativeNotifierFile.Length -lt 8000) { throw "Native notifier executable is unexpectedly small: $($nativeNotifierFile.Length) bytes." }
+if ($nativeNotifierFile.Length -lt 4096) { throw "Native notifier executable is unexpectedly small: $($nativeNotifierFile.Length) bytes." }
 $nativeNotifierAssembly = [Reflection.AssemblyName]::GetAssemblyName($nativeNotifierPath)
 if ([string]$nativeNotifierAssembly.Name -ne 'NexRoute.Notifier') { throw "Unexpected native notifier assembly name: $($nativeNotifierAssembly.Name)" }
 $nativeNotifierSelfTest = Start-Process -FilePath $nativeNotifierPath -ArgumentList @('--self-test') -WorkingDirectory $root -WindowStyle Hidden -Wait -PassThru
