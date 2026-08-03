@@ -2,6 +2,7 @@ Describe 'NexRoute 0.6.0 network profiles v2' {
     BeforeAll {
         $repositoryRoot=Split-Path -Parent $PSScriptRoot
         . (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-network-profiles-v2.ps1')
+        . (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-network-profiles-v2-fixes.ps1')
     }
 
     It 'uses the interface GUID as a stable identity when the interface index changes' {
@@ -27,6 +28,11 @@ Describe 'NexRoute 0.6.0 network profiles v2' {
         ($snapshot | Where-Object interfaceIndex -eq 10).networkCategory | Should -Be 'Private'
         ($snapshot | Where-Object interfaceIndex -eq 20).mediaType | Should -Be 'WiFi'
         ($snapshot | Where-Object interfaceIndex -eq 20).networkCategory | Should -Be 'Public'
+    }
+
+    It 'handles adapter objects whose drivers omit optional media properties' {
+        $adapter=[pscustomobject]@{ InterfaceGuid='{bbbbbbbb-0000-0000-0000-000000000001}'; ifIndex=11; Name='USB Ethernet'; Status='Up' }
+        Get-NrAdapterMediaType -Adapter $adapter | Should -Be 'Ethernet'
     }
 
     It 'prefers stable-adapter and category matches over media fallbacks' {
@@ -112,5 +118,7 @@ Describe 'NexRoute 0.6.0 network profiles v2' {
         }
         $loader=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-runtime-extensions.ps1') -Raw -Encoding UTF8
         $loader | Should -Match ([regex]::Escape('nexroute-network-profiles-v2.ps1'))
+        $loader | Should -Match ([regex]::Escape('nexroute-network-profiles-v2-fixes.ps1'))
+        $loader.IndexOf('nexroute-network-profiles-v2-fixes.ps1') | Should -BeGreaterThan $loader.IndexOf('nexroute-network-profiles-v2.ps1')
     }
 }
