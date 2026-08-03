@@ -61,6 +61,7 @@ Describe 'NexRoute 0.6.0 Strategy Lab v2 integration' {
             Mock Measure-NrStreamingDownload {
                 [pscustomobject]@{ uri='https://speed.example.test/download'; ok=$true; requestedBytes=8388608L; receivedBytes=8388608L; elapsedMs=2000; megabitsPerSecond=33.554; statusCode=200 }
             }
+            Mock Test-NrHlsPlaybackReadiness { throw 'HLS probe must not run without a configured manifest.' }
             Mock Test-NrTlsTransportReadiness { param($HostName,$Port,$TimeoutSeconds) [pscustomobject]@{ ok=$true; host=$HostName; port=$Port; elapsedMs=20; protocol='Tls13' } }
             $result=Invoke-NrStrategyProbe -Strategy $script:fakeStrategy
             $result.youtubePlaybackReady | Should -BeFalse
