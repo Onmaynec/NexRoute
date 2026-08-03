@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "tools": {
+    "githubCli": {
+      "version": "2.97.0",
+      "tag": "v2.97.0",
+      "repository": "cli/cli",
+      "assetName": "gh_2.97.0_windows_amd64.zip",
+      "assetUrl": "https://github.com/cli/cli/releases/download/v2.97.0/gh_2.97.0_windows_amd64.zip",
+      "sha256": "35d7fe05c4dd1411ffda1e73dfc7c6f44b75c936ca51fa6595c657fdc0350cec",
+      "minimumBytes": 10000000,
+      "executableRelativePath": "bin/gh.exe",
+      "purpose": "GitHub artifact attestation verification"
+    }
+  }
+}
