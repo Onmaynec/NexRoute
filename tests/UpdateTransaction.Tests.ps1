@@ -65,4 +65,82 @@ Describe 'NexRoute 0.6.0 update transaction policy' {
             Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
+
+    It 'commits and launches the new version only after health and control-node checks pass' {
+        $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-transaction-commit-'+[guid]::NewGuid().ToString('N'))
+        $script:rollbackCalls=0
+        $script:launchCalls=New-Object 'System.Collections.Generic.List[string]'
+        try {
+            New-Item -ItemType Directory -Path (Join-Path $fixture '.service') -Force | Out-Null
+            $health=@(
+                [pscustomobject]@{ name='Internet'; ok=$true }
+                [pscustomobject]@{ name='YouTube'; ok=$true }
+                [pscustomobject]@{ name='Discord'; ok=$false }
+                [pscustomobject]@{ name='Telegram'; ok=$false }
+            )
+            $result=Complete-NrUpdateTransaction -Root $fixture -FromVersion '0.5.0' -ToVersion '0.6.0' -HealthResults $health `
+                -ControlNodeProbe { param($rootPath) [pscustomobject]@{ passed=$true; exitCode=0; elapsedMs=90; message='ok' } } `
+                -Rollback { param($rootPath,$from,$to) $script:rollbackCalls++; return 'unexpected' } `
+                -Launch { param($rootPath,$version,$status) $script:launchCalls.Add("$version/$status") }
+
+            $result.status | Should -Be 'committed'
+            $result.committed | Should -BeTrue
+            $script:rollbackCalls | Should -Be 0
+            $script:launchCalls.ToArray() | Should -Be @('0.6.0/committed')
+            $record=Get-Content -LiteralPath (Join-Path $fixture '.service/update-handoff.json') -Raw | ConvertFrom-Json
+            $record.status | Should -Be 'committed'
+        } finally {
+            Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'automatically rolls back and launches the previous version after a health-policy failure' {
+        $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-transaction-health-rollback-'+[guid]::NewGuid().ToString('N'))
+        $script:rollbackCalls=0
+        $script:launchCalls=New-Object 'System.Collections.Generic.List[string]'
+        try {
+            New-Item -ItemType Directory -Path (Join-Path $fixture '.service') -Force | Out-Null
+            $health=@(
+                [pscustomobject]@{ name='Internet'; ok=$false }
+                [pscustomobject]@{ name='YouTube'; ok=$true }
+                [pscustomobject]@{ name='Discord'; ok=$true }
+                [pscustomobject]@{ name='Telegram'; ok=$true }
+            )
+            $result=Complete-NrUpdateTransaction -Root $fixture -FromVersion '0.4.1' -ToVersion '0.6.0' -HealthResults $health `
+                -ControlNodeProbe { param($rootPath) [pscustomobject]@{ passed=$true; exitCode=0; elapsedMs=80; message='ok' } } `
+                -Rollback { param($rootPath,$from,$to) $script:rollbackCalls++; return [pscustomobject]@{ Status='rolled-back'; Version=$from } } `
+                -Launch { param($rootPath,$version,$status) $script:launchCalls.Add("$version/$status") }
+
+            $result.status | Should -Be 'rolled-back'
+            $result.committed | Should -BeFalse
+            $script:rollbackCalls | Should -Be 1
+            $script:launchCalls.ToArray() | Should -Be @('0.4.1/rolled-back')
+            $record=Get-Content -LiteralPath (Join-Path $fixture '.service/update-handoff.json') -Raw | ConvertFrom-Json
+            $record.status | Should -Be 'rolled-back'
+            $record.message | Should -Match 'network health policy failed'
+        } finally {
+            Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'automatically rolls back when the updated control node cannot start' {
+        $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-transaction-smoke-rollback-'+[guid]::NewGuid().ToString('N'))
+        $script:rollbackCalls=0
+        try {
+            New-Item -ItemType Directory -Path (Join-Path $fixture '.service') -Force | Out-Null
+            $health=@(
+                [pscustomobject]@{ name='Internet'; ok=$true }
+                [pscustomobject]@{ name='YouTube'; ok=$true }
+            )
+            $result=Complete-NrUpdateTransaction -Root $fixture -FromVersion '0.5.0' -ToVersion '0.6.0' -HealthResults $health `
+                -ControlNodeProbe { param($rootPath) [pscustomobject]@{ passed=$false; exitCode=7; elapsedMs=120; message='parser failure' } } `
+                -Rollback { param($rootPath,$from,$to) $script:rollbackCalls++; return 'restored' }
+
+            $result.status | Should -Be 'rolled-back'
+            $result.controlNodeSmoke.exitCode | Should -Be 7
+            $script:rollbackCalls | Should -Be 1
+        } finally {
+            Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
