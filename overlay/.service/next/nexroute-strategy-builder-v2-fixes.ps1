@@ -28,3 +28,35 @@ function ConvertTo-NrBuilderPortRanges {
     }
     return $ordered
 }
+
+function Resolve-NrStrategyBuilderPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][ValidateSet('lists','bin')][string]$ExpectedDirectory,
+        [Parameter(Mandatory)][string[]]$AllowedExtensions,
+        [switch]$AllowMissing
+    )
+    if ([string]::IsNullOrWhiteSpace($Path)) { throw 'Path is empty.' }
+    $hasControlCharacter=$false
+    foreach ($character in $Path.ToCharArray()) {
+        if ([char]::IsControl($character)) { $hasControlCharacter=$true; break }
+    }
+    if ($hasControlCharacter -or $Path -match '[<>|?*"]' -or $Path -match '(^|[\\/])\.\.([\\/]|$)') {
+        throw "Unsafe path: $Path"
+    }
+    if ([IO.Path]::IsPathRooted($Path)) { throw "Only relative strategy paths are accepted: $Path" }
+    $normalized=$Path.Replace('/',[IO.Path]::DirectorySeparatorChar).Replace('\',[IO.Path]::DirectorySeparatorChar).TrimStart([IO.Path]::DirectorySeparatorChar)
+    $rootPath=Get-NrStrategyBuilderRoot -Root $Root
+    $full=[IO.Path]::GetFullPath((Join-Path $rootPath $normalized))
+    $rootPrefix=$rootPath.TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
+    if (-not $full.StartsWith($rootPrefix,[StringComparison]::OrdinalIgnoreCase)) { throw "Path escapes the NexRoute root: $Path" }
+    $expectedPrefix=[IO.Path]::GetFullPath((Join-Path $rootPath $ExpectedDirectory)).TrimEnd('\','/')+[IO.Path]::DirectorySeparatorChar
+    if (-not $full.StartsWith($expectedPrefix,[StringComparison]::OrdinalIgnoreCase)) { throw "Path must be inside '$ExpectedDirectory': $Path" }
+    $extension=[IO.Path]::GetExtension($full).ToLowerInvariant()
+    if ($extension -notin @($AllowedExtensions | ForEach-Object { $_.ToLowerInvariant() })) { throw "Unsupported file extension '$extension': $Path" }
+    if (-not $AllowMissing -and -not (Test-Path -LiteralPath $full -PathType Leaf)) { throw "Referenced file does not exist: $Path" }
+    $relative=$full.Substring($rootPrefix.Length).Replace([IO.Path]::DirectorySeparatorChar,'/')
+    return [pscustomobject]@{ relative=$relative; full=$full }
+}
