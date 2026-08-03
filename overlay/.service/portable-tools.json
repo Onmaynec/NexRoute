@@ -11,6 +11,17 @@
       "minimumBytes": 10000000,
       "executableRelativePath": "bin/gh.exe",
       "purpose": "GitHub artifact attestation verification"
+    },
+    "dnsproxy": {
+      "version": "0.81.4",
+      "tag": "v0.81.4",
+      "repository": "AdguardTeam/dnsproxy",
+      "assetName": "dnsproxy-windows-amd64-v0.81.4.zip",
+      "assetUrl": "https://github.com/AdguardTeam/dnsproxy/releases/download/v0.81.4/dnsproxy-windows-amd64-v0.81.4.zip",
+      "sha256": "2ca72d0e3a7a888b8643578236a9dd3c2d0cf501b24150521418abcdfe522ae2",
+      "minimumBytes": 1000000,
+      "executableFileName": "dnsproxy.exe",
+      "purpose": "Local DNS-over-TLS resolver"
     }
   }
 }
