@@ -155,7 +155,7 @@ Describe 'NexRoute 0.6.0 notification broker' {
         foreach ($token in @('ToastNotificationManager','ToastGeneric','CreateToastNotifier','notifier.Setting','NEXROUTE_DISABLE_TOAST','windows-toast','native-balloon','DisabledByGroupPolicy')) {
             $broker | Should -Match ([regex]::Escape($token))
         }
-        $broker.IndexOf("$attempts.Add('windows-toast')") | Should -BeLessThan $broker.IndexOf("$attempts.Add('native-balloon')")
+        $broker.IndexOf('$attempts.Add(''windows-toast'')') | Should -BeLessThan $broker.IndexOf('$attempts.Add(''native-balloon'')')
     }
 
     It 'loads the broker after the legacy notification function' {
