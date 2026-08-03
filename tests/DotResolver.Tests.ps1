@@ -3,6 +3,7 @@ Describe 'NexRoute 0.6.0 transactional DNS-over-TLS resolver' {
         $root=Split-Path -Parent $PSScriptRoot
         . (Join-Path $root 'overlay/.service/next/nexroute-portable-verifier.ps1')
         function Set-NrDnsProvider { param($Provider,$Adapters,$Encryption) return 'legacy' }
+        . (Join-Path $root 'overlay/.service/next/nexroute-dot-bootstrap.ps1')
         . (Join-Path $root 'overlay/.service/next/nexroute-dot.ps1')
         Add-Type -AssemblyName System.IO.Compression.FileSystem
         $script:provider=[pscustomobject]@{
