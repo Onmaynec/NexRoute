@@ -91,4 +91,23 @@ Describe 'NexRoute 0.6.0 notification broker' {
         }
         $source | Should -Not -Match 'Windows\.UI\.Notifications|ToastNotificationManager|WinRT'
     }
+
+    It 'loads the broker after the legacy notification function' {
+        $repositoryRoot=Split-Path -Parent $PSScriptRoot
+        $loader=Get-Content -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-runtime-extensions.ps1') -Raw -Encoding UTF8
+        $loader | Should -Match ([regex]::Escape('nexroute-notifications.ps1'))
+        $loader.IndexOf('nexroute-notifications.ps1') | Should -BeGreaterThan $loader.IndexOf('nexroute-dot-snapshot-v2.ps1')
+    }
+
+    It 'requires the native notifier and its self-test in online and offline packages' {
+        $repositoryRoot=Split-Path -Parent $PSScriptRoot
+        $builder=Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/Build-Package.ps1') -Raw -Encoding UTF8
+        $releaseTest=Get-Content -LiteralPath (Join-Path $repositoryRoot 'scripts/Test-Release.ps1') -Raw -Encoding UTF8
+        foreach ($token in @('NexRoute.Notifier.exe','NativeNotifierIncluded=$true','NativeNotifierSha256','notifierExecutable')) {
+            $builder | Should -Match ([regex]::Escape($token))
+        }
+        foreach ($token in @('NexRoute.Notifier.exe','Native notifier self-test failed','NativeNotifierExitCode','NativeNotifierSha256')) {
+            $releaseTest | Should -Match ([regex]::Escape($token))
+        }
+    }
 }
