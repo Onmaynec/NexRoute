@@ -78,3 +78,67 @@ function Test-NrUpdatedControlNode {
         Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
     }
 }
+
+function Complete-NrUpdateTransaction {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Root,
+        [Parameter(Mandatory)][string]$FromVersion,
+        [Parameter(Mandatory)][string]$ToVersion,
+        [Parameter(Mandatory)][object[]]$HealthResults,
+        [int]$MinimumServiceCount=1,
+        [scriptblock]$ControlNodeProbe,
+        [Parameter(Mandatory)][scriptblock]$Rollback,
+        [scriptblock]$Launch
+    )
+    $policy=Test-NrPostUpdateHealthPolicy -Results $HealthResults -MinimumServiceCount $MinimumServiceCount
+    if ($ControlNodeProbe) { $smoke=& $ControlNodeProbe $Root }
+    else { $smoke=Test-NrUpdatedControlNode -Root $Root }
+    if ($null -eq $smoke) { $smoke=[pscustomobject]@{ passed=$false; exitCode=-4; elapsedMs=0; message='Control-node probe returned no result.' } }
+
+    $verificationMessage='Post-update verification is running.'
+    Write-NrUpdateHandoffRecord -Root $Root -FromVersion $FromVersion -ToVersion $ToVersion -Status verifying -HealthPolicy $policy -ControlNodeSmoke $smoke -Message $verificationMessage | Out-Null
+
+    if (-not [bool]$policy.passed -or -not [bool]$smoke.passed) {
+        $reason=if (-not [bool]$policy.passed) {
+            'Post-update network health policy failed.'
+        } else {
+            'Updated control node failed its smoke test.'
+        }
+        $rollbackResult=$null
+        try {
+            $rollbackResult=& $Rollback $Root $FromVersion $ToVersion
+        } catch {
+            $failureMessage=$reason+' Automatic rollback also failed: '+$_.Exception.Message
+            Write-NrUpdateHandoffRecord -Root $Root -FromVersion $FromVersion -ToVersion $ToVersion -Status rolled-back -HealthPolicy $policy -ControlNodeSmoke $smoke -Message $failureMessage | Out-Null
+            throw $failureMessage
+        }
+        $message=$reason+' The previous NexRoute version was restored.'
+        Write-NrUpdateHandoffRecord -Root $Root -FromVersion $FromVersion -ToVersion $ToVersion -Status rolled-back -HealthPolicy $policy -ControlNodeSmoke $smoke -Message $message | Out-Null
+        if ($Launch) { & $Launch $Root $FromVersion 'rolled-back' | Out-Null }
+        return [pscustomobject]@{
+            status='rolled-back'
+            committed=$false
+            fromVersion=$FromVersion
+            toVersion=$ToVersion
+            healthPolicy=$policy
+            controlNodeSmoke=$smoke
+            rollbackResult=$rollbackResult
+            message=$message
+        }
+    }
+
+    $message='Update verification passed and the new version was committed.'
+    Write-NrUpdateHandoffRecord -Root $Root -FromVersion $FromVersion -ToVersion $ToVersion -Status committed -HealthPolicy $policy -ControlNodeSmoke $smoke -Message $message | Out-Null
+    if ($Launch) { & $Launch $Root $ToVersion 'committed' | Out-Null }
+    return [pscustomobject]@{
+        status='committed'
+        committed=$true
+        fromVersion=$FromVersion
+        toVersion=$ToVersion
+        healthPolicy=$policy
+        controlNodeSmoke=$smoke
+        rollbackResult=$null
+        message=$message
+    }
+}
