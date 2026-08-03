@@ -86,3 +86,5 @@ Version 0.6.0 is not considered complete when a function name or menu entry mere
 ## Release gate
 
 The release workflow must fail unless all automated acceptance tests pass. Hardware-dependent checks must be attached to the release as a signed validation report. Unverified capabilities must be marked experimental or unsupported in the UI and release notes.
+
+The workflow must generate and attest both `NexRoute-<version>-validation.json` and `NexRoute-<version>-validation.md`. The JSON report uses schema version 1 and records release identities, runner/OS provenance, required automated checks and explicit `passed`, `experimental`, `unsupported` or `failed` statuses. Any failed required check blocks publication; experimental and unsupported checks remain visible limitations rather than false successes.
