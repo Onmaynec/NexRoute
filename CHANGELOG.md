@@ -6,6 +6,44 @@
 
 Пока нет изменений.
 
+## [0.6.0] - 2026-08-03
+
+### Added
+
+- isolated per-service `winws` workers with unique PID, log, strategy and filter scope;
+- deterministic failover thresholds, cooldown, recovery and synthetic fault injection;
+- IPv4-only, IPv6-only and dual-stack worker plans with explicit capability limitations;
+- streamed multi-megabyte download measurements and HLS manifest/segment playback readiness;
+- separate TCP/TLS and UDP transport-readiness results for Discord and Telegram;
+- pinned transactional DNS-over-TLS resolver and platform-gated Windows DoH support;
+- stable adapter identities, restart reconciliation and synthetic network-profile events;
+- native Windows tray controller, notification fallback executable, Strategy Lab Dashboard and Validation Viewer;
+- Windows `ToastGeneric` delivery with `ToastNotifier.Setting` checks and native balloon/legacy fallback;
+- atomic notification history containing attempted channels and failure reasons;
+- evidence-based conflict and repair wizard with backups, verification and rollback;
+- validated Strategy Builder whose preview and launched worker share the same argv contract;
+- portable GitHub artifact-attestation verifier without a preinstalled GitHub CLI;
+- signed JSON and Markdown validation reports covering package identity, desktop self-tests and honest limitations;
+- digest-matched local attestation receipt consumed by the Validation Viewer;
+- detached update transaction and migration fixtures for `0.4.1 -> 0.6.0` and `0.5.0 -> 0.6.0`.
+
+### Changed
+
+- canonical repository, website and package version is now `0.6.0`;
+- release assets now include ZIP, checksum and both validation report formats in one attestation;
+- CI uses Node 24-based `actions/checkout@v6`, `actions/setup-node@v6` and `actions/upload-artifact@v7`;
+- online and fully offline builds execute the same native desktop and notification delivery fixtures;
+- imported validation JSON remains untrusted until a matching local verification receipt exists;
+- hardware- and ISP-dependent capabilities are reported as `experimental` or `unsupported`, never synthetic success.
+
+### Security
+
+- updater verifies immutable release URLs, package checksum and all four attested subjects before installing validation evidence;
+- wrong product/version, duplicate check IDs, unknown statuses and inconsistent `overallStatus` are rejected;
+- failed required validation checks block release publication;
+- notification policy denial and unknown `ToastNotifier.Setting` values fail closed to deterministic fallback;
+- tampered, incomplete and offline attestation fixtures fail closed.
+
 ## [0.5.0] - 2026-08-02
 
 ### Added
