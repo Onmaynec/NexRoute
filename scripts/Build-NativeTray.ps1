@@ -2,16 +2,18 @@
 param(
     [string]$SourcePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'native/NexRoute.Tray/Program.cs'),
     [string]$NotifierSourcePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'native/NexRoute.Notifier/Program.cs'),
+    [string]$DashboardSourcePath = (Join-Path (Split-Path -Parent $PSScriptRoot) 'native/NexRoute.Dashboard/Program.cs'),
     [string]$OutputDirectory = (Join-Path (Split-Path -Parent $PSScriptRoot) 'artifacts/native-tray')
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
-if ($env:OS -ne 'Windows_NT') { throw 'Native tray compilation requires Windows.' }
+if ($env:OS -ne 'Windows_NT') { throw 'Native Windows compilation requires Windows.' }
 $source=[IO.Path]::GetFullPath($SourcePath)
 $notifierSource=[IO.Path]::GetFullPath($NotifierSourcePath)
+$dashboardSource=[IO.Path]::GetFullPath($DashboardSourcePath)
 $output=[IO.Path]::GetFullPath($OutputDirectory)
-foreach ($requiredSource in @($source,$notifierSource)) {
+foreach ($requiredSource in @($source,$notifierSource,$dashboardSource)) {
     if (-not (Test-Path -LiteralPath $requiredSource -PathType Leaf)) { throw "Native Windows source is missing: $requiredSource" }
 }
 New-Item -ItemType Directory -Path $output -Force | Out-Null
@@ -67,6 +69,10 @@ $tray=Invoke-NrNativeCompile -Source $source -AssemblyName 'NexRoute.Tray' -Refe
 $notifier=Invoke-NrNativeCompile -Source $notifierSource -AssemblyName 'NexRoute.Notifier' -References @(
     'System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll'
 )
+$dashboard=Invoke-NrNativeCompile -Source $dashboardSource -AssemblyName 'NexRoute.Dashboard' -References @(
+    'System.dll','System.Core.dll','System.Drawing.dll','System.Windows.Forms.dll','System.ServiceProcess.dll',
+    'System.Web.Extensions.dll','System.Windows.Forms.DataVisualization.dll'
+)
 
 [pscustomobject]@{
     executable=$tray.executable
@@ -75,6 +81,9 @@ $notifier=Invoke-NrNativeCompile -Source $notifierSource -AssemblyName 'NexRoute
     notifierExecutable=$notifier.executable
     notifierSize=$notifier.size
     notifierSha256=$notifier.sha256
+    dashboardExecutable=$dashboard.executable
+    dashboardSize=$dashboard.size
+    dashboardSha256=$dashboard.sha256
     compiler=$csc
     framework='NET Framework 4.x'
 }
