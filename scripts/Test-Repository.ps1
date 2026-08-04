@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $errors = New-Object 'System.Collections.Generic.List[string]'
-$expectedVersion = '0.6.0'
+$expectedVersion = '0.6.1'
 $bootstrapUnlocked = $env:NEXROUTE_BOOTSTRAP_UPSTREAM -eq '1'
 
 function Assert-True {
@@ -51,11 +51,11 @@ $required = @(
     'overlay/.service/i18n/nexroute-services-diagnostics.ps1',
     'native/NexRoute.Tray/Program.cs','native/NexRoute.Notifier/Program.cs','native/NexRoute.Dashboard/Program.cs','native/NexRoute.Validation/Program.cs',
     'scripts/Build-NativeTray.ps1','scripts/Build-NexRoute.ps1','scripts/Build-Package.ps1','scripts/Build-Release.ps1','scripts/New-ValidationReport.ps1','scripts/NexRoute.Upstream.psm1',
-    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1','scripts/Test-V06Desktop.ps1',
+    'scripts/Test-Repository.ps1','scripts/Test-Package.ps1','scripts/Test-Release.ps1','scripts/Test-V06Desktop.ps1','scripts/Test-WindowsLaunchers.ps1',
     'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/ReleaseAttestation.Tests.ps1','tests/NextInterface.Tests.ps1',
-    'tests/Notifications.Tests.ps1','tests/NativeTray.Tests.ps1','tests/ValidationReport.Tests.ps1','tests/ValidationViewer.Tests.ps1',
+    'tests/Notifications.Tests.ps1','tests/NativeTray.Tests.ps1','tests/ValidationReport.Tests.ps1','tests/ValidationViewer.Tests.ps1','tests/LauncherHotfix.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml',
-    '.github/release-notes/v0.6.0.md','docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/WEBSITE.md',
+    '.github/release-notes/v0.6.0.md','.github/release-notes/v0.6.1.md','docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/SERVICES.md','docs/UPSTREAM.md','docs/RELEASES.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/WEBSITE.md',
     'website/package.json','website/tsconfig.json','website/next.config.ts','website/postcss.config.mjs','website/.env.example','website/README.md','website/vercel.json',
     'website/app/layout.tsx','website/app/page.tsx','website/app/features/page.tsx','website/app/download/page.tsx',
     'website/app/docs/page.tsx','website/app/docs/[slug]/page.tsx','website/app/security/page.tsx','website/app/faq/page.tsx','website/app/changelog/page.tsx','website/app/not-found.tsx',
@@ -84,6 +84,7 @@ Assert-True ($readme -match 'docs/ATTESTATIONS\.md') 'README links the attestati
 Assert-True ($readme -match 'nexroute-validation\.cmd') 'README documents the signed validation viewer'
 Assert-True ($readme -match 'website/') 'README documents the official website source'
 Assert-True ($readme -match 'npm run dev') 'README documents website local startup'
+Assert-True ($readme -match 'NexRoute 0\.6\.1 Hot Fix Тест') 'README documents the Cyrillic launcher regression path'
 
 $powerShellFiles = @(Get-ChildItem -LiteralPath $root -File -Recurse -Force -Include '*.ps1','*.psm1' | Where-Object {
     $_.FullName -notmatch '[\\/]\.git[\\/]'
@@ -205,20 +206,34 @@ foreach ($token in @('actions/attest@v4','gh attestation verify','release archiv
     Assert-True ($attestationTests -match [regex]::Escape($token)) "Release attestation Pester suite covers $token"
 }
 
-$updateLauncher = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute.bat') -Raw
-Assert-True ($updateLauncher -match 'nexroute-updater\.ps1') 'Launcher invokes the updater'
-Assert-True ($updateLauncher -match '-Mode Auto') 'Launcher performs automatic update checks'
+$mainLauncher = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute.bat') -Raw
+$serviceLauncher = Get-Content -LiteralPath (Join-Path $root 'overlay/service.bat') -Raw
+$updateLauncher = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute-update.cmd') -Raw
+$launcherSmoke = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-WindowsLaunchers.ps1') -Raw
+foreach ($launcher in @($mainLauncher,$serviceLauncher,$updateLauncher)) {
+    Assert-True ($launcher -match 'for %%I in \("%~dp0\."\) do set "NEXROUTE_ROOT=%%~fI"') 'Launcher canonicalizes the package root without a trailing slash'
+    Assert-True ($launcher -notmatch 'set "NEXROUTE_ROOT=%~dp0"') 'Launcher does not pass raw %~dp0 as a quoted PowerShell argument'
+    Assert-True ($launcher -match 'endlocal & exit /b %NEXROUTE_EXIT_CODE%') 'Launcher preserves the real child exit code'
+}
+Assert-True ($mainLauncher -match 'nexroute-updater\.ps1') 'Launcher invokes the updater'
+Assert-True ($mainLauncher -match '-Mode Auto') 'Launcher performs automatic update checks'
+Assert-True ($mainLauncher -match '-WarningAction SilentlyContinue') 'Launcher suppresses non-fatal automatic update warnings'
+Assert-True ($updateLauncher -match '"--status"') 'Manual updater launcher exposes deterministic smoke status mode'
+foreach ($token in @('NexRoute 0.6.1 Hot Fix Тест','service.bat','nexroute.bat','nexroute-update.cmd','GetFullPath','MethodInvocationException')) {
+    Assert-True ($launcherSmoke -match [regex]::Escape($token)) "Windows launcher smoke test contains $token"
+}
 
 $validateWorkflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/validate.yml') -Raw
 foreach ($token in @(
-    'Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.6.0',
+    'Updater fixture suites','UpstreamCachePath','UpstreamArchive','offline','0.6.1',
     'Typecheck and build website','npm run typecheck','npm run build',
     'actions/checkout@v6','actions/setup-node@v6','actions/upload-artifact@v7',
-    'NotificationToastChannel','NotificationFallbackChannel'
+    'NotificationToastChannel','NotificationFallbackChannel','Test-WindowsLaunchers.ps1'
 )) {
     Assert-True ($validateWorkflow -match [regex]::Escape($token)) "Validation workflow contains $token"
 }
 Assert-True ($validateWorkflow -notmatch 'actions/checkout@v4|actions/setup-node@v4|actions/upload-artifact@v4') 'Validation workflow contains no deprecated Node 20 action majors'
+Assert-True ($validateWorkflow -notmatch 'NexRoute-0\.6\.0-smoke|Expected 0\.6\.0|Build and test NexRoute 0\.6\.0') 'Validation workflow contains no stale 0.6.0 package contract'
 
 $releaseWorkflow = Get-Content -LiteralPath (Join-Path $root '.github/workflows/release.yml') -Raw
 foreach ($token in @(

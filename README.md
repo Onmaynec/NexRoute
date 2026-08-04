@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](docs/UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.6.0-24e1d6)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.6.1-24e1d6)](.service/version.txt)
 
 **Локальная Windows-система управления стратегиями обхода DPI с изолированными сервисными workers, проверяемыми обновлениями и честным release validation.**
 
@@ -15,6 +15,18 @@
 
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранные стратегии только к трафику включённых сервисов.
+
+## NexRoute 0.6.1 — Hot Bug Fix 🩹
+
+Версия `0.6.1` исправляет критическую ошибку запуска официального Windows-пакета `0.6.0`.
+
+- `service.bat` больше не передаёт `%~dp0` с завершающим `\` внутри кавычек;
+- `nexroute.bat`, `service.bat` и `nexroute-update.cmd` работают из папок с пробелами и кириллицей;
+- launchers корректно возвращают фактический exit code;
+- automatic update warning не прерывает обычный запуск интерфейса;
+- Windows CI реально запускает все три entry point из каталога `NexRoute 0.6.1 Hot Fix Тест <guid>`.
+
+Полный функциональный baseline остаётся от версии 0.6.0 и описан ниже.
 
 ## NexRoute 0.6.0 🚀
 
@@ -63,19 +75,19 @@
 - Strategy Builder валидирует filters, ports, desync modes, repeats, fake payloads и list files;
 - preview и запускаемый worker используют один и тот же argv contract;
 - updater выполняет detached transaction, сохраняет пользовательские данные и автоматически откатывает failed health check;
-- migration fixtures покрывают `0.4.1 -> 0.6.0` и `0.5.0 -> 0.6.0`.
+- migration fixtures покрывают `0.4.1 -> 0.6.0`, `0.5.0 -> 0.6.0` и `0.6.0 -> 0.6.1`.
 
-Подробный критерий готовности: [docs/RELEASE_0.6.0_ACCEPTANCE.md](docs/RELEASE_0.6.0_ACCEPTANCE.md).
+Подробный production-hardening критерий: [docs/RELEASE_0.6.0_ACCEPTANCE.md](docs/RELEASE_0.6.0_ACCEPTANCE.md).
 
 ## Проверяемый релиз 🔏
 
-Для версии 0.6.0 публикуются четыре связанных asset:
+Для версии 0.6.1 публикуются четыре связанных asset:
 
 ```text
-NexRoute-0.6.0-win-x64.zip
-NexRoute-0.6.0-win-x64.zip.sha256
-NexRoute-0.6.0-validation.json
-NexRoute-0.6.0-validation.md
+NexRoute-0.6.1-win-x64.zip
+NexRoute-0.6.1-win-x64.zip.sha256
+NexRoute-0.6.1-validation.json
+NexRoute-0.6.1-validation.md
 ```
 
 Все четыре файла входят в одну GitHub artifact attestation. Portable verifier проверяет immutable release URLs, SHA-256 package и attestation каждого subject. После успешной проверки validation report и digest-matched receipt атомарно устанавливаются в `.service`.
@@ -83,10 +95,10 @@ NexRoute-0.6.0-validation.md
 Дополнительная ручная проверка:
 
 ```powershell
-gh attestation verify .\NexRoute-0.6.0-win-x64.zip --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.0-win-x64.zip.sha256 --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.0-validation.json --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.0-validation.md --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.1-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.1-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.1-validation.json --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.1-validation.md --repo Onmaynec/NexRoute
 ```
 
 Validation Viewer не доверяет импортированному JSON автоматически. До появления matching local receipt документ отображается как `attestation-not-verified`. Wrong product/version, duplicate check IDs, неизвестные статусы и несогласованный `overallStatus` отклоняются.
@@ -156,7 +168,7 @@ NEXROUTE_BUILD_INFO.txt
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.0 `
+  -Version 0.6.1 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -165,7 +177,7 @@ pwsh ./scripts/Build-Release.ps1 `
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.0 `
+  -Version 0.6.1 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -219,6 +231,7 @@ Pull request gate проверяет:
 - native tray, notifier, Dashboard и Validation Viewer assemblies;
 - notification channels `windows-toast -> native-balloon`;
 - validation trust states `attestation-not-verified -> attestation-receipt-matched`;
+- фактический запуск `service.bat`, `nexroute.bat` и `nexroute-update.cmd` из пути с пробелами и кириллицей;
 - package SHA-256, report consistency и updater rollback fixtures.
 
 Release workflow дополнительно создаёт JSON/Markdown validation report, подписывает четыре assets, проверяет attestations и только после этого создаёт GitHub Release.
@@ -246,4 +259,4 @@ Release workflow дополнительно создаёт JSON/Markdown validat
 
 ---
 
-**NexRoute 0.6.0** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64
+**NexRoute 0.6.1** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64

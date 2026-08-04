@@ -1,17 +1,22 @@
 @echo off
+setlocal EnableExtensions DisableDelayedExpansion
 chcp 65001 > nul
-cd /d "%~dp0"
+for %%I in ("%~dp0.") do set "NEXROUTE_ROOT=%%~fI"
+cd /d "%NEXROUTE_ROOT%"
 title NexRoute
 
-if not exist "%~dp0service.bat" (
+if not exist "%NEXROUTE_ROOT%\service.bat" (
     echo [NexRoute] service.bat not found.
     echo [NexRoute] Download the complete package from GitHub Releases.
     pause
-    exit /b 1
+    endlocal & exit /b 1
 )
 
-if exist "%~dp0.service\nexroute-updater.ps1" if exist "%~dp0utils\check_updates.enabled" (
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0.service\nexroute-updater.ps1" -Mode Auto -Root "%~dp0"
+rem nexroute-updater-entry.ps1 resolves GitHub API fallback metadata and delegates all verification to nexroute-updater.ps1.
+if "%~1"=="" if exist "%NEXROUTE_ROOT%\.service\nexroute-updater-entry.ps1" if exist "%NEXROUTE_ROOT%\utils\check_updates.enabled" (
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%NEXROUTE_ROOT%\.service\nexroute-updater-entry.ps1" -Mode Auto -Root "%NEXROUTE_ROOT%" -NonInteractive -WarningAction SilentlyContinue
 )
 
-call "%~dp0service.bat" %*
+call "%NEXROUTE_ROOT%\service.bat" %*
+set "NEXROUTE_EXIT_CODE=%ERRORLEVEL%"
+endlocal & exit /b %NEXROUTE_EXIT_CODE%

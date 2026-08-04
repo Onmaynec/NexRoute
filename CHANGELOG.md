@@ -6,6 +6,21 @@
 
 Пока нет изменений.
 
+## [0.6.1] - 2026-08-04
+
+### Fixed
+
+- `service.bat` больше не передаёт PowerShell root-path с завершающим обратным слешем, повреждающим закрывающую кавычку Windows command line;
+- `nexroute.bat`, `service.bat` и `nexroute-update.cmd` корректно запускаются из каталогов с пробелами и кириллицей;
+- BAT/CMD launchers сохраняют реальный exit code вместо преждевременного `%ERRORLEVEL%` expansion внутри блоков;
+- automatic update warning не ломает обычный запуск control node и не выполняется для служебных `--status`/`--lab` вызовов;
+- `nexroute-update.cmd` получил детерминированный `--status` smoke mode для package validation.
+
+### Validation
+
+- Windows package gate копирует готовую сборку в путь `NexRoute 0.6.1 Hot Fix Тест ...` и реально запускает все три пользовательских launcher;
+- regression gate отклоняет `GetFullPath`, `Illegal characters in path`, `MethodInvocationException`, `ArgumentException` и ненулевые exit codes.
+
 ## [0.6.0] - 2026-08-03
 
 ### Added
