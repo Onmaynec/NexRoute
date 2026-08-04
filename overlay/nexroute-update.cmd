@@ -8,6 +8,10 @@ if not exist "%NEXROUTE_ROOT%\service.bat" (
     endlocal & exit /b 2
 )
 
-call "%NEXROUTE_ROOT%\service.bat" --update
+if /I "%~1"=="--status" (
+    call "%NEXROUTE_ROOT%\service.bat" --status
+) else (
+    call "%NEXROUTE_ROOT%\service.bat" --update
+)
 set "NEXROUTE_EXIT_CODE=%ERRORLEVEL%"
 endlocal & exit /b %NEXROUTE_EXIT_CODE%
