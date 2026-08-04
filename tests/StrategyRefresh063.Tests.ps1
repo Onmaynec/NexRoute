@@ -4,7 +4,7 @@ $refreshBuildPath = Join-Path $repositoryRoot 'overlay/.service/next/nexroute-st
 
 Describe 'NexRoute 0.6.3 strategy refresh' {
     BeforeAll {
-        $requiredPayloads = @(
+        $script:requiredPayloads = @(
             'bin/winws.exe',
             'bin/quic_initial_www_google_com.bin',
             'bin/quic_initial_4pda.to.bin',
@@ -24,7 +24,7 @@ Describe 'NexRoute 0.6.3 strategy refresh' {
             New-Item -ItemType Directory -Path (Join-Path $root 'bin'), (Join-Path $root 'lists'), (Join-Path $root '.service') -Force | Out-Null
             Set-Content -LiteralPath (Join-Path $root '.service/version.txt') -Value '0.6.3' -Encoding ASCII
 
-            foreach ($relativePath in $requiredPayloads) {
+            foreach ($relativePath in $script:requiredPayloads) {
                 if ($OmitStun2 -and $relativePath -eq 'bin/stun2.bin') { continue }
                 $path = Join-Path $root $relativePath
                 [System.IO.File]::WriteAllBytes($path, [byte[]](1,2,3,4))
@@ -127,7 +127,7 @@ Describe 'NexRoute 0.6.3 strategy refresh' {
         $entryPath = Join-Path $repositoryRoot 'overlay/.service/nexroute-services-entry.ps1'
         $entry = Get-Content -LiteralPath $entryPath -Raw -Encoding UTF8
 
-        $entry | Should -Match "\$Mode -eq 'Apply'"
+        $entry | Should -Match '\$Mode -eq ''Apply'''
         $entry | Should -Match 'Get-PSCallStack'
         $entry | Should -Match 'Build-Release\.ps1'
         $entry | Should -Match 'nexroute-strategy-refresh-build\.ps1'
