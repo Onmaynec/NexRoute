@@ -21,7 +21,8 @@ $extensionModules=@(
     'nexroute-worker-plans.ps1',
     'nexroute-ipv6-runtime-v2.ps1',
     'nexroute-ipv6-runtime-v2-fixes.ps1',
-    'nexroute-diagnostics-fixes.ps1'
+    'nexroute-diagnostics-fixes.ps1',
+    'nexroute-hotfix-062.ps1'
 )
 foreach ($extension in $extensionModules) {
     $extensionPath=Join-Path $PSScriptRoot $extension
