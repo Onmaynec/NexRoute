@@ -78,8 +78,8 @@ Describe 'NexRoute 0.6.3 strategy refresh' {
             $content | Should -Match 'list-nexroute-youtube-critical\.txt'
             $content | Should -Match '--filter-l7=quic'
             $content | Should -Match '--filter-l7=discord,stun,unknown'
-            $content | Should -Match '%NEXROUTE_SERVICE_TCP_ARGS%'
-            $content | Should -Match '%NEXROUTE_SERVICE_UDP_ARGS%'
+            $content | Should -Not -Match '%NEXROUTE_SERVICE_TCP_ARGS%'
+            $content | Should -Not -Match '%NEXROUTE_SERVICE_UDP_ARGS%'
 
             $marker = [regex]::Match($content, 'NEXROUTE_STRATEGY_REFRESH_063\s+(?<profile>\S+)')
             $marker.Success | Should -BeTrue
@@ -105,6 +105,7 @@ Describe 'NexRoute 0.6.3 strategy refresh' {
         $report = Get-Content -LiteralPath $result.Report -Raw -Encoding UTF8 | ConvertFrom-Json
         $report.schemaVersion | Should -Be 1
         $report.nexRouteVersion | Should -Be '0.6.3'
+        $report.sourceVersion | Should -Be '0.6.3'
         $report.strategyCount | Should -Be 21
         @($report.criticalTargets).Count | Should -Be 7
         @($report.strategies).Count | Should -Be 21
@@ -123,14 +124,18 @@ Describe 'NexRoute 0.6.3 strategy refresh' {
             Should -Throw '*requires payload: bin/stun2.bin*'
     }
 
-    It 'guards build integration so runtime Apply cannot rewrite strategies' {
+    It 'guards build integration and leaves Service Matrix tail insertion to the tracked patch' {
         $entryPath = Join-Path $repositoryRoot 'overlay/.service/nexroute-services-entry.ps1'
         $entry = Get-Content -LiteralPath $entryPath -Raw -Encoding UTF8
+        $buildReleasePath = Join-Path $repositoryRoot 'scripts/Build-Release.ps1'
+        $buildRelease = Get-Content -LiteralPath $buildReleasePath -Raw -Encoding UTF8
 
         $entry | Should -Match '\$Mode -eq ''Apply'''
         $entry | Should -Match 'Get-PSCallStack'
         $entry | Should -Match 'Build-Release\.ps1'
         $entry | Should -Match 'nexroute-strategy-refresh-build\.ps1'
         $entry | Should -Match 'Invoke-NexRoute063StrategyRefreshBuild'
+        $buildRelease | Should -Match '%NEXROUTE_SERVICE_TCP_ARGS%'
+        $buildRelease | Should -Match '%NEXROUTE_SERVICE_UDP_ARGS%'
     }
 }
