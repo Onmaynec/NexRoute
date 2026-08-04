@@ -5,6 +5,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:main = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute.bat') -Raw
         $script:update = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute-update.cmd') -Raw
         $script:smoke = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-WindowsLaunchers.ps1') -Raw
+        $script:desktopGate = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-V06Desktop.ps1') -Raw
         $script:builder = Get-Content -LiteralPath (Join-Path $root 'scripts/Build-Package.ps1') -Raw
         $script:diagnosticFix = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-diagnostics-fixes.ps1') -Raw
         $script:updateTransaction = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-update-transaction.ps1') -Raw
@@ -98,5 +99,13 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:builder | Should -Match ([regex]::Escape("'.service/nexroute-updater-entry.ps1'"))
         $script:builder | Should -Match ([regex]::Escape('UpdaterEntryIncluded=$true'))
         $script:smoke | Should -Match ([regex]::Escape('$updaterEntry = Join-Path $testRoot ''.service\nexroute-updater-entry.ps1'''))
+    }
+
+    It 'makes the launcher contract part of the mandatory release desktop gate' {
+        $script:desktopGate | Should -Match ([regex]::Escape("$launcherSmokePath=Join-Path $PSScriptRoot 'Test-WindowsLaunchers.ps1'"))
+        $script:desktopGate | Should -Match ([regex]::Escape('$launcherResult=& $launcherSmokePath -ExtractDirectory $root'))
+        $script:desktopGate | Should -Match ([regex]::Escape('LauncherContractExitCode=0'))
+        $script:desktopGate | Should -Match ([regex]::Escape('UpdaterEntryExitCode=[int]$launcherResult.updaterEntryExitCode'))
+        $script:desktopGate | Should -Match ([regex]::Escape('UpdaterVersion=[string]$launcherResult.updaterVersion'))
     }
 }
