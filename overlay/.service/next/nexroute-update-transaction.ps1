@@ -46,6 +46,15 @@ function Write-NrUpdateHandoffRecord {
     return $path
 }
 
+function Read-NrRedirectedText {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
+    $raw=[string](Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue)
+    return $raw.Trim()
+}
+
 function Test-NrUpdatedControlNode {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Root,[int]$TimeoutSeconds=25)
@@ -61,19 +70,26 @@ function Test-NrUpdatedControlNode {
     $watch=[Diagnostics.Stopwatch]::StartNew()
     try {
         $process=Start-Process -FilePath $env:ComSpec -ArgumentList @('/d','/c','"'+$serviceBatch+'" --status') -WorkingDirectory $Root -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+        if ($null -eq $process) {
+            $watch.Stop()
+            return [pscustomobject]@{ passed=$false; exitCode=-4; elapsedMs=[Math]::Round($watch.Elapsed.TotalMilliseconds,2); message='Control-node process was not created.' }
+        }
         if (-not $process.WaitForExit([Math]::Max(5,$TimeoutSeconds)*1000)) {
             try { $process.Kill() } catch { }
             $watch.Stop()
             return [pscustomobject]@{ passed=$false; exitCode=-2; elapsedMs=[Math]::Round($watch.Elapsed.TotalMilliseconds,2); message='Updated control node timed out.' }
         }
+        $process.Refresh()
         $watch.Stop()
-        $message=''
-        if (Test-Path -LiteralPath $stderr) { $message=(Get-Content -LiteralPath $stderr -Raw -ErrorAction SilentlyContinue).Trim() }
-        if (-not $message -and (Test-Path -LiteralPath $stdout)) { $message=(Get-Content -LiteralPath $stdout -Raw -ErrorAction SilentlyContinue).Trim() }
+        $errorText=Read-NrRedirectedText -Path $stderr
+        $outputText=Read-NrRedirectedText -Path $stdout
+        $message=if ($errorText) { $errorText } else { $outputText }
         return [pscustomobject]@{ passed=($process.ExitCode -eq 0); exitCode=$process.ExitCode; elapsedMs=[Math]::Round($watch.Elapsed.TotalMilliseconds,2); message=$message }
     } catch {
         $watch.Stop()
-        return [pscustomobject]@{ passed=$false; exitCode=-3; elapsedMs=[Math]::Round($watch.Elapsed.TotalMilliseconds,2); message=$_.Exception.Message }
+        $details=$_.Exception.Message
+        if ($_.ScriptStackTrace) { $details += [Environment]::NewLine + $_.ScriptStackTrace }
+        return [pscustomobject]@{ passed=$false; exitCode=-3; elapsedMs=[Math]::Round($watch.Elapsed.TotalMilliseconds,2); message=$details }
     } finally {
         Remove-Item -LiteralPath $stdout,$stderr -Force -ErrorAction SilentlyContinue
     }
