@@ -1,6 +1,25 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Preserve the canonical environment initializer, then replace the stale 0.5.0
+# console title with the version shipped in the package.
+$script:NrInitialize062Core = ${function:Initialize-NrEnvironment}
+
+function Initialize-NrEnvironment {
+    param([string]$RootPath)
+
+    & $script:NrInitialize062Core -RootPath $RootPath
+    try {
+        $versionPath = Join-Path $script:NrService 'version.txt'
+        $version = if (Test-Path -LiteralPath $versionPath -PathType Leaf) {
+            ([string](Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8)).Trim()
+        } else {
+            'unknown'
+        }
+        [Console]::Title = "NexRoute $version"
+    } catch { }
+}
+
 # Preserve the canonical diagnostic implementation and expose the compatibility
 # fields consumed by the first-run console introduced before schemaVersion 3.
 $script:NrDiagnosticReport062Core = ${function:Get-NrDiagnosticReport}
