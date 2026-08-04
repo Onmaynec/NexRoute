@@ -13,8 +13,8 @@ Describe 'NexRoute 0.6.2 first-run and updater hotfix' {
     It 'loads the 0.6.2 compatibility layer after diagnostic fixes' {
         $fixIndex=$script:loader.IndexOf("'nexroute-diagnostics-fixes.ps1'",[StringComparison]::Ordinal)
         $hotfixIndex=$script:loader.IndexOf("'nexroute-hotfix-062.ps1'",[StringComparison]::Ordinal)
-        $fixIndex | Should -BeGreaterThanOrEqual 0
-        $hotfixIndex | Should -BeGreaterThan $fixIndex
+        ($fixIndex -ge 0) | Should -BeTrue
+        ($hotfixIndex -gt $fixIndex) | Should -BeTrue
     }
 
     It 'adapts schemaVersion 3 diagnostics for the first-run console contract' {
