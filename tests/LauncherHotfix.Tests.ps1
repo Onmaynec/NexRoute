@@ -6,6 +6,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:update = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute-update.cmd') -Raw
         $script:smoke = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-WindowsLaunchers.ps1') -Raw
         $script:diagnosticFix = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-diagnostics-fixes.ps1') -Raw
+        $script:updateTransaction = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-update-transaction.ps1') -Raw
         $script:extensions = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-runtime-extensions.ps1') -Raw
         $script:canonicalRoot = 'for %%I in ("%~dp0.") do set "NEXROUTE_ROOT=%%~fI"'
     }
@@ -61,10 +62,10 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:diagnosticFix | Should -Match ([regex]::Escape('[Console]::IsInputRedirected'))
         $script:diagnosticFix | Should -Match ([regex]::Escape('[Console]::IsOutputRedirected'))
         $script:diagnosticFix | Should -Match ([regex]::Escape('if (-not $NoWait -and -not $redirected'))
-        $script:diagnosticFix | Should -Match ([regex]::Escape('function Read-NrRedirectedText'))
-        $script:diagnosticFix | Should -Match ([regex]::Escape('$raw = [string](Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue)'))
-        $script:diagnosticFix | Should -Match ([regex]::Escape('$process.Refresh()'))
-        $script:diagnosticFix | Should -Match ([regex]::Escape('$errorText = Read-NrRedirectedText -Path $stderr'))
-        $script:diagnosticFix | Should -Match ([regex]::Escape('$outputText = Read-NrRedirectedText -Path $stdout'))
+        $script:updateTransaction | Should -Match ([regex]::Escape('function Read-NrRedirectedText'))
+        $script:updateTransaction | Should -Match ([regex]::Escape('$raw=[string](Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue)'))
+        $script:updateTransaction | Should -Match ([regex]::Escape('$process.Refresh()'))
+        $script:updateTransaction | Should -Match ([regex]::Escape('$errorText=Read-NrRedirectedText -Path $stderr'))
+        $script:updateTransaction | Should -Match ([regex]::Escape('$outputText=Read-NrRedirectedText -Path $stdout'))
     }
 }
