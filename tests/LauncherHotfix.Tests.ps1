@@ -5,6 +5,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:main = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute.bat') -Raw
         $script:update = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute-update.cmd') -Raw
         $script:smoke = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-WindowsLaunchers.ps1') -Raw
+        $script:builder = Get-Content -LiteralPath (Join-Path $root 'scripts/Build-Package.ps1') -Raw
         $script:diagnosticFix = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-diagnostics-fixes.ps1') -Raw
         $script:updateTransaction = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-update-transaction.ps1') -Raw
         $script:updaterEntry = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-updater-entry.ps1') -Raw
@@ -90,5 +91,12 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
             $script:updaterEntry | Should -Match ([regex]::Escape($token))
         }
         $script:updaterEntry | Should -Match ([regex]::Escape('The core updater keeps its existing error handling.'))
+    }
+
+    It 'copies and requires the resilient updater entry in every finalized package' {
+        ($script:builder | Select-String -Pattern "'nexroute-updater-entry\.ps1'" -AllMatches).Matches.Count | Should -BeGreaterOrEqual 2
+        $script:builder | Should -Match ([regex]::Escape("'.service/nexroute-updater-entry.ps1'"))
+        $script:builder | Should -Match ([regex]::Escape('UpdaterEntryIncluded=$true'))
+        $script:smoke | Should -Match ([regex]::Escape("$updaterEntry = Join-Path $testRoot '.service\nexroute-updater-entry.ps1'"))
     }
 }
