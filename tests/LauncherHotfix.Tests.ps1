@@ -54,12 +54,17 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         { [System.IO.Path]::GetFullPath($candidate) } | Should -Not -Throw
     }
 
-    It 'fixes the duplicate Name parameter in diagnostic status and avoids blocking redirected smoke tests' {
+    It 'fixes diagnostic status and makes successful empty redirected logs null-safe' {
         $script:extensions | Should -Match ([regex]::Escape("'nexroute-diagnostics-fixes.ps1'"))
         $script:diagnosticFix | Should -Match ([regex]::Escape("`$winDivertRunning = ((Test-NrServiceRunning -Name 'WinDivert') -or (Test-NrServiceRunning -Name 'WinDivert14'))"))
         $script:diagnosticFix | Should -Not -Match 'Test-NrServiceRunning\s+-Name\s+WinDivert\s+-or\s+Test-NrServiceRunning\s+-Name'
         $script:diagnosticFix | Should -Match ([regex]::Escape('[Console]::IsInputRedirected'))
         $script:diagnosticFix | Should -Match ([regex]::Escape('[Console]::IsOutputRedirected'))
         $script:diagnosticFix | Should -Match ([regex]::Escape('if (-not $NoWait -and -not $redirected'))
+        $script:diagnosticFix | Should -Match ([regex]::Escape('function Read-NrRedirectedText'))
+        $script:diagnosticFix | Should -Match ([regex]::Escape('$raw = [string](Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue)'))
+        $script:diagnosticFix | Should -Match ([regex]::Escape('$process.Refresh()'))
+        $script:diagnosticFix | Should -Match ([regex]::Escape('$errorText = Read-NrRedirectedText -Path $stderr'))
+        $script:diagnosticFix | Should -Match ([regex]::Escape('$outputText = Read-NrRedirectedText -Path $stdout'))
     }
 }
