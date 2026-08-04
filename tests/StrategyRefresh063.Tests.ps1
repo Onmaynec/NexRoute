@@ -1,9 +1,9 @@
-$repositoryRoot = Split-Path -Parent $PSScriptRoot
-$refreshBuildPath = Join-Path $repositoryRoot 'overlay/.service/next/nexroute-strategy-refresh-build.ps1'
-. $refreshBuildPath
-
 Describe 'NexRoute 0.6.3 strategy refresh' {
     BeforeAll {
+        $script:repositoryRoot = Split-Path -Parent $PSScriptRoot
+        $refreshBuildPath = Join-Path $script:repositoryRoot 'overlay/.service/next/nexroute-strategy-refresh-build.ps1'
+        . $refreshBuildPath
+
         $script:requiredPayloads = @(
             'bin/winws.exe',
             'bin/quic_initial_www_google_com.bin',
@@ -125,9 +125,9 @@ Describe 'NexRoute 0.6.3 strategy refresh' {
     }
 
     It 'guards build integration and leaves Service Matrix tail insertion to the tracked patch' {
-        $entryPath = Join-Path $repositoryRoot 'overlay/.service/nexroute-services-entry.ps1'
+        $entryPath = Join-Path $script:repositoryRoot 'overlay/.service/nexroute-services-entry.ps1'
         $entry = Get-Content -LiteralPath $entryPath -Raw -Encoding UTF8
-        $buildReleasePath = Join-Path $repositoryRoot 'scripts/Build-Release.ps1'
+        $buildReleasePath = Join-Path $script:repositoryRoot 'scripts/Build-Release.ps1'
         $buildRelease = Get-Content -LiteralPath $buildReleasePath -Raw -Encoding UTF8
 
         $entry | Should -Match '\$Mode -eq ''Apply'''
