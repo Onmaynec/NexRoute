@@ -12,8 +12,8 @@ if not exist "%NEXROUTE_ROOT%\service.bat" (
     endlocal & exit /b 1
 )
 
-if "%~1"=="" if exist "%NEXROUTE_ROOT%\.service\nexroute-updater.ps1" if exist "%NEXROUTE_ROOT%\utils\check_updates.enabled" (
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%NEXROUTE_ROOT%\.service\nexroute-updater.ps1" -Mode Auto -Root "%NEXROUTE_ROOT%" -NonInteractive -WarningAction SilentlyContinue
+if "%~1"=="" if exist "%NEXROUTE_ROOT%\.service\nexroute-updater-entry.ps1" if exist "%NEXROUTE_ROOT%\utils\check_updates.enabled" (
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%NEXROUTE_ROOT%\.service\nexroute-updater-entry.ps1" -Mode Auto -Root "%NEXROUTE_ROOT%" -NonInteractive -WarningAction SilentlyContinue
 )
 
 call "%NEXROUTE_ROOT%\service.bat" %*
