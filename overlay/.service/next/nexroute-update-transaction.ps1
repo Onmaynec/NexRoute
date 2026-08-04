@@ -51,8 +51,9 @@ function Read-NrRedirectedText {
     param([Parameter(Mandatory)][string]$Path)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return '' }
-    $raw=[string](Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue)
-    return $raw.Trim()
+    $raw=Get-Content -LiteralPath $Path -Raw -ErrorAction SilentlyContinue
+    if ($null -eq $raw) { return '' }
+    return ([string]$raw).Trim()
 }
 
 function Test-NrUpdatedControlNode {
