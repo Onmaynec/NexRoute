@@ -5,6 +5,8 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:main = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute.bat') -Raw
         $script:update = Get-Content -LiteralPath (Join-Path $root 'overlay/nexroute-update.cmd') -Raw
         $script:smoke = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-WindowsLaunchers.ps1') -Raw
+        $script:diagnosticFix = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-diagnostics-fixes.ps1') -Raw
+        $script:extensions = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-runtime-extensions.ps1') -Raw
         $script:canonicalRoot = 'for %%I in ("%~dp0.") do set "NEXROUTE_ROOT=%%~fI"'
     }
 
@@ -50,5 +52,14 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
     It 'accepts a representative path with spaces and Cyrillic characters' {
         $candidate = 'C:\Users\Тест Пользователь\Downloads\NexRoute-0.6.1-win-x64'
         { [System.IO.Path]::GetFullPath($candidate) } | Should -Not -Throw
+    }
+
+    It 'fixes the duplicate Name parameter in diagnostic status and avoids blocking redirected smoke tests' {
+        $script:extensions | Should -Match ([regex]::Escape("'nexroute-diagnostics-fixes.ps1'"))
+        $script:diagnosticFix | Should -Match ([regex]::Escape("`$winDivertRunning = ((Test-NrServiceRunning -Name 'WinDivert') -or (Test-NrServiceRunning -Name 'WinDivert14'))"))
+        $script:diagnosticFix | Should -Not -Match 'Test-NrServiceRunning\s+-Name\s+WinDivert\s+-or\s+Test-NrServiceRunning\s+-Name'
+        $script:diagnosticFix | Should -Match ([regex]::Escape('[Console]::IsInputRedirected'))
+        $script:diagnosticFix | Should -Match ([regex]::Escape('[Console]::IsOutputRedirected'))
+        $script:diagnosticFix | Should -Match ([regex]::Escape('if (-not $NoWait -and -not $redirected'))
     }
 }
