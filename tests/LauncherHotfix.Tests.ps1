@@ -76,7 +76,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
     }
 
     It 'falls back from GitHub API errors without bypassing secure updater verification' {
-        $script:diagnosticFix | Should -Match ([regex]::Escape("nexroute-updater-entry.ps1"))
+        $script:diagnosticFix | Should -Match ([regex]::Escape('nexroute-updater-entry.ps1'))
         $script:updaterEntry | Should -Match ([regex]::Escape('https://github.com/Onmaynec/NexRoute/releases/latest'))
         $script:updaterEntry | Should -Match ([regex]::Escape('/releases/tag/v?(?<version>\d+\.\d+\.\d+)'))
         foreach ($token in @(
@@ -102,7 +102,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
     }
 
     It 'makes the launcher contract part of the mandatory release desktop gate' {
-        $script:desktopGate | Should -Match ([regex]::Escape("$launcherSmokePath=Join-Path $PSScriptRoot 'Test-WindowsLaunchers.ps1'"))
+        $script:desktopGate | Should -Match ([regex]::Escape('$launcherSmokePath=Join-Path $PSScriptRoot ''Test-WindowsLaunchers.ps1'''))
         $script:desktopGate | Should -Match ([regex]::Escape('$launcherResult=& $launcherSmokePath -ExtractDirectory $root'))
         $script:desktopGate | Should -Match ([regex]::Escape('LauncherContractExitCode=0'))
         $script:desktopGate | Should -Match ([regex]::Escape('UpdaterEntryExitCode=[int]$launcherResult.updaterEntryExitCode'))
