@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate NexRoute 0.6.0 sources
+    name: Validate NexRoute 0.6.1 sources
     runs-on: ubuntu-latest
 
     steps:
@@ -35,7 +35,7 @@ jobs:
         shell: pwsh
         run: |
           # Includes Updater fixture suites plus behavioral worker, media,
-          # desktop, IPv6 and provenance acceptance suites.
+          # desktop, IPv6, launcher and provenance acceptance suites.
           $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
@@ -70,7 +70,7 @@ jobs:
         run: npm run build
 
   build-smoke:
-    name: Build and test NexRoute 0.6.0
+    name: Build and test NexRoute 0.6.1
     needs:
       - validate
       - website
@@ -89,7 +89,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          if ($version -ne '0.6.0') { throw "Expected 0.6.0, got $version" }
+          if ($version -ne '0.6.1') { throw "Expected 0.6.1, got $version" }
           # UpstreamCachePath remains the supported write-through cache contract.
           # This job resolves the immutable asset first and passes it back as
           # UpstreamArchive, removing the GitHub Releases API dependency.
@@ -115,7 +115,7 @@ jobs:
           "NEXROUTE_ONLINE_DASHBOARD_SHA=$($build.NativeDashboardSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_VALIDATION_SHA=$($build.NativeValidationSha256)" >> $env:GITHUB_ENV
 
-      - name: Verify online package
+      - name: Verify online package and Windows launchers
         shell: pwsh
         run: |
           $extract = Join-Path $env:RUNNER_TEMP 'nexroute-online-test'
@@ -132,12 +132,17 @@ jobs:
           if ($desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Online validation viewer trust-state fixture failed.' }
           if ($desktop.NotificationToastChannel -ne 'windows-toast') { throw 'Online package did not prove the Windows toast channel.' }
           if ($desktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Online package did not prove the native notification fallback.' }
+          $launchers = ./scripts/Test-WindowsLaunchers.ps1 -ExtractDirectory $extract
+          if ($launchers.status -ne 'passed' -or [int]$launchers.launcherCount -ne 3) {
+            throw 'Online Windows launcher smoke test did not pass.'
+          }
           "NEXROUTE_SHA256=$($online.Sha256)" >> $env:GITHUB_ENV
           "NEXROUTE_STRATEGIES=$($online.StrategyCount)" >> $env:GITHUB_ENV
           "NEXROUTE_SERVICES=$($online.ServiceCount)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_UPSTREAM_SHA=$($online.UpstreamSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_TOAST_CHANNEL=$($desktop.NotificationToastChannel)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_FALLBACK_CHANNEL=$($desktop.NotificationFallbackChannel)" >> $env:GITHUB_ENV
+          "NEXROUTE_ONLINE_LAUNCHER_COUNT=$($launchers.launcherCount)" >> $env:GITHUB_ENV
 
       - name: Rebuild completely offline from verified cache
         shell: pwsh
@@ -160,7 +165,7 @@ jobs:
           "NEXROUTE_OFFLINE_DASHBOARD_SHA=$($offlineBuild.NativeDashboardSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_OFFLINE_VALIDATION_SHA=$($offlineBuild.NativeValidationSha256)" >> $env:GITHUB_ENV
 
-      - name: Verify offline package
+      - name: Verify offline package and Windows launchers
         shell: pwsh
         run: |
           $extract = Join-Path $env:RUNNER_TEMP 'nexroute-offline-test'
@@ -178,25 +183,30 @@ jobs:
           if ($desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Offline validation viewer trust-state fixture failed.' }
           if ($desktop.NotificationToastChannel -ne 'windows-toast') { throw 'Offline package did not prove the Windows toast channel.' }
           if ($desktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Offline package did not prove the native notification fallback.' }
+          $launchers = ./scripts/Test-WindowsLaunchers.ps1 -ExtractDirectory $extract
+          if ($launchers.status -ne 'passed' -or [int]$launchers.launcherCount -ne 3) {
+            throw 'Offline Windows launcher smoke test did not pass.'
+          }
           if ($offline.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Offline package lock differs from the online package lock.' }
           if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
           if ([int]$offline.StrategyCount -ne [int]$env:NEXROUTE_STRATEGIES) { throw 'Online and offline strategy counts differ.' }
           if ([int]$offline.ServiceCount -ne [int]$env:NEXROUTE_SERVICES) { throw 'Online and offline service counts differ.' }
           "NEXROUTE_OFFLINE_TOAST_CHANNEL=$($desktop.NotificationToastChannel)" >> $env:GITHUB_ENV
           "NEXROUTE_OFFLINE_FALLBACK_CHANNEL=$($desktop.NotificationFallbackChannel)" >> $env:GITHUB_ENV
+          "NEXROUTE_OFFLINE_LAUNCHER_COUNT=$($launchers.launcherCount)" >> $env:GITHUB_ENV
 
       - name: Upload logs and smoke package
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: NexRoute-0.6.0-smoke
+          name: NexRoute-0.6.1-smoke
           path: |
             build-online.log
             package-online.log
             build-offline.log
             package-offline.log
-            artifacts/NexRoute-0.6.0-win-x64.zip
-            artifacts/NexRoute-0.6.0-win-x64.zip.sha256
+            artifacts/NexRoute-0.6.1-win-x64.zip
+            artifacts/NexRoute-0.6.1-win-x64.zip.sha256
           if-no-files-found: warn
           retention-days: 7
 
@@ -213,4 +223,6 @@ jobs:
           Write-Host "Offline validation viewer SHA-256: $env:NEXROUTE_OFFLINE_VALIDATION_SHA"
           Write-Host "Online notification channels: $env:NEXROUTE_ONLINE_TOAST_CHANNEL -> $env:NEXROUTE_ONLINE_FALLBACK_CHANNEL"
           Write-Host "Offline notification channels: $env:NEXROUTE_OFFLINE_TOAST_CHANNEL -> $env:NEXROUTE_OFFLINE_FALLBACK_CHANNEL"
+          Write-Host "Online launcher count: $env:NEXROUTE_ONLINE_LAUNCHER_COUNT"
+          Write-Host "Offline launcher count: $env:NEXROUTE_OFFLINE_LAUNCHER_COUNT"
           Write-Host "Package SHA-256: $env:NEXROUTE_SHA256"
