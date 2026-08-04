@@ -6,6 +6,25 @@
 
 Пока нет изменений.
 
+## [0.6.2] - 2026-08-04
+
+### Fixed
+
+- first-run diagnostics больше не обращается к отсутствующим свойствам старой схемы и не падает с `PropertyNotFoundException`;
+- diagnostic report гарантированно предоставляет совместимые поля `administrator`, `runtime.zapret`, `network` и `conflicts[].detected`;
+- `service.bat` и `nexroute.bat` открывают основной интерфейс после первой диагностики;
+- заголовок консоли берётся из `.service/version.txt`, поэтому больше не показывает `NexRoute 0.5.0`;
+- ручная проверка обновлений использует API-independent `nexroute-updater-entry.ps1`;
+- GitHub API rate limit больше не выводится пользователю как сырая ошибка `Invoke-RestMethod`;
+- stable release определяется через публичный `/releases/latest` endpoint с последовательными `Invoke-WebRequest`, `HttpWebRequest` и `curl.exe` fallback;
+- если публичный endpoint недоступен, updater завершается понятной fail-closed ошибкой без перехода к rate-limited API.
+
+### Validation
+
+- online и offline ZIP проверяют first-run diagnostic compatibility;
+- updater `Check` выполняется через deterministic `v0.6.2` fixture без обращения к `api.github.com`;
+- package gate продолжает запускать `service.bat`, `nexroute.bat` и `nexroute-update.cmd` из пути с пробелами и кириллицей.
+
 ## [0.6.1] - 2026-08-04
 
 ### Fixed

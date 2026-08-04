@@ -1,4 +1,4 @@
-Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
+Describe 'NexRoute 0.6.2 Windows launcher and updater hotfix' {
     BeforeAll {
         $root = Split-Path -Parent $PSScriptRoot
         $script:service = Get-Content -LiteralPath (Join-Path $root 'overlay/service.bat') -Raw
@@ -10,6 +10,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:diagnosticFix = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-diagnostics-fixes.ps1') -Raw
         $script:updateTransaction = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-update-transaction.ps1') -Raw
         $script:updaterEntry = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-updater-entry.ps1') -Raw
+        $script:updaterCore = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-updater.ps1') -Raw
         $script:extensions = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-runtime-extensions.ps1') -Raw
         $script:canonicalRoot = 'for %%I in ("%~dp0.") do set "NEXROUTE_ROOT=%%~fI"'
     }
@@ -38,7 +39,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
 
     It 'executes every public launcher from a Cyrillic path in the Windows package gate' {
         foreach ($token in @(
-            'NexRoute 0.6.1 Hot Fix Тест',
+            'NexRoute 0.6.2 Hot Fix Тест',
             'service.bat',
             'nexroute.bat',
             'nexroute-update.cmd',
@@ -46,7 +47,8 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
             'Illegal characters in path',
             'Недопустимые знаки',
             'MethodInvocationException',
-            'ArgumentException'
+            'ArgumentException',
+            'PropertyNotFound'
         )) {
             $script:smoke | Should -Match ([regex]::Escape($token))
         }
@@ -55,7 +57,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
     }
 
     It 'accepts a representative path with spaces and Cyrillic characters' {
-        $candidate = 'C:\Users\Тест Пользователь\Downloads\NexRoute-0.6.1-win-x64'
+        $candidate = 'C:\Users\Тест Пользователь\Downloads\NexRoute-0.6.2-win-x64'
         { [System.IO.Path]::GetFullPath($candidate) } | Should -Not -Throw
     }
 
@@ -71,15 +73,17 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:updateTransaction | Should -Match ([regex]::Escape('if ($null -eq $raw) { return '''' }'))
         $script:updateTransaction | Should -Match ([regex]::Escape('return ([string]$raw).Trim()'))
         $script:updateTransaction | Should -Match ([regex]::Escape('$process.Refresh()'))
-        $script:updateTransaction | Should -Match ([regex]::Escape('$errorText=Read-NrRedirectedText -Path $stderr'))
-        $script:updateTransaction | Should -Match ([regex]::Escape('$outputText=Read-NrRedirectedText -Path $stdout'))
     }
 
-    It 'falls back from GitHub API errors without bypassing secure updater verification' {
+    It 'resolves stable releases without bypassing secure updater verification' {
         $script:diagnosticFix | Should -Match ([regex]::Escape('nexroute-updater-entry.ps1'))
-        $script:updaterEntry | Should -Match ([regex]::Escape('https://github.com/Onmaynec/NexRoute/releases/latest'))
-        $script:updaterEntry | Should -Match ([regex]::Escape('/releases/tag/v?(?<version>\d+\.\d+\.\d+)'))
         foreach ($token in @(
+            'https://github.com/Onmaynec/NexRoute/releases/latest',
+            'NEXROUTE_LATEST_RELEASE_FIXTURE',
+            'Invoke-WebRequest',
+            'HttpWebRequest',
+            'curl.exe',
+            'New-NrFallbackReleaseMetadata',
             'NexRoute-$Version-win-x64.zip',
             'NexRoute-$Version-validation.json',
             'NexRoute-$Version-validation.md',
@@ -91,7 +95,17 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         )) {
             $script:updaterEntry | Should -Match ([regex]::Escape($token))
         }
-        $script:updaterEntry | Should -Match ([regex]::Escape('The core updater keeps its existing error handling.'))
+        $script:updaterEntry | Should -Not -Match 'api\.github\.com'
+        $script:updaterEntry | Should -Not -Match 'effectiveMetadata\s*=\s*\$null'
+        foreach ($token in @(
+            'Get-NexRouteLatestRelease',
+            'Release asset URL is outside the trusted NexRoute release path',
+            'Checksum asset has an invalid format',
+            'NexRoute package SHA-256 mismatch',
+            'PackageSha256'
+        )) {
+            $script:updaterCore | Should -Match ([regex]::Escape($token))
+        }
     }
 
     It 'copies and requires the resilient updater entry in every finalized package' {
