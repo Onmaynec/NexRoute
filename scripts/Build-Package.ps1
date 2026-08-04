@@ -78,7 +78,7 @@ try {
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-tray-install.cmd') -Destination (Join-Path $packageRoot 'nexroute-tray-install.cmd')
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/nexroute-validation.cmd') -Destination (Join-Path $packageRoot 'nexroute-validation.cmd')
 
-    foreach ($name in @('nexroute-console.ps1','nexroute-monitor.ps1','nexroute-tray.ps1','nexroute-updater.ps1','nexroute-worker-host.ps1')) {
+    foreach ($name in @('nexroute-console.ps1','nexroute-monitor.ps1','nexroute-tray.ps1','nexroute-updater.ps1','nexroute-updater-entry.ps1','nexroute-worker-host.ps1')) {
         Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot ('overlay/.service/' + $name)) -Destination (Join-Path $serviceDirectory $name)
     }
     Copy-NexRoutePackageFile -Source (Join-Path $repositoryRoot 'overlay/.service/portable-tools.json') -Destination (Join-Path $serviceDirectory 'portable-tools.json')
@@ -120,7 +120,7 @@ try {
     $required=@(
         'service.bat','nexroute.bat','nexroute-update.cmd','nexroute-tray.cmd','nexroute-tray-install.cmd','nexroute-validation.cmd',
         '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1',
-        '.service/nexroute-updater.ps1','.service/nexroute-worker-host.ps1','.service/portable-tools.json',
+        '.service/nexroute-updater.ps1','.service/nexroute-updater-entry.ps1','.service/nexroute-worker-host.ps1','.service/portable-tools.json',
         '.service/native/NexRoute.Tray.exe','.service/native/NexRoute.Notifier.exe','.service/native/NexRoute.Dashboard.exe','.service/native/NexRoute.Validation.exe',
         '.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1',
         '.service/next/nexroute-network.ps1','.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1',
@@ -132,7 +132,7 @@ try {
         '.service/next/nexroute-strategy-builder-v2.ps1','.service/next/nexroute-strategy-builder-v2-fixes.ps1',
         '.service/next/nexroute-ipv6-runtime-v2.ps1','.service/next/nexroute-ipv6-runtime-v2-fixes.ps1','.service/next/nexroute-family-probe.ps1',
         '.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1',
-        '.service/next/nexroute-update-transaction.ps1','utils/test zapret.ps1'
+        '.service/next/nexroute-update-transaction.ps1','.service/next/nexroute-diagnostics-fixes.ps1','utils/test zapret.ps1'
     )
     foreach ($relativePath in $required) {
         if (-not (Test-Path -LiteralPath (Join-Path $packageRoot $relativePath) -PathType Leaf)) { throw "Package finalization failed. Missing: $relativePath" }
@@ -157,6 +157,7 @@ try {
         StrategyCount=[int]$baseResult.StrategyCount
         ServiceCount=[int]$baseResult.ServiceCount
         UpdaterIncluded=$true
+        UpdaterEntryIncluded=$true
         NextInterfaceIncluded=$true
         WorkerRuntimeIncluded=$true
         PortableAttestationVerifierIncluded=$true
