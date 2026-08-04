@@ -7,6 +7,36 @@ if (-not (Test-Path -LiteralPath $refreshModule -PathType Leaf)) {
 }
 . $refreshModule
 
+function Remove-NexRoute063RuntimeTail {
+    param([Parameter(Mandatory)][string]$Path)
+
+    $lines = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($line in [System.IO.File]::ReadAllLines($Path)) {
+        [void]$lines.Add($line)
+    }
+
+    $tcpIndex = -1
+    $udpIndex = -1
+    for ($index = 0; $index -lt $lines.Count; $index++) {
+        if ($lines[$index].Trim() -eq '%NEXROUTE_SERVICE_TCP_ARGS% ^') { $tcpIndex = $index }
+        if ($lines[$index].Trim() -eq '%NEXROUTE_SERVICE_UDP_ARGS%') { $udpIndex = $index }
+    }
+
+    if ($tcpIndex -lt 1 -or $udpIndex -ne ($tcpIndex + 1)) {
+        throw "Refreshed strategy has an invalid temporary runtime tail: $Path"
+    }
+
+    $commandTail = $lines[$tcpIndex - 1].TrimEnd()
+    if (-not $commandTail.EndsWith('^')) {
+        throw "Refreshed strategy command does not continue into its temporary runtime tail: $Path"
+    }
+    $lines[$tcpIndex - 1] = [regex]::Replace($commandTail, '\s*\^\s*$', '')
+    $lines.RemoveAt($udpIndex)
+    $lines.RemoveAt($tcpIndex)
+
+    [System.IO.File]::WriteAllLines($Path, $lines, [System.Text.Encoding]::ASCII)
+}
+
 function Invoke-NexRoute063StrategyRefreshBuild {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Root)
@@ -62,6 +92,13 @@ function Invoke-NexRoute063StrategyRefreshBuild {
 
         $before = Get-NexRoute063Sha256 -Path $path
         Set-NexRoute063StrategyFile -Path $path -Spec $spec
+
+        # Build-Release applies the normal Service Matrix patch immediately
+        # after this refresh. Remove the temporary runtime tail emitted by the
+        # reusable strategy generator so the tracked patch inserts it exactly
+        # once and its before hash links to this refresh report.
+        Remove-NexRoute063RuntimeTail -Path $path
+
         $after = Get-NexRoute063Sha256 -Path $path
         if ($before -eq $after) {
             throw "Strategy refresh did not change: $($spec.File)"
@@ -77,16 +114,18 @@ function Invoke-NexRoute063StrategyRefreshBuild {
     }
 
     $versionPath = Join-Path $rootPath '.service/version.txt'
-    $version = if (Test-Path -LiteralPath $versionPath -PathType Leaf) {
+    $sourceVersion = if (Test-Path -LiteralPath $versionPath -PathType Leaf) {
         (Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8).Trim()
     }
     else {
-        '0.6.3-candidate'
+        'unknown'
     }
+    $targetVersion = if ($sourceVersion -eq '0.6.3') { '0.6.3' } else { '0.6.3-candidate' }
 
     $report = [ordered]@{
         schemaVersion = 1
-        nexRouteVersion = $version
+        nexRouteVersion = $targetVersion
+        sourceVersion = $sourceVersion
         targetProvider = 'Informatsionnye Kommunikatsii / wired / Sibay, Russia'
         strategyCount = $strategyReports.Count
         strategySet = 'NexRoute 0.6.3 RKN refresh'
