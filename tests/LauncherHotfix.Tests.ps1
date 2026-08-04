@@ -97,7 +97,13 @@ Describe 'NexRoute 0.6.2 Windows launcher and updater hotfix' {
         }
         $script:updaterEntry | Should -Not -Match 'api\.github\.com'
         $script:updaterEntry | Should -Not -Match 'effectiveMetadata\s*=\s*\$null'
-        foreach ($token in @('Get-NrTrustedRelease','Assert-NrTrustedAssetUrl','Get-NrExpectedChecksum','PackageSha256')) {
+        foreach ($token in @(
+            'Get-NexRouteLatestRelease',
+            'Release asset URL is outside the trusted NexRoute release path',
+            'Checksum asset has an invalid format',
+            'NexRoute package SHA-256 mismatch',
+            'PackageSha256'
+        )) {
             $script:updaterCore | Should -Match ([regex]::Escape($token))
         }
     }
