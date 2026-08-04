@@ -13,6 +13,12 @@ export const metadata = createMetadata(
 
 const fallback = [
   {
+    version: "0.6.1",
+    date: "2026-08-04",
+    summary:
+      "Hot Bug Fix: исправлен запуск service.bat, nexroute.bat и nexroute-update.cmd из Windows-папок с пробелами и кириллицей; добавлен реальный launcher gate.",
+  },
+  {
     version: "0.6.0",
     date: "2026-08-03",
     summary:
@@ -35,12 +41,6 @@ const fallback = [
     date: "2026-08-02",
     summary:
       "Production-ready Next.js website, documentation routes, GitHub Release integration и dedicated website CI.",
-  },
-  {
-    version: "0.3.2",
-    date: "2026-08-02",
-    summary:
-      "GitHub build provenance attestations для ZIP и checksum asset, self-verification до публикации Release.",
   },
 ];
 
