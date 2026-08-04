@@ -7,7 +7,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-if (-not $IsWindows -and $PSVersionTable.PSEdition -ne 'Desktop') {
+if ($env:OS -ne 'Windows_NT') {
     throw 'Windows launcher smoke tests require Windows.'
 }
 
