@@ -119,3 +119,11 @@ function Show-NrSystemStatus {
 
     return $report
 }
+
+function Get-NrUpdaterPath {
+    $path=Join-Path $script:NrService 'nexroute-updater-entry.ps1'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw 'Secure updater entry module is missing.'
+    }
+    return $path
+}
