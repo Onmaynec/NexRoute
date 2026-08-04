@@ -161,6 +161,16 @@ try {
     }
 }
 
+$launcherSmokePath=Join-Path $PSScriptRoot 'Test-WindowsLaunchers.ps1'
+if (-not (Test-Path -LiteralPath $launcherSmokePath -PathType Leaf)) { throw "Windows launcher smoke test is missing: $launcherSmokePath" }
+$launcherResult=& $launcherSmokePath -ExtractDirectory $root
+if ([string]$launcherResult.status -ne 'passed' -or [int]$launcherResult.launcherCount -ne 3) {
+    throw "Windows launcher contract failed: $($launcherResult | ConvertTo-Json -Depth 8 -Compress)"
+}
+if ([int]$launcherResult.updaterEntryExitCode -ne 0 -or [string]$launcherResult.updaterVersion -ne $packageVersion) {
+    throw "Updater entry contract failed: $($launcherResult | ConvertTo-Json -Depth 8 -Compress)"
+}
+
 $traySource=Get-Content -LiteralPath (Join-Path (Split-Path -Parent $PSScriptRoot) 'native/NexRoute.Tray/Program.cs') -Raw -Encoding UTF8
 foreach ($token in @('Open Dashboard','NexRoute.Dashboard.exe','notifyIcon.DoubleClick','--root')) {
     if ($traySource -notmatch [regex]::Escape($token)) { throw "Tray source does not expose dashboard token: $token" }
@@ -193,4 +203,8 @@ foreach ($token in @('NexRoute Validation Viewer','passed-with-limitations','exp
     NotificationContractExitCode=0
     NotificationToastChannel=[string]$toastResult.channel
     NotificationFallbackChannel=[string]$policyFallbackResult.channel
+    LauncherContractExitCode=0
+    LauncherCount=[int]$launcherResult.launcherCount
+    UpdaterEntryExitCode=[int]$launcherResult.updaterEntryExitCode
+    UpdaterVersion=[string]$launcherResult.updaterVersion
 }
