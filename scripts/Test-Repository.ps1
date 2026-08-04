@@ -74,13 +74,13 @@ $readme=Read-Text 'README.md'
 $changelog=Read-Text 'CHANGELOG.md'
 $releaseNotes=Read-Text '.github/release-notes/v0.6.2.md'
 $websitePackage=Read-Text 'website/package.json' | ConvertFrom-Json
-$websiteLock=Read-Text 'website/package-lock.json' | ConvertFrom-Json
+$websiteLock=Read-Text 'website/package-lock.json' | ConvertFrom-Json -AsHashtable
 Assert-True ($readme -match [regex]::Escape("NexRoute $expectedVersion")) "README mentions $expectedVersion"
 Assert-True ($changelog -match [regex]::Escape('## [0.6.2] - 2026-08-04')) 'CHANGELOG contains the 0.6.2 entry'
 Assert-True ($releaseNotes -match [regex]::Escape('# NexRoute 0.6.2 — Hot Bug Fix')) 'Release notes describe 0.6.2'
 Assert-True ([string]$websitePackage.version -eq $expectedVersion) 'Website package version matches repository version'
-Assert-True ([string]$websiteLock.version -eq $expectedVersion) 'Website lockfile version matches repository version'
-Assert-True ([string]$websiteLock.packages.''.version -eq $expectedVersion) 'Website root lock package version matches repository version'
+Assert-True ([string]$websiteLock['version'] -eq $expectedVersion) 'Website lockfile version matches repository version'
+Assert-True ([string]$websiteLock['packages']['']['version'] -eq $expectedVersion) 'Website root lock package version matches repository version'
 foreach ($token in @('21','upstream-lock.json','patch-report.json','offline','nexroute-update.cmd','update-state.json','gh attestation verify','nexroute-validation.cmd','NexRoute 0.6.2 Hot Fix')) {
     Assert-True ($readme -match [regex]::Escape($token)) "README documents $token"
 }
