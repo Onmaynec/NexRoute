@@ -1,4 +1,4 @@
-Describe 'NexRoute 0.6.1 updater migration transactions' {
+Describe 'NexRoute 0.6.2 updater migration transactions' {
     BeforeAll {
         $script:repositoryRoot=Split-Path -Parent $PSScriptRoot
         $script:updaterPath=Join-Path $script:repositoryRoot 'overlay/.service/nexroute-updater.ps1'
@@ -22,7 +22,7 @@ Describe 'NexRoute 0.6.1 updater migration transactions' {
 
         function New-NrMigrationRelease {
             param([string]$Path)
-            $version='0.6.1'
+            $version='0.6.2'
             $assets=Join-Path $Path 'assets'
             $payload=Join-Path $Path 'payload'
             New-Item -ItemType Directory -Path $assets,(Join-Path $payload '.service/i18n'),(Join-Path $payload '.service/next'),(Join-Path $payload 'bin') -Force | Out-Null
@@ -48,17 +48,17 @@ Describe 'NexRoute 0.6.1 updater migration transactions' {
             Set-Content -LiteralPath (Join-Path $assets "$archiveName.sha256") -Value "$sha  $archiveName" -Encoding ASCII
             $metadata=Join-Path $Path 'release.json'
             [ordered]@{
-                tag_name='v0.6.1'; draft=$false; prerelease=$false; published_at='2026-08-04T00:00:00Z'; html_url='https://github.com/Onmaynec/NexRoute/releases/tag/v0.6.1';
+                tag_name='v0.6.2'; draft=$false; prerelease=$false; published_at='2026-08-04T00:00:00Z'; html_url='https://github.com/Onmaynec/NexRoute/releases/tag/v0.6.2';
                 assets=@(
-                    [ordered]@{ name=$archiveName; browser_download_url="https://github.com/Onmaynec/NexRoute/releases/download/v0.6.1/$archiveName" },
-                    [ordered]@{ name="$archiveName.sha256"; browser_download_url="https://github.com/Onmaynec/NexRoute/releases/download/v0.6.1/$archiveName.sha256" }
+                    [ordered]@{ name=$archiveName; browser_download_url="https://github.com/Onmaynec/NexRoute/releases/download/v0.6.2/$archiveName" },
+                    [ordered]@{ name="$archiveName.sha256"; browser_download_url="https://github.com/Onmaynec/NexRoute/releases/download/v0.6.2/$archiveName.sha256" }
                 )
             } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $metadata -Encoding UTF8
             return [pscustomobject]@{ Assets=$assets; Metadata=$metadata; Sha=$sha }
         }
     }
 
-    It 'migrates <_> to 0.6.1 and restores the exact prior version on rollback' -ForEach @('0.4.1','0.5.0','0.6.0') {
+    It 'migrates <_> to 0.6.2 and restores the exact prior version on rollback' -ForEach @('0.4.1','0.5.0','0.6.0','0.6.1') {
         $fromVersion=$_
         $testRoot=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-migration-'+[guid]::NewGuid().ToString('N'))
         $installed=Join-Path $testRoot 'NexRoute'
@@ -69,7 +69,7 @@ Describe 'NexRoute 0.6.1 updater migration transactions' {
             $result=($output | Select-Object -Last 1) | ConvertFrom-Json
 
             $result.Status | Should -Be 'updated'
-            $result.CurrentVersion | Should -Be '0.6.1'
+            $result.CurrentVersion | Should -Be '0.6.2'
             $result.PackageSha256 | Should -Be $fixture.Sha
             Test-Path -LiteralPath $result.BackupPath -PathType Container | Should -BeTrue
             (Get-Content -LiteralPath (Join-Path $installed '.service/language.txt') -Raw).Trim() | Should -Be 'RU'
