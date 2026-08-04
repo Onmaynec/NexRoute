@@ -109,9 +109,10 @@ function Invoke-NrUpdaterCore {
     if ($NonInteractive) { $arguments+='-NonInteractive' }
 
     $output=& powershell.exe @arguments 2>&1
-    $exitCode=$LASTEXITCODE
-    foreach ($line in @($output)) { Write-Output $line }
-    return $exitCode
+    return [pscustomobject]@{
+        exitCode=[int]$LASTEXITCODE
+        output=@($output)
+    }
 }
 
 $temporaryMetadata=$null
@@ -124,15 +125,15 @@ try {
             $temporaryMetadata=New-NrFallbackReleaseMetadata -Version $latestVersion
             $effectiveMetadata=$temporaryMetadata
         } catch {
-            # Preserve the original authenticated/anonymous API path when the
-            # public redirect itself is unavailable. The core updater remains
-            # responsible for its existing error and state handling.
+            # Preserve the original API path when the public redirect itself is
+            # unavailable. The core updater keeps its existing error handling.
             $effectiveMetadata=$null
         }
     }
 
-    $code=Invoke-NrUpdaterCore -MetadataPath $effectiveMetadata
-    exit $code
+    $result=Invoke-NrUpdaterCore -MetadataPath $effectiveMetadata
+    foreach ($line in @($result.output)) { Write-Output $line }
+    exit ([int]$result.exitCode)
 } finally {
     if ($temporaryMetadata) {
         Remove-Item -LiteralPath $temporaryMetadata -Force -ErrorAction SilentlyContinue
