@@ -7,6 +7,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:smoke = Get-Content -LiteralPath (Join-Path $root 'scripts/Test-WindowsLaunchers.ps1') -Raw
         $script:diagnosticFix = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-diagnostics-fixes.ps1') -Raw
         $script:updateTransaction = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-update-transaction.ps1') -Raw
+        $script:updaterEntry = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-updater-entry.ps1') -Raw
         $script:extensions = Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-runtime-extensions.ps1') -Raw
         $script:canonicalRoot = 'for %%I in ("%~dp0.") do set "NEXROUTE_ROOT=%%~fI"'
     }
@@ -28,6 +29,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
     It 'keeps automatic checks non-fatal and exposes a network-free updater smoke path' {
         $script:main | Should -Match ([regex]::Escape('-WarningAction SilentlyContinue'))
         $script:main | Should -Match ([regex]::Escape('if "%~1"==""'))
+        $script:main | Should -Match ([regex]::Escape('nexroute-updater-entry.ps1'))
         $script:update | Should -Match ([regex]::Escape('"--status"'))
         $script:update | Should -Match ([regex]::Escape('service.bat" --status'))
     }
@@ -67,5 +69,24 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
         $script:updateTransaction | Should -Match ([regex]::Escape('$process.Refresh()'))
         $script:updateTransaction | Should -Match ([regex]::Escape('$errorText=Read-NrRedirectedText -Path $stderr'))
         $script:updateTransaction | Should -Match ([regex]::Escape('$outputText=Read-NrRedirectedText -Path $stdout'))
+    }
+
+    It 'falls back from GitHub API errors without bypassing secure updater verification' {
+        $script:diagnosticFix | Should -Match ([regex]::Escape("nexroute-updater-entry.ps1"))
+        $script:updaterEntry | Should -Match ([regex]::Escape('https://github.com/Onmaynec/NexRoute/releases/latest'))
+        $script:updaterEntry | Should -Match ([regex]::Escape('/releases/tag/v?(?<version>\d+\.\d+\.\d+)'))
+        foreach ($token in @(
+            'NexRoute-$Version-win-x64.zip',
+            'NexRoute-$Version-validation.json',
+            'NexRoute-$Version-validation.md',
+            'nexroute-updater.ps1',
+            '-ReleaseMetadataPath',
+            'output=@($output)',
+            'exitCode=[int]$LASTEXITCODE',
+            'exit ([int]$result.exitCode)'
+        )) {
+            $script:updaterEntry | Should -Match ([regex]::Escape($token))
+        }
+        $script:updaterEntry | Should -Match ([regex]::Escape('The core updater keeps its existing error handling.'))
     }
 }
