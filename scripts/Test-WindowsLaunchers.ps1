@@ -25,6 +25,34 @@ try {
 
     Remove-Item -LiteralPath (Join-Path $testRoot 'utils\check_updates.enabled') -Force -ErrorAction SilentlyContinue
 
+    $updaterCore = Join-Path $testRoot '.service\nexroute-updater.ps1'
+    $updaterEntry = Join-Path $testRoot '.service\nexroute-updater-entry.ps1'
+    foreach ($requiredUpdater in @($updaterCore,$updaterEntry)) {
+        if (-not (Test-Path -LiteralPath $requiredUpdater -PathType Leaf)) {
+            throw "Updater module is missing from the extracted package: $requiredUpdater"
+        }
+    }
+
+    $updaterOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $updaterEntry -Mode Status -Root $testRoot -Json 2>&1
+    $updaterExitCode = $LASTEXITCODE
+    $updaterText = (($updaterOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine)
+    if ($updaterExitCode -ne 0) {
+        throw "Updater entry status smoke failed with exit code $updaterExitCode.`n$updaterText"
+    }
+    if ($updaterText -match '(?i)GetFullPath|Illegal characters in path|Недопустимые знаки|MethodInvocationException|ArgumentException') {
+        throw "Updater entry reproduced a runtime crash.`n$updaterText"
+    }
+    try {
+        $updaterStatus = @($updaterOutput | Select-Object -Last 20 | ForEach-Object {
+            try { [string]$_ | ConvertFrom-Json } catch { $null }
+        } | Where-Object { $null -ne $_ } | Select-Object -Last 1)
+        if ($updaterStatus.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$updaterStatus[0].CurrentVersion)) {
+            throw 'Updater entry returned no valid status JSON.'
+        }
+    } catch {
+        throw "Updater entry status output is invalid.`n$updaterText`n$($_.Exception.Message)"
+    }
+
     foreach ($fixture in @(
         [pscustomobject]@{ Name = 'service.bat'; Arguments = '--status' },
         [pscustomobject]@{ Name = 'nexroute.bat'; Arguments = '--status' },
@@ -43,8 +71,8 @@ try {
         if ($exitCode -ne 0) {
             throw "Launcher $($fixture.Name) failed with exit code $exitCode.`n$text"
         }
-        if ($text -match '(?i)GetFullPath|Illegal characters in path|Недопустимые знаки|MethodInvocationException|ArgumentException') {
-            throw "Launcher $($fixture.Name) reproduced the path crash.`n$text"
+        if ($text -match '(?i)GetFullPath|Illegal characters in path|Недопустимые знаки|MethodInvocationException|ArgumentException|ParameterAlreadyBound') {
+            throw "Launcher $($fixture.Name) reproduced the Windows runtime crash.`n$text"
         }
 
         $results.Add([pscustomobject]@{
@@ -57,6 +85,8 @@ try {
     return [pscustomobject]@{
         status = 'passed'
         testRoot = $testRoot
+        updaterEntryExitCode = $updaterExitCode
+        updaterVersion = [string]$updaterStatus[0].CurrentVersion
         launcherCount = $results.Count
         launchers = $results.ToArray()
     }
