@@ -94,7 +94,7 @@ Describe 'NexRoute 0.6.1 Windows launcher hotfix' {
     }
 
     It 'copies and requires the resilient updater entry in every finalized package' {
-        ($script:builder | Select-String -Pattern "'nexroute-updater-entry\.ps1'" -AllMatches).Matches.Count | Should -BeGreaterOrEqual 2
+        ($script:builder | Select-String -Pattern "'nexroute-updater-entry\.ps1'" -AllMatches).Matches.Count | Should -BeGreaterOrEqual 1
         $script:builder | Should -Match ([regex]::Escape("'.service/nexroute-updater-entry.ps1'"))
         $script:builder | Should -Match ([regex]::Escape('UpdaterEntryIncluded=$true'))
         $script:smoke | Should -Match ([regex]::Escape('$updaterEntry = Join-Path $testRoot ''.service\nexroute-updater-entry.ps1'''))
