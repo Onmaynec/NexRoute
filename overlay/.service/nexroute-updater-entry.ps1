@@ -30,9 +30,9 @@ function Resolve-NrPublicLatestReleaseVersion {
     param()
 
     Add-Type -AssemblyName System.Net.Http
-    $handler=New-Object System.Net.Http.HttpClientHandler
+    $handler=[System.Net.Http.HttpClientHandler]::new()
     $handler.AllowAutoRedirect=$true
-    $client=New-Object System.Net.Http.HttpClient($handler)
+    $client=[System.Net.Http.HttpClient]::new($handler)
     try {
         $client.Timeout=[TimeSpan]::FromSeconds(20)
         $client.DefaultRequestHeaders.UserAgent.ParseAdd('NexRoute-Updater-Fallback/0.6.1')
@@ -87,7 +87,7 @@ function New-NrFallbackReleaseMetadata {
     [IO.File]::WriteAllText(
         $path,
         ($metadata | ConvertTo-Json -Depth 8)+[Environment]::NewLine,
-        (New-Object Text.UTF8Encoding($false))
+        [Text.UTF8Encoding]::new($false)
     )
     return $path
 }
