@@ -30,7 +30,9 @@ $required = @(
     '.service/i18n/nexroute-services-state.ps1',
     '.service/i18n/nexroute-services-network.ps1',
     '.service/i18n/nexroute-services-runtime.ps1',
-    '.service/i18n/nexroute-services-diagnostics.ps1'
+    '.service/i18n/nexroute-services-diagnostics.ps1',
+    '.service/native/NexRoute.Notifier.exe',
+    '.service/next/nexroute-notifications.ps1'
 )
 foreach ($relativePath in $required) {
     if (-not (Test-Path -LiteralPath (Join-Path $root $relativePath) -PathType Leaf)) {
@@ -100,6 +102,20 @@ foreach ($token in @('releases/latest','NexRoute-backups','SHA-256 mismatch','ro
 $updatePage = Get-Content -LiteralPath (Join-Path $root '.service/i18n/nexroute-pages-update.ps1') -Raw
 if ($updatePage -notmatch '-Mode Menu') { throw 'Update Center UI is not connected to the updater menu.' }
 
+$runtimeExtensions = Get-Content -LiteralPath (Join-Path $root '.service/next/nexroute-runtime-extensions.ps1') -Raw
+if ($runtimeExtensions -notmatch [regex]::Escape('nexroute-notifications.ps1')) { throw 'Runtime loader does not load the notification broker.' }
+$notificationBroker = Get-Content -LiteralPath (Join-Path $root '.service/next/nexroute-notifications.ps1') -Raw
+foreach ($token in @('NexRoute.Notifier.exe','ConvertTo-NrNotificationBase64','Write-NrNotificationHistory','native-balloon','powershell-fallback')) {
+    if ($notificationBroker -notmatch [regex]::Escape($token)) { throw "Notification broker is missing package token: $token" }
+}
+$nativeNotifierPath = Join-Path $root '.service/native/NexRoute.Notifier.exe'
+$nativeNotifierFile = Get-Item -LiteralPath $nativeNotifierPath
+if ($nativeNotifierFile.Length -lt 4096) { throw "Native notifier executable is unexpectedly small: $($nativeNotifierFile.Length) bytes." }
+$nativeNotifierAssembly = [Reflection.AssemblyName]::GetAssemblyName($nativeNotifierPath)
+if ([string]$nativeNotifierAssembly.Name -ne 'NexRoute.Notifier') { throw "Unexpected native notifier assembly name: $($nativeNotifierAssembly.Name)" }
+$nativeNotifierSelfTest = Start-Process -FilePath $nativeNotifierPath -ArgumentList @('--self-test') -WorkingDirectory $root -WindowStyle Hidden -Wait -PassThru
+if ($nativeNotifierSelfTest.ExitCode -ne 0) { throw "Native notifier self-test failed with exit code $($nativeNotifierSelfTest.ExitCode)." }
+
 $strategyFiles = @(Get-ChildItem -LiteralPath $root -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat','nexroute.bat') })
 if ($strategyFiles.Count -ne 21) { throw "Expected 21 patched real strategies, got $($strategyFiles.Count)" }
 foreach ($strategy in $strategyFiles) {
@@ -160,6 +176,7 @@ Write-Host "NexRoute $expectedVersion extended package checks passed." -Foregrou
 Write-Host "Upstream SHA-256: $($upstreamLock.sha256)" -ForegroundColor Green
 Write-Host "Tracked patch targets: $($patches.Count)" -ForegroundColor Green
 Write-Host "Patched real strategies: $($strategyFiles.Count)" -ForegroundColor Green
+Write-Host "Native notifier: self-test passed, assembly $($nativeNotifierAssembly.Name), $($nativeNotifierFile.Length) bytes" -ForegroundColor Green
 Write-Host "Generated icon bytes: $iconSize" -ForegroundColor Green
 
 [pscustomobject]@{
@@ -173,4 +190,9 @@ Write-Host "Generated icon bytes: $iconSize" -ForegroundColor Green
     StrategyCount = $strategyFiles.Count
     ServiceCount = $services.Count
     IconBytes = $iconSize
+    ControlNodeExitCode = [int]$result.ControlNodeExitCode
+    NativeTrayExitCode = [int]$result.NativeTrayExitCode
+    NativeTraySha256 = [string]$result.NativeTraySha256
+    NativeNotifierExitCode = [int]$nativeNotifierSelfTest.ExitCode
+    NativeNotifierSha256 = (Get-FileHash -LiteralPath $nativeNotifierPath -Algorithm SHA256).Hash.ToLowerInvariant()
 }

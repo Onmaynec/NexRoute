@@ -23,58 +23,74 @@ export const docsPages: Record<string, DocPage> = {
   "getting-started": {
     slug: "getting-started",
     title: "Быстрый старт",
-    description: "Скачивание, распаковка и первый запуск NexRoute на Windows 10 или Windows 11 x64.",
+    description: "Проверка четырёх release assets, распаковка и первый запуск NexRoute 0.6.0.",
     sourceUrl: `${repo}/README.md`,
     sections: [
       {
         id: "requirements",
         title: "Перед началом",
         paragraphs: [
-          "NexRoute предназначен для Windows 10 x64 и Windows 11 x64. Для терминального интерфейса требуется Windows PowerShell 5.1 или более новая версия PowerShell.",
+          "NexRoute 0.6.0 предназначен для Windows 10 x64 и Windows 11 x64. Терминальный интерфейс поддерживает Windows PowerShell 5.1, а нативные desktop-компоненты компилируются без NuGet-зависимостей.",
         ],
         bullets: [
-          "Права администратора для установки и перезапуска службы.",
-          "curl.exe для отдельных функций Strategy Lab.",
-          "Доступ к GitHub Releases для онлайн-обновлений.",
-          "GitHub CLI нужен только для дополнительной проверки build provenance.",
+          "Права администратора для установки службы и управления WinDivert.",
+          "curl.exe для отдельных Strategy Lab probes.",
+          "Доступ к GitHub Releases для online update и первоначальной проверки assets.",
+          "GitHub CLI необязателен: package содержит pinned portable attestation verifier.",
         ],
       },
       {
         id: "download",
-        title: "1. Скачайте стабильный релиз",
+        title: "1. Скачайте полный релиз",
         paragraphs: [
-          "Используйте страницу Download или официальный GitHub Release. Основной релиз содержит ZIP-архив и соответствующий файл .sha256.",
+          "Берите все четыре файла из одного стабильного GitHub Release. ZIP и checksum недостаточны для полного validation trust-flow.",
         ],
+        code: {
+          language: "text",
+          title: "Release assets",
+          value:
+            "NexRoute-X.Y.Z-win-x64.zip\nNexRoute-X.Y.Z-win-x64.zip.sha256\nNexRoute-X.Y.Z-validation.json\nNexRoute-X.Y.Z-validation.md",
+        },
+      },
+      {
+        id: "verify",
+        title: "2. Проверьте происхождение",
+        paragraphs: [
+          "Portable verifier проверяет immutable release URLs, SHA-256 архива и GitHub artifact attestation каждого из четырёх subjects. После успеха validation report и digest-matched receipt устанавливаются в .service атомарно.",
+        ],
+        note:
+          "Импортированный validation JSON без matching local receipt остаётся attestation-not-verified и не считается доказательством релиза.",
       },
       {
         id: "extract",
-        title: "2. Полностью распакуйте архив",
+        title: "3. Полностью распакуйте архив",
         paragraphs: [
-          "Извлеките все файлы в новую отдельную папку. Не запускайте CMD- или BAT-файлы непосредственно из ZIP: такая схема не поддерживается.",
+          "Извлеките все файлы в новую отдельную папку. Не запускайте CMD- или BAT-файлы непосредственно из ZIP.",
         ],
       },
       {
         id: "launch",
-        title: "3. Запустите NexRoute",
+        title: "4. Запустите NexRoute",
         paragraphs: [
-          "Откройте NexRoute.lnk, nexroute.bat или service.bat от имени администратора. Windows Terminal рекомендуется, но классический cmd.exe также поддерживается через PowerShell renderer.",
+          "Откройте NexRoute.lnk, nexroute.bat или service.bat от имени администратора. Tray launcher использует NexRoute.Tray.exe первым и сохраняет PowerShell fallback.",
         ],
       },
       {
         id: "configure",
-        title: "4. Выберите стратегию и профили",
+        title: "5. Настройте runtime",
         bullets: [
           "Выберите стратегию и установите её как службу.",
-          "Откройте [14] SERVICE MATRIX, чтобы включить нужные сервисы.",
-          "Используйте [12] STRATEGY LAB, если нужно сравнить доступные варианты.",
-          "Откройте [6] CHECK UPDATES для настройки stable-updater.",
+          "Откройте [14] SERVICE MATRIX и включите только нужные сервисы.",
+          "Используйте [12] STRATEGY LAB для измерения throughput, media и transport readiness.",
+          "Через tray откройте Dashboard и Validation Viewer.",
+          "Откройте [6] CHECK UPDATES для stable updater и rollback.",
         ],
       },
       {
         id: "diagnostics-command",
-        title: "Диагностический отчёт",
+        title: "Privacy-safe Diagnostics",
         paragraphs: [
-          "Privacy-safe Diagnostics экспортирует версию, включённые ID сервисов, статусы источников, hashes runtime-файлов и состояние службы. Содержимое пользовательских списков не копируется.",
+          "Отчёт экспортирует версию, ID включённых сервисов, source statuses, runtime hashes и service state без содержимого пользовательских списков.",
         ],
         code: {
           language: "powershell",
@@ -86,17 +102,18 @@ export const docsPages: Record<string, DocPage> = {
     ],
     next: { label: "Service Matrix", href: "/docs/service-matrix" },
   },
+
   "service-matrix": {
     slug: "service-matrix",
     title: "Service Matrix",
-    description: "Как NexRoute формирует отдельные доменные, IP- и транспортные группы для выбранных сервисов.",
+    description: "Сервисные профили, address families и изолированные worker scopes.",
     sourceUrl: `${repo}/docs/SERVICES.md`,
     sections: [
       {
         id: "overview",
         title: "Что делает матрица",
         paragraphs: [
-          "Service Matrix — источник доменных, IP- и транспортных фильтров для 21 настоящей стратегии Flowseal. Матрица содержит 15 профилей и применяет только правила включённых сервисов.",
+          "Service Matrix содержит 15 профилей и формирует domain, IP и transport scope только для включённых сервисов. Эти scopes используются при создании отдельных per-service winws workers.",
         ],
       },
       {
@@ -104,166 +121,185 @@ export const docsPages: Record<string, DocPage> = {
         title: "Поля профиля",
         bullets: [
           "domains — домены сервиса.",
-          "testTargets — реальные HTTP/TLS endpoints для Strategy Lab.",
+          "testTargets — web, API, CDN, gateway, media и update endpoints.",
           "tcpPorts и udpPorts — транспортные порты перехвата.",
-          "resolveHosts — хосты для DNS-разрешения в IPv4 /32.",
-          "ipCidrs и ipSources — статические и удалённые IPv4 CIDR.",
+          "resolveHosts — имена для A/AAAA resolution.",
+          "ipCidrs и ipSources — IPv4 и IPv6 literals/CIDR из статических и проверяемых внешних источников.",
         ],
       },
       {
         id: "shared-domains",
         title: "Общие домены",
         paragraphs: [
-          "Контроллер строит карту владения доменами. Общий домен остаётся включённым, пока активен хотя бы один использующий его профиль, и попадает в исключения только после отключения всех владельцев.",
+          "Контроллер строит карту владельцев. Общий домен остаётся включённым, пока активен хотя бы один профиль-владелец, и попадает в exclusions только после отключения всех владельцев.",
         ],
       },
       {
-        id: "runtime",
-        title: "Изолированные runtime-группы",
+        id: "workers",
+        title: "Изолированные workers",
         paragraphs: [
-          "Для каждого включённого профиля создаются отдельные hostlist/IPSet-файлы и собственные TCP/UDP --new-группы. Это предотвращает применение широких портов одного приложения к адресам всех остальных сервисов.",
+          "Supervisor создаёт отдельный worker plan для каждого service assignment. Worker получает собственные PID file, log, service identity, strategy и filter scope. Duplicate capture scopes отклоняются до запуска.",
         ],
+        bullets: [
+          "Сбой одного сервиса не завершает остальные процессы.",
+          "IPv4-only, IPv6-only и dual-stack plans формируются отдельно.",
+          "Failover заменяет только затронутый worker.",
+        ],
+      },
+      {
+        id: "runtime-files",
+        title: "Runtime-файлы",
         code: {
           language: "text",
-          title: "Создаваемые файлы",
+          title: "Generated state",
           value:
-            "lists/list-service-<id>.txt\nlists/ipset-service-<id>.txt\nlists/list-services-enabled.txt\nlists/ipset-services-user.txt\n.service/services-runtime.cmd",
+            "lists/list-service-<id>.txt\nlists/ipset-service-<id>.txt\n.service/services-runtime.cmd\n.service/service-workers.json\n.service/worker-state.json",
         },
       },
       {
         id: "state",
         title: "Состояние и восстановление",
         paragraphs: [
-          "services-state.json использует schema v2. Старое плоское состояние мигрируется с backup, а повреждённый файл сохраняется отдельно и заменяется валидными значениями по умолчанию.",
+          "services-state.json использует schema v2. Старое плоское состояние мигрируется с backup, повреждённый JSON сохраняется отдельно, а worker/failover history восстанавливается после restart.",
         ],
-        code: {
-          language: "json",
-          title: "services-state.json",
-          value:
-            '{\n  "schemaVersion": 2,\n  "updatedAtUtc": "...",\n  "services": {\n    "youtube": true,\n    "discord": true\n  }\n}',
-        },
       },
       {
         id: "cache",
         title: "Внешние IP-источники",
         paragraphs: [
-          "Успешно проверенные данные сохраняются в .service/cache/ip-sources. Максимальный возраст last-known-good кэша — 14 дней. Статусы fresh, cache и failed записываются в .service/ip-source-status.json.",
+          "Проверенные данные сохраняются в .service/cache/ip-sources. Last-known-good cache ограничен 14 днями, а fresh/cache/failed status записывается в .service/ip-source-status.json.",
         ],
       },
     ],
     previous: { label: "Быстрый старт", href: "/docs/getting-started" },
     next: { label: "Strategy Lab", href: "/docs/strategy-lab" },
   },
+
   "strategy-lab": {
     slug: "strategy-lab",
     title: "Strategy Lab",
-    description: "Последовательная проверка доступных стратегий в текущей сети.",
+    description: "Behavioral measurements, history, scoring и deterministic failover.",
     sourceUrl: `${repo}/README.md`,
     sections: [
       {
         id: "purpose",
-        title: "Не угадывайте — проверяйте",
+        title: "Измерения вместо ложного успеха",
         paragraphs: [
-          "Strategy Lab запускается через пункт [12] STRATEGY LAB и помогает последовательно сравнить реальные стратегии. Результат зависит от провайдера, региона, DNS, версии приложений и текущей конфигурации сети.",
+          "Strategy Lab сравнивает стратегии в текущей сети и сохраняет measurement contract в history. Результаты описывают только реально выполненные probes.",
         ],
       },
       {
-        id: "targets",
-        title: "Что проверяется",
+        id: "download",
+        title: "Download throughput",
         paragraphs: [
-          "Профили Service Matrix содержат testTargets для web, API, CDN, media, gateway и update endpoints. Strategy Lab использует эти цели для практической проверки доступности.",
+          "Probe передаёт configurable multi-megabyte payload и записывает transferred bytes, elapsed time и measured Mbps. Размер HTTP metadata не используется как скорость загрузки.",
         ],
       },
       {
-        id: "workflow",
-        title: "Рекомендуемый порядок",
+        id: "media",
+        title: "YouTube media readiness",
+        paragraphs: [
+          "Проверка загружает HLS master manifest, variant playlist и media segment. Ответ generate_204 сам по себе не считается доказательством playback readiness.",
+        ],
+      },
+      {
+        id: "realtime",
+        title: "Discord и Telegram",
+        paragraphs: [
+          "TCP/TLS reachability и UDP transport readiness показываются отдельно. HTTP latency не называется call MOS или voice quality без реальной authenticated call session.",
+        ],
+      },
+      {
+        id: "dashboard",
+        title: "Native Dashboard",
+        paragraphs: [
+          "NexRoute.Dashboard.exe читает ту же .service/history/strategy-lab, что и терминальный интерфейс. Доступны metric/strategy filters, zoom, tooltips, themes и accent colors.",
+        ],
+      },
+      {
+        id: "failover",
+        title: "Deterministic failover",
         bullets: [
-          "Убедитесь, что архив полностью распакован и NexRoute запущен с правами администратора.",
-          "Включите нужные профили через Service Matrix.",
-          "Откройте Strategy Lab и дождитесь последовательного прохождения тестов.",
-          "Сравните статусы и задержку, затем выберите подходящий вариант.",
-          "Повторите проверку после смены провайдера, DNS или существенного изменения сети.",
+          "Consecutive-failure threshold защищает от одиночного сбоя.",
+          "Recovery threshold подтверждает возврат сервиса.",
+          "Cooldown и maximum-switch limits предотвращают loop.",
+          "Synthetic healthy, degraded и failed probes тестируют весь контракт offline.",
         ],
       },
       {
         id: "limits",
         title: "Как читать результат",
         paragraphs: [
-          "Успешный тест показывает, что конкретная цель ответила в момент проверки. Он не гарантирует одинаковый результат для всех приложений, медиареле или будущих сетевых условий.",
+          "Synthetic workers и measurement fixtures подтверждают логику, но не доказывают bypass у конкретного ISP. Live IPv4/IPv6 behavior остаётся environment-dependent.",
         ],
         note:
-          "Не описывайте отдельную стратегию как универсальную. NexRoute намеренно предоставляет несколько вариантов и инструменты сравнения.",
+          "Не описывайте одну стратегию как универсальную: итог зависит от провайдера, региона, DNS, приложения и текущего DPI.",
       },
     ],
     previous: { label: "Service Matrix", href: "/docs/service-matrix" },
     next: { label: "Обновления и rollback", href: "/docs/updates" },
   },
+
   updates: {
     slug: "updates",
     title: "Обновления и rollback",
-    description: "Stable-only обновления с проверкой SHA-256, полным backup и автоматическим восстановлением.",
+    description: "Stable-only transaction с checksum, attestations, health check и rollback.",
     sourceUrl: `${repo}/docs/UPDATES.md`,
     sections: [
       {
         id: "flow",
         title: "Порядок безопасного обновления",
         bullets: [
-          "Updater запрашивает только последний стабильный GitHub Release.",
-          "Draft и prerelease-релизы отклоняются.",
-          "Для версии X.Y.Z ожидаются ZIP и соответствующий .sha256.",
-          "SHA-256 сравнивается с реально загруженным архивом.",
-          "Проверяются версия, обязательные файлы, 21 стратегия и 23 patch records.",
-          "Перед заменой файлов создаётся полная резервная копия.",
-          "При ошибке предыдущая версия автоматически восстанавливается.",
+          "Updater принимает только последний stable GitHub Release; draft и prerelease отклоняются.",
+          "Для X.Y.Z требуются ZIP, checksum, validation JSON и validation Markdown.",
+          "Проверяются immutable official URLs, SHA-256 package и attestations всех четырёх subjects.",
+          "Signed JSON проверяется по schema, product, version, status и unique check IDs.",
+          "Перед replacement создаётся полная резервная копия.",
+          "Detached helper останавливает процессы, заменяет locked files и запускает новую версию.",
+          "Failure verification, extraction, replacement, first launch или health policy запускает rollback.",
+        ],
+      },
+      {
+        id: "verifier",
+        title: "Portable verifier",
+        paragraphs: [
+          "Проверка artifact attestation не требует заранее установленного gh. Pinned GitHub CLI archive загружается или берётся из integrity-checked cache и запускается с repository/signer constraints.",
         ],
       },
       {
         id: "automatic",
         title: "Автоматический режим",
         paragraphs: [
-          "Автообновление включается через [6] CHECK UPDATES или nexroute-update.cmd. Повторная автоматическая проверка выполняется не чаще одного раза в 24 часа. Сетевой сбой не блокирует запуск текущей версии.",
+          "Auto update check имеет 24-часовой cooldown и не блокирует запуск текущей версии при сетевой ошибке. Установка выполняется только после пользовательского подтверждения.",
         ],
-        code: {
-          language: "text",
-          title: "Состояние updater",
-          value: ".service/update-state.json",
-        },
-      },
-      {
-        id: "manual",
-        title: "Ручной Update Center",
-        code: { language: "text", title: "Launcher", value: "nexroute-update.cmd" },
-        bullets: [
-          "Включить или выключить автоматические обновления.",
-          "Немедленно проверить и установить стабильный релиз.",
-          "Откатиться к последней резервной копии.",
-        ],
+        code: { language: "text", title: "Updater state", value: ".service/update-state.json" },
       },
       {
         id: "preserved",
         title: "Что сохраняется",
         bullets: [
-          "Язык интерфейса и Service Matrix state.",
-          "update-state.json и кеш IP-источников.",
-          "Флаги Update Watch и Game Filter.",
-          "Пользовательские domain/IPSet-файлы из lists.",
+          "Язык интерфейса, Service Matrix state и UI settings.",
+          "update-state.json и verified caches.",
+          "Пользовательские domain/IPSet-файлы.",
+          "Strategy Lab history и diagnostics history.",
         ],
       },
       {
-        id: "backups",
-        title: "Резервные копии",
+        id: "migration",
+        title: "Migration и rollback fixtures",
         paragraphs: [
-          "Backup-наборы создаются в соседней директории NexRoute-backups. Хранятся последние четыре набора. Перед ручным rollback создаётся дополнительная safety-копия текущей установки.",
+          "Automated acceptance tests покрывают переходы 0.4.1 -> 0.6.0 и 0.5.0 -> 0.6.0, включая восстановление точной предыдущей версии.",
         ],
       },
     ],
     previous: { label: "Strategy Lab", href: "/docs/strategy-lab" },
     next: { label: "Проверка релиза", href: "/docs/security" },
   },
+
   security: {
     slug: "security",
     title: "Проверка релиза",
-    description: "Проверка SHA-256 и GitHub build provenance для официальных release assets.",
+    description: "Четыре attested assets, signed validation report и локальный trust receipt.",
     sourceUrl: `${repo}/docs/ATTESTATIONS.md`,
     sections: [
       {
@@ -272,23 +308,21 @@ export const docsPages: Record<string, DocPage> = {
         code: {
           language: "text",
           title: "Release files",
-          value: "NexRoute-X.Y.Z-win-x64.zip\nNexRoute-X.Y.Z-win-x64.zip.sha256",
+          value:
+            "NexRoute-X.Y.Z-win-x64.zip\nNexRoute-X.Y.Z-win-x64.zip.sha256\nNexRoute-X.Y.Z-validation.json\nNexRoute-X.Y.Z-validation.md",
         },
         paragraphs: [
-          "Официальный релиз содержит архив и checksum-файл. Оба assets получают GitHub artifact attestation до публикации Release.",
+          "Все четыре subjects включены в одну GitHub artifact attestation до публикации Release.",
         ],
       },
       {
         id: "attestation",
         title: "Проверка build provenance",
-        paragraphs: [
-          "Успешная проверка подтверждает, что digest загруженного файла присутствует в подписанной attestation, созданной workflow репозитория Onmaynec/NexRoute.",
-        ],
         code: {
           language: "powershell",
           title: "GitHub CLI",
           value:
-            "gh attestation verify .\\NexRoute-X.Y.Z-win-x64.zip --repo Onmaynec/NexRoute\ngh attestation verify .\\NexRoute-X.Y.Z-win-x64.zip.sha256 --repo Onmaynec/NexRoute",
+            "gh attestation verify .\\NexRoute-X.Y.Z-win-x64.zip --repo Onmaynec/NexRoute\ngh attestation verify .\\NexRoute-X.Y.Z-win-x64.zip.sha256 --repo Onmaynec/NexRoute\ngh attestation verify .\\NexRoute-X.Y.Z-validation.json --repo Onmaynec/NexRoute\ngh attestation verify .\\NexRoute-X.Y.Z-validation.md --repo Onmaynec/NexRoute",
         },
       },
       {
@@ -300,6 +334,24 @@ export const docsPages: Record<string, DocPage> = {
           value:
             "$expected = (Get-Content .\\NexRoute-X.Y.Z-win-x64.zip.sha256 -Raw).Split()[0].Trim().ToLowerInvariant()\n$actual = (Get-FileHash .\\NexRoute-X.Y.Z-win-x64.zip -Algorithm SHA256).Hash.ToLowerInvariant()\nif ($actual -ne $expected) { throw 'SHA-256 mismatch.' }",
         },
+      },
+      {
+        id: "viewer",
+        title: "Validation Viewer",
+        paragraphs: [
+          "NexRoute.Validation.exe показывает каждый check, evidence и limitation. Wrong product/version, duplicate IDs, unknown statuses и inconsistent overallStatus отклоняются до display.",
+          "Imported JSON остаётся informational до появления matching .attestation-receipt.json с тем же report SHA-256.",
+        ],
+      },
+      {
+        id: "statuses",
+        title: "Статусы и release gate",
+        bullets: [
+          "passed — automated evidence подтверждено.",
+          "experimental — automated contract есть, но требуется live machine/session evidence.",
+          "unsupported — capability недоступна в проверенной среде.",
+          "failed required check — publication блокируется.",
+        ],
       },
       {
         id: "inside",
@@ -315,17 +367,18 @@ export const docsPages: Record<string, DocPage> = {
         id: "trust-boundary",
         title: "Граница доверия",
         paragraphs: [
-          "Artifact attestation доказывает происхождение опубликованного архива и его digest, но не является Windows Authenticode-подписью отдельных EXE, DLL или драйвера.",
+          "Artifact attestation связывает digest с repository workflow и source commit, но не заменяет Windows Authenticode для отдельных EXE, DLL и драйвера.",
         ],
       },
     ],
     previous: { label: "Обновления и rollback", href: "/docs/updates" },
     next: { label: "Диагностика", href: "/docs/diagnostics" },
   },
+
   diagnostics: {
     slug: "diagnostics",
-    title: "Диагностика",
-    description: "Privacy-safe отчёт о runtime, профилях, источниках и состоянии службы.",
+    title: "Диагностика и repair",
+    description: "Privacy-safe evidence и обратимые repair transactions.",
     sourceUrl: `${repo}/README.md`,
     sections: [
       {
@@ -340,13 +393,27 @@ export const docsPages: Record<string, DocPage> = {
       },
       {
         id: "included",
-        title: "Что входит в отчёт",
+        title: "Что входит",
         bullets: [
-          "Версия NexRoute и включённые ID сервисов.",
-          "Количество сгенерированных записей.",
-          "Статусы IP-источников.",
-          "SHA-256 runtime-файлов.",
-          "Версия Windows/PowerShell и состояние службы.",
+          "Версия и включённые service IDs.",
+          "Generated runtime counts и source statuses.",
+          "SHA-256 runtime files.",
+          "Windows/PowerShell environment и service state.",
+          "Evidence отдельных firewall, VPN, WinDivert, route, DNS и adapter findings.",
+        ],
+      },
+      {
+        id: "repair",
+        title: "Repair contract",
+        paragraphs: [
+          "Перед изменением создаётся точный snapshot. Transaction считается committed только после verification; failure восстанавливает firewall rules, metrics, DNS addresses, services или созданные exclusions.",
+        ],
+      },
+      {
+        id: "unknown",
+        title: "Неизвестные security products",
+        paragraphs: [
+          "Нераспознанный продукт отображается как unknown. Отсутствие известного конфликта не превращается в утверждение о совместимости.",
         ],
       },
       {
@@ -354,114 +421,136 @@ export const docsPages: Record<string, DocPage> = {
         title: "Что не включается",
         bullets: [
           "Имена пользователей.",
-          "Содержимое пользовательских доменных/IP-списков.",
-          "Внешние локальные пути.",
-        ],
-      },
-      {
-        id: "issues",
-        title: "Перед созданием Issue",
-        paragraphs: [
-          "Сначала проверьте Strategy Lab и состояние службы. Затем приложите диагностический отчёт и опишите Windows, провайдера, DNS и наблюдаемое поведение без публикации чувствительных данных.",
+          "Содержимое пользовательских domain/IP lists.",
+          "Внешние локальные пути и secrets.",
         ],
       },
     ],
     previous: { label: "Проверка релиза", href: "/docs/security" },
     next: { label: "Архитектура", href: "/docs/architecture" },
   },
+
   architecture: {
     slug: "architecture",
     title: "Архитектура и сборка",
-    description: "Открытая структура проекта, locked upstream и воспроизводимая online/offline сборка.",
+    description: "Supervisor, native tools, locked upstream и signed release gate.",
     sourceUrl: `${repo}/docs/ARCHITECTURE.md`,
     sections: [
       {
         id: "layers",
         title: "Основные слои",
         bullets: [
-          "Overlay с launcher-файлами, PowerShell renderer и Service Matrix controller.",
-          "Скрипты Build-NexRoute, Build-Release и Build-Package.",
-          "Pester-контракты Service Matrix, updater, upstream и release attestations.",
-          "Release workflow с SHA-256, online/offline rebuild и Sigstore-backed attestation.",
+          "Arrow-key Control Node и Service Matrix controller.",
+          "Per-service worker plans, supervisor и product worker host.",
+          "Strategy Lab probes, history и native Dashboard.",
+          "Native tray, notifier и Validation Viewer.",
+          "Transactional updater, portable verifier и attestation receipt.",
+          "Build-Package, package self-tests и signed validation report.",
+        ],
+      },
+      {
+        id: "native",
+        title: "Native Windows executables",
+        paragraphs: [
+          "Tray, Notifier, Dashboard и Validation Viewer компилируются напрямую из repository C# sources системным .NET Framework compiler. Build не использует NuGet или сетевой restore и не переписывает Dashboard fields перед compilation.",
         ],
       },
       {
         id: "upstream",
         title: "Locked upstream",
         paragraphs: [
-          "Декларативный .service/upstream-manifest.json закрепляет репозиторий, tag, asset, размер, SHA-256 и обязательную структуру Flowseal. Несовпадение останавливает сборку до упаковки NexRoute.",
+          "Declarative upstream manifest закрепляет Flowseal repository, tag, asset, size, SHA-256 и required paths. Несовпадение останавливает build до применения 23 tracked patch targets.",
         ],
       },
       {
         id: "build-online",
-        title: "Online build",
+        title: "Online build через verified cache",
         code: {
           language: "powershell",
           title: "Build-Release.ps1",
           value:
-            "pwsh ./scripts/Build-Release.ps1 `\n  -Version X.Y.Z `\n  -OutputDirectory ./artifacts `\n  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip",
+            "pwsh ./scripts/Build-Release.ps1 `\n  -Version 0.6.0 `\n  -OutputDirectory ./artifacts `\n  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip",
         },
       },
       {
         id: "build-offline",
-        title: "Offline rebuild",
+        title: "Полностью offline rebuild",
         code: {
           language: "powershell",
           title: "Build-Release.ps1",
           value:
-            "pwsh ./scripts/Build-Release.ps1 `\n  -Version X.Y.Z `\n  -OutputDirectory ./artifacts-offline `\n  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip",
+            "pwsh ./scripts/Build-Release.ps1 `\n  -Version 0.6.0 `\n  -OutputDirectory ./artifacts-offline `\n  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip",
         },
         note:
-          "Локальный upstream-файл обязан совпасть с locked SHA-256 и обязательной структурой. Совпадения имени недостаточно.",
+          "Offline package повторяет desktop, notification, viewer и provenance self-tests и обязан использовать тот же upstream digest.",
+      },
+      {
+        id: "release-gate",
+        title: "Release gate",
+        paragraphs: [
+          "Workflow проверяет source/Pester contracts, website build, online/offline package, native self-tests, notification fallback, validation trust states и package identities. Затем создаёт JSON/Markdown report, attests четыре subjects, проверяет их и только после этого публикует Release.",
+        ],
       },
     ],
     previous: { label: "Диагностика", href: "/docs/diagnostics" },
     next: { label: "Совместимость", href: "/docs/compatibility" },
   },
+
   compatibility: {
     slug: "compatibility",
     title: "Совместимость",
-    description: "Поддерживаемые версии Windows, терминалы и известные категории конфликтов.",
+    description: "Поддерживаемые Windows environments и честные live limitations.",
     sourceUrl: `${repo}/docs/COMPATIBILITY.md`,
     sections: [
       {
         id: "systems",
         title: "Поддерживаемые системы",
         bullets: [
-          "Windows 10 x64 — поддерживается.",
-          "Windows 11 x64 — поддерживается.",
+          "Windows 10 x64 — target platform.",
+          "Windows 11 x64 — target platform.",
           "Windows x86 — не поддерживается.",
-          "Windows ARM64 — не тестировалась.",
-          "Linux и macOS — не поддерживаются этой сборкой.",
+          "Windows ARM64 — не валидировалась.",
+          "Linux и macOS — package runtime не поддерживается.",
         ],
       },
       {
         id: "terminals",
-        title: "Терминалы",
+        title: "Терминалы и desktop session",
         bullets: [
-          "Windows Terminal — рекомендуется.",
-          "Классический cmd.exe — поддерживается через PowerShell renderer.",
-          "PowerShell console host — поддерживается.",
-          "Запуск BAT непосредственно из ZIP — не поддерживается.",
+          "Windows Terminal рекомендуется для Control Node.",
+          "Classic cmd.exe поддерживается через PowerShell renderer.",
+          "Interactive tray, toast и Dashboard требуют signed-in desktop session.",
+          "Запуск launchers непосредственно из ZIP не поддерживается.",
+        ],
+      },
+      {
+        id: "families",
+        title: "IPv4 и IPv6",
+        paragraphs: [
+          "NexRoute строит и запускает synthetic IPv4-only, IPv6-only и dual-stack workers, включая family-specific DNS/TCP probes. Это доказывает runtime contract, но не ISP-specific live bypass.",
         ],
       },
       {
         id: "conflicts",
         title: "Возможные конфликты",
         bullets: [
-          "Другие инструменты на WinDivert.",
-          "AdGuard и системные фильтры.",
-          "Killer, SmartByte и Intel Connectivity Network Service.",
-          "VPN-клиенты и корпоративные endpoint-фильтры.",
-          "Антивирусный карантин WinDivert.",
-          "Нестандартные proxy/DNS-настройки.",
+          "Параллельные WinDivert tools.",
+          "VPN и corporate endpoint filters.",
+          "AdGuard и системные traffic filters.",
+          "Killer, SmartByte и Intel Connectivity services.",
+          "Антивирусный quarantine WinDivert.",
+          "Нестандартные proxy, route и DNS settings.",
         ],
       },
       {
         id: "limits",
-        title: "Сетевые ограничения",
-        paragraphs: [
-          "Текущий runtime ориентирован на IPv4. CDN и медиареле могут менять адреса, а IPv6-only и отдельные peer-to-peer endpoints требуют отдельного расширения.",
+        title: "Что остаётся experimental",
+        bullets: [
+          "ISP-specific IPv4 DPI bypass.",
+          "Full live IPv6 bypass в сети пользователя.",
+          "Live DoH routing на конкретном Windows build/adapter.",
+          "Physical Ethernet/Wi-Fi arrival/removal transitions.",
+          "Visible toast и interactive Dashboard rendering.",
         ],
       },
     ],
@@ -470,12 +559,12 @@ export const docsPages: Record<string, DocPage> = {
 };
 
 export const docsOverviewCards = [
-  { title: "Быстрый старт", description: "Скачивание, распаковка и первый запуск.", href: "/docs/getting-started" },
-  { title: "Service Matrix", description: "Профили сервисов, состояние и runtime-группы.", href: "/docs/service-matrix" },
-  { title: "Strategy Lab", description: "Последовательная проверка доступных стратегий.", href: "/docs/strategy-lab" },
-  { title: "Обновления", description: "Stable updater, backup и автоматический rollback.", href: "/docs/updates" },
-  { title: "Проверка релиза", description: "SHA-256 и GitHub build provenance.", href: "/docs/security" },
-  { title: "Диагностика", description: "Privacy-safe отчёт о состоянии системы.", href: "/docs/diagnostics" },
-  { title: "Архитектура", description: "Locked upstream и воспроизводимая сборка.", href: "/docs/architecture" },
-  { title: "Совместимость", description: "Windows, терминалы и возможные конфликты.", href: "/docs/compatibility" },
+  { title: "Быстрый старт", description: "Четыре assets, verification и первый запуск.", href: "/docs/getting-started" },
+  { title: "Service Matrix", description: "Профили, address families и isolated workers.", href: "/docs/service-matrix" },
+  { title: "Strategy Lab", description: "Throughput, HLS и transport measurements.", href: "/docs/strategy-lab" },
+  { title: "Обновления", description: "Attestations, detached transaction и rollback.", href: "/docs/updates" },
+  { title: "Проверка релиза", description: "Signed reports, Viewer и trust receipt.", href: "/docs/security" },
+  { title: "Диагностика", description: "Evidence-backed findings и reversible repair.", href: "/docs/diagnostics" },
+  { title: "Архитектура", description: "Supervisor, native tools и release gate.", href: "/docs/architecture" },
+  { title: "Совместимость", description: "Windows targets и live limitations.", href: "/docs/compatibility" },
 ];

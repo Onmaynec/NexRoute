@@ -54,44 +54,44 @@ export const footerColumns = [
 export const summaryStats = [
   { value: "21", label: "стратегия" },
   { value: "15", label: "сервисных профилей" },
+  { value: "4", label: "attested release assets" },
   { value: "Windows", label: "10 и 11 x64" },
-  { value: "Open Source", label: "MIT License" },
 ];
 
 export const featureCards = [
   {
-    title: "Сервисы под вашим контролем",
+    title: "Изолированные сервисные workers",
     description:
-      "Включайте только нужные профили. NexRoute собирает совместимые доменные и IP-фильтры для выбранных сервисов.",
-    label: "15 готовых профилей",
+      "Каждый включённый сервис получает собственные PID, лог, стратегию и filter scope. Сбой одного worker не завершает остальные.",
+    label: "Per-service runtime",
     icon: SlidersHorizontal,
   },
   {
-    title: "Найдите рабочую стратегию",
+    title: "Измерения вместо догадок",
     description:
-      "Strategy Lab последовательно проверяет варианты и помогает сравнить результаты в текущей сети.",
-    label: "Тестирование и сравнение",
+      "Strategy Lab измеряет переданные байты и Mbps, загружает HLS media segment и разделяет TCP/TLS и UDP readiness.",
+    label: "Behavioral measurement",
     icon: FlaskConical,
   },
   {
-    title: "Обновления без риска",
+    title: "Детерминированный failover",
     description:
-      "Перед установкой NexRoute проверяет пакет, создаёт резервную копию и сохраняет пользовательские настройки.",
-    label: "Backup before install",
+      "Consecutive-failure, recovery, cooldown и maximum-switch thresholds предотвращают случайные переключения и циклы.",
+    label: "Synthetic fault injection",
     icon: RefreshCcw,
   },
   {
-    title: "Вернитесь к рабочей версии",
+    title: "Transactional updates",
     description:
-      "Если установка завершается ошибкой, предыдущая версия автоматически восстанавливается из резервной копии.",
-    label: "Automatic rollback",
+      "Detached updater проверяет checksum и attestations, сохраняет пользовательские данные, запускает health check и откатывает ошибку.",
+    label: "Backup · health · rollback",
     icon: History,
   },
   {
-    title: "Проверяемое происхождение сборки",
+    title: "Проверяемый релиз",
     description:
-      "SHA-256 и GitHub attestations позволяют проверить целостность файлов и связь релиза с исходным репозиторием.",
-    label: "SHA-256 · Build provenance",
+      "ZIP, checksum и два validation report входят в одну GitHub attestation, а Viewer показывает каждый check и limitation.",
+    label: "4 attested subjects",
     icon: ShieldCheck,
   },
 ];
@@ -100,80 +100,80 @@ export const detailedFeatures = [
   {
     id: "service-matrix",
     eyebrow: "SERVICE MATRIX",
-    title: "Профили сервисов вместо ручной настройки",
+    title: "Профили сервисов и отдельные capture scopes",
     description:
-      "Выбирайте нужные платформы, а NexRoute подготовит отдельные доменные и IP-списки и подключит их к совместимым стратегиям.",
-    bullets: ["15 готовых профилей", "Изолированные runtime-группы", "Сохранение состояния между запусками"],
+      "Выбирайте нужные платформы, а NexRoute подготовит отдельные доменные и IP-списки, TCP/UDP groups и non-overlapping worker scopes.",
+    bullets: ["15 готовых профилей", "Изолированные workers", "Restart-safe state"],
     href: "/docs/service-matrix",
     icon: SlidersHorizontal,
   },
   {
     id: "strategy-lab",
     eyebrow: "STRATEGY LAB",
-    title: "Проверка стратегий в одном интерфейсе",
+    title: "Проверка throughput, media и transport readiness",
     description:
-      "Последовательное тестирование помогает сравнить доступные варианты без ручного запуска каждого файла.",
-    bullets: ["21 реальная стратегия", "Понятные статусы", "Повторная проверка при изменении сети"],
+      "Лаборатория передаёт многомегабайтный payload, проверяет HLS manifest и segment и не выдаёт HTTP latency за качество звонка.",
+    bullets: ["21 реальная стратегия", "Bytes · elapsed · Mbps", "TCP/TLS и UDP отдельно"],
     href: "/docs/strategy-lab",
     icon: FlaskConical,
   },
   {
     id: "strategy-management",
-    eyebrow: "STRATEGY MANAGEMENT",
-    title: "Переключение без редактирования множества файлов",
+    eyebrow: "WORKER SUPERVISOR",
+    title: "Независимое управление сервисами",
     description:
-      "Переключайтесь между доступными конфигурациями через терминальное меню и устанавливайте выбранную стратегию как службу.",
-    bullets: ["Единый Control Node", "Установка и перезапуск службы", "Совместимость с профилями сервисов"],
+      "Supervisor запускает, останавливает и переключает только затронутый worker, сохраняя здоровые процессы и их PID.",
+    bullets: ["Unique PID и log", "Deterministic failover", "Synthetic health fixtures"],
     href: "/docs/getting-started",
     icon: Route,
   },
   {
     id: "diagnostics",
-    eyebrow: "DIAGNOSTICS",
-    title: "Privacy-safe отчёт о состоянии",
+    eyebrow: "DIAGNOSTICS & REPAIR",
+    title: "Evidence-backed findings и обратимые исправления",
     description:
-      "Получайте данные о версии, активных профилях, runtime-файлах, источниках и состоянии службы без копирования пользовательских списков.",
-    bullets: ["JSON-отчёт", "SHA-256 runtime-файлов", "Без имён пользователей и внешних путей"],
+      "Diagnostics отделяет факты от предположений, а repair transactions создают backup, проверяют результат и выполняют rollback.",
+    bullets: ["Firewall · VPN · WinDivert", "Privacy-safe report", "Unknown security products remain unknown"],
     href: "/docs/diagnostics",
     icon: Activity,
   },
   {
     id: "updates",
     eyebrow: "SAFE UPDATES",
-    title: "Проверка пакета до изменения установки",
+    title: "Четыре проверяемых release asset",
     description:
-      "Updater принимает только стабильный релиз, сверяет SHA-256, структуру архива, версию и обязательные provenance-файлы.",
-    bullets: ["Stable-only channel", "Полный backup", "Сохранение настроек"],
+      "Updater принимает immutable ZIP, checksum и два validation report, проверяет каждый attested subject и только затем начинает transaction.",
+    bullets: ["Stable-only channel", "Portable verifier", "Attestation receipt"],
     href: "/docs/updates",
     icon: Download,
   },
   {
     id: "rollback",
     eyebrow: "ROLLBACK",
-    title: "Автоматическое восстановление при ошибке",
+    title: "Автоматическое восстановление после failed health check",
     description:
-      "Если установка не завершается успешно, NexRoute возвращает предыдущую рабочую версию из backup-набора.",
-    bullets: ["Safety backup перед rollback", "До четырёх backup-наборов", "Ручной откат через Update Center"],
+      "Ошибка verification, extraction, replacement, first launch или post-update health возвращает предыдущую установку.",
+    bullets: ["Detached helper", "User data preservation", "0.4.1 и 0.5.0 migration fixtures"],
     href: "/docs/updates",
     icon: RefreshCcw,
   },
   {
     id: "verification",
     eyebrow: "RELEASE VERIFICATION",
-    title: "SHA-256 и GitHub build provenance",
+    title: "Signed validation без ложных hardware claims",
     description:
-      "Официальные assets можно связать с release workflow, репозиторием и исходным commit через Sigstore-backed attestation.",
-    bullets: ["ZIP и checksum asset", "Self-verification до публикации", "Upstream lock и patch report внутри архива"],
+      "Validation Viewer проверяет schema, product, version, check IDs, statuses и overall consistency. Experimental и unsupported остаются ограничениями.",
+    bullets: ["Digest-matched receipt", "Required failures block release", "JSON и Markdown reports"],
     href: "/docs/security",
     icon: ShieldCheck,
   },
   {
     id: "architecture",
     eyebrow: "OPEN SOURCE",
-    title: "Открытая архитектура и процесс сборки",
+    title: "Воспроизводимый online и offline build",
     description:
-      "Код проекта, документация, release workflows и контракты сборки доступны для изучения на GitHub.",
-    bullets: ["MIT License", "Публичный changelog", "Воспроизводимая online/offline сборка"],
+      "Код, workflows, immutable upstream identity, patch report и package self-tests доступны в репозитории.",
+    bullets: ["MIT License", "23 tracked patch targets", "Native binaries compiled without NuGet"],
     href: "/docs/architecture",
     icon: Blocks,
   },
