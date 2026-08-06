@@ -1,4 +1,4 @@
-Describe 'NexRoute 0.6.2 Windows launcher and updater hotfix' {
+Describe 'NexRoute 0.6.3 Windows launcher and updater regression' {
     BeforeAll {
         $root = Split-Path -Parent $PSScriptRoot
         $script:service = Get-Content -LiteralPath (Join-Path $root 'overlay/service.bat') -Raw
@@ -39,7 +39,7 @@ Describe 'NexRoute 0.6.2 Windows launcher and updater hotfix' {
 
     It 'executes every public launcher from a Cyrillic path in the Windows package gate' {
         foreach ($token in @(
-            'NexRoute 0.6.2 Hot Fix Тест',
+            'NexRoute 0.6.3 Strategy Refresh Тест',
             'service.bat',
             'nexroute.bat',
             'nexroute-update.cmd',
@@ -57,7 +57,7 @@ Describe 'NexRoute 0.6.2 Windows launcher and updater hotfix' {
     }
 
     It 'accepts a representative path with spaces and Cyrillic characters' {
-        $candidate = 'C:\Users\Тест Пользователь\Downloads\NexRoute-0.6.2-win-x64'
+        $candidate = 'C:\Users\Тест Пользователь\Downloads\NexRoute-0.6.3-win-x64'
         { [System.IO.Path]::GetFullPath($candidate) } | Should -Not -Throw
     }
 
