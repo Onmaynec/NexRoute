@@ -26,6 +26,10 @@ $requiredTargets = @(
     'YouTubeImage',
     'YouTubeVideoRedirect'
 )
+$requiredControls = @(
+    'GoogleMain',
+    'CloudflareWeb'
+)
 
 if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
     throw "Strategy Lab evidence log is missing: $Path"
@@ -105,23 +109,40 @@ $evaluations = New-Object 'System.Collections.Generic.List[object]'
 foreach ($strategy in $strategies) {
     $targetMap = @{}
     foreach ($target in @($strategy.targets)) { $targetMap[[string]$target.target] = $target }
+    $controlMap = @{}
+    foreach ($control in @($strategy.controls)) { $controlMap[[string]$control.target] = $control }
 
-    $missing = @($requiredTargets | Where-Object { -not $targetMap.ContainsKey($_) })
-    $failed = New-Object 'System.Collections.Generic.List[string]'
+    $missingTargets = @($requiredTargets | Where-Object { -not $targetMap.ContainsKey($_) })
+    $failedTargets = New-Object 'System.Collections.Generic.List[string]'
     foreach ($targetName in $requiredTargets) {
         if (-not $targetMap.ContainsKey($targetName)) { continue }
         $result = $targetMap[$targetName]
         if ([string]$result.http -ne 'OK' -or [string]$result.tls12 -ne 'OK' -or [string]$result.tls13 -ne 'OK') {
-            $failed.Add($targetName)
+            $failedTargets.Add($targetName)
         }
     }
 
+    $missingControls = @($requiredControls | Where-Object { -not $controlMap.ContainsKey($_) })
+    $failedControls = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($controlName in $requiredControls) {
+        if (-not $controlMap.ContainsKey($controlName)) { continue }
+        $result = $controlMap[$controlName]
+        if ([string]$result.http -ne 'OK' -or [string]$result.tls12 -ne 'OK' -or [string]$result.tls13 -ne 'OK') {
+            $failedControls.Add($controlName)
+        }
+    }
+
+    $targetsComplete = ($missingTargets.Count -eq 0)
+    $controlsHealthy = ($missingControls.Count -eq 0 -and $failedControls.Count -eq 0)
     $evaluations.Add([pscustomobject]@{
         strategy = [string]$strategy.strategy
-        complete = ($missing.Count -eq 0)
-        passed = ($missing.Count -eq 0 -and $failed.Count -eq 0)
-        missingTargets = $missing
-        failedTargets = @($failed.ToArray())
+        complete = $targetsComplete
+        controlsHealthy = $controlsHealthy
+        passed = ($targetsComplete -and $failedTargets.Count -eq 0 -and $controlsHealthy)
+        missingTargets = $missingTargets
+        failedTargets = @($failedTargets.ToArray())
+        missingControls = $missingControls
+        failedControls = @($failedControls.ToArray())
         targets = @($strategy.targets)
         controls = @($strategy.controls)
     })
@@ -129,12 +150,27 @@ foreach ($strategy in $strategies) {
 
 $winner = @($evaluations | Where-Object { $_.passed } | Select-Object -First 1)
 if ($winner.Count -ne 1) {
-    $best = @($evaluations | Sort-Object @{ Expression = { @($_.failedTargets).Count + @($_.missingTargets).Count } }, strategy | Select-Object -First 1)
+    $best = @(
+        $evaluations |
+            Sort-Object @{ Expression = {
+                @($_.failedTargets).Count +
+                @($_.missingTargets).Count +
+                @($_.failedControls).Count +
+                @($_.missingControls).Count
+            } }, strategy |
+            Select-Object -First 1
+    )
     $detail = if ($best.Count -eq 1) {
-        $problems = @(@($best[0].missingTargets) + @($best[0].failedTargets) | Sort-Object -Unique)
-        " Closest strategy '$($best[0].strategy)' still fails or misses: $($problems -join ', ')."
+        $targetProblems = @(@($best[0].missingTargets) + @($best[0].failedTargets) | Sort-Object -Unique)
+        $controlProblems = @(@($best[0].missingControls) + @($best[0].failedControls) | Sort-Object -Unique)
+        $parts = New-Object 'System.Collections.Generic.List[string]'
+        if ($targetProblems.Count -gt 0) { $parts.Add("critical targets: $($targetProblems -join ', ')") }
+        if ($controlProblems.Count -gt 0) { $parts.Add("network controls: $($controlProblems -join ', ')") }
+        if ($parts.Count -gt 0) {
+            " Closest strategy '$($best[0].strategy)' still fails or misses $($parts -join '; ')."
+        } else { '' }
     } else { '' }
-    throw "NexRoute 0.6.3 live release gate failed: no strategy passed HTTP, TLS 1.2 and TLS 1.3 for all seven critical Discord/YouTube targets.$detail"
+    throw "NexRoute 0.6.3 live release gate failed: no strategy passed HTTP, TLS 1.2 and TLS 1.3 for all seven critical Discord/YouTube targets with healthy GoogleMain and CloudflareWeb controls.$detail"
 }
 
 $winningStrategy = $winner[0]
@@ -150,6 +186,7 @@ $evidence = [ordered]@{
     verifiedUtc = [DateTime]::UtcNow.ToString('o')
     strategy = [string]$winningStrategy.strategy
     requiredTargets = $requiredTargets
+    requiredControls = $requiredControls
     targets = @($winningStrategy.targets)
     controls = @($winningStrategy.controls)
     parsedStrategyCount = $strategies.Count
