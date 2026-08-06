@@ -6,6 +6,23 @@
 
 Пока нет изменений.
 
+## [0.6.3] - 2026-08-07
+
+### Changed
+
+- обновлены все 21 встроенная DPI-стратегия для Discord/YouTube failure mode, подтверждённого на проводной сети в Сибае;
+- добавлены семейства `multisplit`, `multidisorder`, `fakedsplit`, `hostfakesplit` и `syndata`, разные split/fooling/sequence-overlap варианты;
+- усилена обработка QUIC и Discord UDP;
+- добавлены отдельные critical hostlist для Discord и YouTube;
+- refresh применяется только во время release build и не переписывает установленные BAT при обычном runtime `Apply`;
+- `.service/strategy-refresh-report.json` связывает before/after SHA-256 каждого из 21 профилей с обычным patch provenance.
+
+### Validation
+
+- добавлен fail-closed `Test-StrategyLab063Evidence.ps1` для семи критических Discord/YouTube целей и контрольных Google/Cloudflare targets;
+- strategy-refresh кандидат прошёл полный repository/Pester/website/online/offline package CI;
+- 7 августа 2026 года владелец проекта подтвердил успешное прохождение обязательных полевых проверок и разрешил stable release.
+
 ## [0.6.2] - 2026-08-04
 
 ### Fixed

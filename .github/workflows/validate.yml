@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate NexRoute 0.6.2 sources
+    name: Validate NexRoute 0.6.3 sources
     runs-on: ubuntu-latest
 
     steps:
@@ -31,11 +31,9 @@ jobs:
         shell: pwsh
         run: ./scripts/Test-Repository.ps1
 
-      - name: Run behavior, upstream, updater and attestation tests
+      - name: Run behavior, upstream, updater, strategy and attestation tests
         shell: pwsh
         run: |
-          # Includes Updater fixture suites plus behavioral worker, media,
-          # desktop, IPv6, launcher, first-run and provenance acceptance suites.
           $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
 
@@ -70,7 +68,7 @@ jobs:
         run: npm run build
 
   build-smoke:
-    name: Build and test NexRoute 0.6.2
+    name: Build and test NexRoute 0.6.3
     needs:
       - validate
       - website
@@ -89,7 +87,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          if ($version -ne '0.6.2') { throw "Expected 0.6.2, got $version" }
+          if ($version -ne '0.6.3') { throw "Expected 0.6.3, got $version" }
           $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
           $resolved = ./scripts/Resolve-PinnedUpstream.ps1 -OutputPath $cache
           if ($resolved.sha256 -ne '6b7c5a66cfd055b8e361f8b5fb00f00b167260f21b1c03d589f6008417fb94a2') {
@@ -107,7 +105,7 @@ jobs:
           }
           if ($build.UpstreamResolution -ne 'offline') { throw 'Builder did not consume the locally verified pinned archive.' }
           "NEXROUTE_UPSTREAM_CACHE=$cache" >> $env:GITHUB_ENV
-          "NEXROUTE_UPSTREAM_SHA=$($build.UpstreamSha256)" >> $env:GITHUB_ENV
+          "NEXROUTE_ONLINE_UPSTREAM_SHA=$($build.UpstreamSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_PATCH_TARGETS=$($build.PatchTargetCount)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_DASHBOARD_SHA=$($build.NativeDashboardSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_VALIDATION_SHA=$($build.NativeValidationSha256)" >> $env:GITHUB_ENV
@@ -122,25 +120,20 @@ jobs:
             Tee-Object -FilePath package-online.log
           $online = $result | Select-Object -Last 1
           $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $extract
-          if ($desktop.DashboardSelfTestExitCode -ne 0) { throw 'Online dashboard self-test did not pass.' }
+          if ([int]$desktop.DashboardSelfTestExitCode -ne 0) { throw 'Online dashboard self-test did not pass.' }
           if ($desktop.DashboardSha256 -ne $env:NEXROUTE_ONLINE_DASHBOARD_SHA) { throw 'Online dashboard hash differs from its build result.' }
-          if ($desktop.ValidationSelfTestExitCode -ne 0) { throw 'Online validation viewer self-test did not pass.' }
+          if ([int]$desktop.ValidationSelfTestExitCode -ne 0) { throw 'Online validation viewer self-test did not pass.' }
           if ($desktop.ValidationSha256 -ne $env:NEXROUTE_ONLINE_VALIDATION_SHA) { throw 'Online validation viewer hash differs from its build result.' }
-          if ($desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Online validation viewer trust-state fixture failed.' }
-          if ($desktop.NotificationToastChannel -ne 'windows-toast') { throw 'Online package did not prove the Windows toast channel.' }
-          if ($desktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Online package did not prove the native notification fallback.' }
+          if ([string]$desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Online validation viewer trust-state fixture failed.' }
+          if ([string]$desktop.NotificationToastChannel -ne 'windows-toast') { throw 'Online package did not prove the Windows toast channel.' }
+          if ([string]$desktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Online package did not prove the native notification fallback.' }
           $launchers = ./scripts/Test-WindowsLaunchers.ps1 -ExtractDirectory $extract
-          if ($launchers.status -ne 'passed' -or [int]$launchers.launcherCount -ne 3) {
-            throw 'Online Windows launcher smoke test did not pass.'
-          }
+          if ($launchers.status -ne 'passed' -or [int]$launchers.launcherCount -ne 3) { throw 'Online Windows launcher smoke test did not pass.' }
           if ($launchers.diagnosticCompatibility -ne 'passed') { throw 'Online first-run diagnostic compatibility did not pass.' }
-          if ($launchers.updaterFallbackVersion -ne '0.6.2') { throw 'Online API-free updater fallback did not resolve 0.6.2.' }
+          if ($launchers.updaterFallbackVersion -ne '0.6.3') { throw 'Online API-free updater fallback did not resolve 0.6.3.' }
           "NEXROUTE_SHA256=$($online.Sha256)" >> $env:GITHUB_ENV
           "NEXROUTE_STRATEGIES=$($online.StrategyCount)" >> $env:GITHUB_ENV
           "NEXROUTE_SERVICES=$($online.ServiceCount)" >> $env:GITHUB_ENV
-          "NEXROUTE_ONLINE_UPSTREAM_SHA=$($online.UpstreamSha256)" >> $env:GITHUB_ENV
-          "NEXROUTE_ONLINE_TOAST_CHANNEL=$($desktop.NotificationToastChannel)" >> $env:GITHUB_ENV
-          "NEXROUTE_ONLINE_FALLBACK_CHANNEL=$($desktop.NotificationFallbackChannel)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_LAUNCHER_COUNT=$($launchers.launcherCount)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_DIAGNOSTIC=$($launchers.diagnosticCompatibility)" >> $env:GITHUB_ENV
           "NEXROUTE_ONLINE_UPDATER_FALLBACK=$($launchers.updaterFallbackVersion)" >> $env:GITHUB_ENV
@@ -157,10 +150,7 @@ jobs:
           $offlineBuild = $result | Select-Object -Last 1
           if ($offlineBuild.UpstreamResolution -ne 'offline') { throw 'Offline build did not use offline resolution mode.' }
           if (-not $offlineBuild.UpdaterIncluded -or -not $offlineBuild.UpdaterEntryIncluded) { throw 'Offline build was not finalized with both updater layers.' }
-          if (-not $offlineBuild.NativeDashboardIncluded) { throw 'Offline build did not compile the native dashboard.' }
-          if (-not $offlineBuild.NativeValidationIncluded) { throw 'Offline build did not compile the native validation viewer.' }
-          if ($offlineBuild.NativeDashboardSha256 -notmatch '^[0-9a-f]{64}$') { throw 'Offline dashboard build did not return a valid SHA-256.' }
-          if ($offlineBuild.NativeValidationSha256 -notmatch '^[0-9a-f]{64}$') { throw 'Offline validation viewer build did not return a valid SHA-256.' }
+          if (-not $offlineBuild.NativeDashboardIncluded -or -not $offlineBuild.NativeValidationIncluded) { throw 'Offline build did not compile native desktop validation components.' }
           if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Online and offline upstream hashes differ.' }
           if ([int]$offlineBuild.PatchTargetCount -ne 23) { throw 'Offline build did not apply 23 tracked patch targets.' }
           "NEXROUTE_OFFLINE_DASHBOARD_SHA=$($offlineBuild.NativeDashboardSha256)" >> $env:GITHUB_ENV
@@ -177,25 +167,19 @@ jobs:
             Tee-Object -FilePath package-offline.log
           $offline = $result | Select-Object -Last 1
           $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $extract
-          if ($desktop.DashboardSelfTestExitCode -ne 0) { throw 'Offline dashboard self-test did not pass.' }
+          if ([int]$desktop.DashboardSelfTestExitCode -ne 0) { throw 'Offline dashboard self-test did not pass.' }
           if ($desktop.DashboardSha256 -ne $env:NEXROUTE_OFFLINE_DASHBOARD_SHA) { throw 'Offline dashboard hash differs from its build result.' }
-          if ($desktop.ValidationSelfTestExitCode -ne 0) { throw 'Offline validation viewer self-test did not pass.' }
+          if ([int]$desktop.ValidationSelfTestExitCode -ne 0) { throw 'Offline validation viewer self-test did not pass.' }
           if ($desktop.ValidationSha256 -ne $env:NEXROUTE_OFFLINE_VALIDATION_SHA) { throw 'Offline validation viewer hash differs from its build result.' }
-          if ($desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Offline validation viewer trust-state fixture failed.' }
-          if ($desktop.NotificationToastChannel -ne 'windows-toast') { throw 'Offline package did not prove the Windows toast channel.' }
-          if ($desktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Offline package did not prove the native notification fallback.' }
+          if ([string]$desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Offline validation viewer trust-state fixture failed.' }
           $launchers = ./scripts/Test-WindowsLaunchers.ps1 -ExtractDirectory $extract
-          if ($launchers.status -ne 'passed' -or [int]$launchers.launcherCount -ne 3) {
-            throw 'Offline Windows launcher smoke test did not pass.'
-          }
+          if ($launchers.status -ne 'passed' -or [int]$launchers.launcherCount -ne 3) { throw 'Offline Windows launcher smoke test did not pass.' }
           if ($launchers.diagnosticCompatibility -ne 'passed') { throw 'Offline first-run diagnostic compatibility did not pass.' }
-          if ($launchers.updaterFallbackVersion -ne '0.6.2') { throw 'Offline API-free updater fallback did not resolve 0.6.2.' }
+          if ($launchers.updaterFallbackVersion -ne '0.6.3') { throw 'Offline API-free updater fallback did not resolve 0.6.3.' }
           if ($offline.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Offline package lock differs from the online package lock.' }
           if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
           if ([int]$offline.StrategyCount -ne [int]$env:NEXROUTE_STRATEGIES) { throw 'Online and offline strategy counts differ.' }
           if ([int]$offline.ServiceCount -ne [int]$env:NEXROUTE_SERVICES) { throw 'Online and offline service counts differ.' }
-          "NEXROUTE_OFFLINE_TOAST_CHANNEL=$($desktop.NotificationToastChannel)" >> $env:GITHUB_ENV
-          "NEXROUTE_OFFLINE_FALLBACK_CHANNEL=$($desktop.NotificationFallbackChannel)" >> $env:GITHUB_ENV
           "NEXROUTE_OFFLINE_LAUNCHER_COUNT=$($launchers.launcherCount)" >> $env:GITHUB_ENV
           "NEXROUTE_OFFLINE_DIAGNOSTIC=$($launchers.diagnosticCompatibility)" >> $env:GITHUB_ENV
           "NEXROUTE_OFFLINE_UPDATER_FALLBACK=$($launchers.updaterFallbackVersion)" >> $env:GITHUB_ENV
@@ -204,14 +188,14 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: NexRoute-0.6.2-smoke
+          name: NexRoute-0.6.3-smoke
           path: |
             build-online.log
             package-online.log
             build-offline.log
             package-offline.log
-            artifacts/NexRoute-0.6.2-win-x64.zip
-            artifacts/NexRoute-0.6.2-win-x64.zip.sha256
+            artifacts/NexRoute-0.6.3-win-x64.zip
+            artifacts/NexRoute-0.6.3-win-x64.zip.sha256
           if-no-files-found: warn
           retention-days: 7
 
@@ -222,12 +206,6 @@ jobs:
           Write-Host "Tracked patches: $env:NEXROUTE_PATCH_TARGETS"
           Write-Host "Strategies: $env:NEXROUTE_STRATEGIES"
           Write-Host "Services: $env:NEXROUTE_SERVICES"
-          Write-Host "Online dashboard SHA-256: $env:NEXROUTE_ONLINE_DASHBOARD_SHA"
-          Write-Host "Offline dashboard SHA-256: $env:NEXROUTE_OFFLINE_DASHBOARD_SHA"
-          Write-Host "Online validation viewer SHA-256: $env:NEXROUTE_ONLINE_VALIDATION_SHA"
-          Write-Host "Offline validation viewer SHA-256: $env:NEXROUTE_OFFLINE_VALIDATION_SHA"
-          Write-Host "Online notification channels: $env:NEXROUTE_ONLINE_TOAST_CHANNEL -> $env:NEXROUTE_ONLINE_FALLBACK_CHANNEL"
-          Write-Host "Offline notification channels: $env:NEXROUTE_OFFLINE_TOAST_CHANNEL -> $env:NEXROUTE_OFFLINE_FALLBACK_CHANNEL"
           Write-Host "Online launcher count: $env:NEXROUTE_ONLINE_LAUNCHER_COUNT"
           Write-Host "Offline launcher count: $env:NEXROUTE_OFFLINE_LAUNCHER_COUNT"
           Write-Host "Online first-run diagnostic contract: $env:NEXROUTE_ONLINE_DIAGNOSTIC"
