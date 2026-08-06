@@ -49,8 +49,6 @@ foreach ($relative in $required) {
 }
 
 $version=(Read-Text '.service/version.txt').Trim()
-$readme=Read-Text 'README.md'
-$changelog=Read-Text 'CHANGELOG.md'
 $releaseNotes=Read-Text '.github/release-notes/v0.6.3.md'
 $acceptance=Read-Text 'docs/RELEASE_0.6.3_ACCEPTANCE.md'
 $websitePackage=Read-Text 'website/package.json' | ConvertFrom-Json
@@ -69,7 +67,7 @@ $powerShellFiles=@(Get-ChildItem -LiteralPath $root -File -Recurse -Force -Inclu
 foreach ($file in $powerShellFiles) {
     $tokens=$null; $parseErrors=$null
     [void][Management.Automation.Language.Parser]::ParseFile($file.FullName,[ref]$tokens,[ref]$parseErrors)
-    $relative=$file.FullName.Substring($root.Length).TrimStart('\\','/')
+    $relative=$file.FullName.Substring($root.Length).TrimStart([char[]]'\/')
     Assert-True (@($parseErrors).Count -eq 0) "$relative parses without PowerShell syntax errors"
     foreach ($parseError in @($parseErrors)) { Write-Host ("       {0}:{1} {2}" -f $parseError.Extent.StartLineNumber,$parseError.Extent.StartColumnNumber,$parseError.Message) -ForegroundColor Yellow }
 }
