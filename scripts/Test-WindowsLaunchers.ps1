@@ -13,7 +13,7 @@ if ($env:OS -ne 'Windows_NT') {
 
 $sourceRoot = (Resolve-Path -LiteralPath $ExtractDirectory).Path
 $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) (
-    'NexRoute 0.6.2 Hot Fix Тест {0}' -f [guid]::NewGuid().ToString('N')
+    'NexRoute 0.6.3 Strategy Refresh Тест {0}' -f [guid]::NewGuid().ToString('N')
 )
 $results = New-Object 'System.Collections.Generic.List[object]'
 
@@ -55,7 +55,7 @@ try {
 
     $previousFixture = [Environment]::GetEnvironmentVariable('NEXROUTE_LATEST_RELEASE_FIXTURE')
     try {
-        $env:NEXROUTE_LATEST_RELEASE_FIXTURE = 'https://github.com/Onmaynec/NexRoute/releases/tag/v0.6.2'
+        $env:NEXROUTE_LATEST_RELEASE_FIXTURE = 'https://github.com/Onmaynec/NexRoute/releases/tag/v0.6.3'
         $fallbackOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $updaterEntry -Mode Check -Root $testRoot -Json -NonInteractive 2>&1
         $fallbackExitCode = $LASTEXITCODE
         $fallbackText = (($fallbackOutput | ForEach-Object { [string]$_ }) -join [Environment]::NewLine)
@@ -68,8 +68,8 @@ try {
         $fallbackStatus = @($fallbackOutput | Select-Object -Last 20 | ForEach-Object {
             try { [string]$_ | ConvertFrom-Json } catch { $null }
         } | Where-Object { $null -ne $_ } | Select-Object -Last 1)
-        if ($fallbackStatus.Count -ne 1 -or [string]$fallbackStatus[0].LatestVersion -ne '0.6.2') {
-            throw "Updater fallback returned no deterministic 0.6.2 release result.`n$fallbackText"
+        if ($fallbackStatus.Count -ne 1 -or [string]$fallbackStatus[0].LatestVersion -ne '0.6.3') {
+            throw "Updater fallback returned no deterministic 0.6.3 release result.`n$fallbackText"
         }
     } finally {
         if ($null -eq $previousFixture) {
