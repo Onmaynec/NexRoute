@@ -1,0 +1,46 @@
+name: Report NexRoute 0.6.3 release status once
+
+on:
+  schedule:
+    - cron: '32 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+  issues: write
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Report latest release workflow
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_json="$(gh run list --workflow release.yml --limit 1 --json databaseId,status,conclusion,headSha,event,url,createdAt,updatedAt)"
+          if [[ "$run_json" == "[]" ]]; then
+            body='No release.yml workflow run is visible yet.'
+          else
+            body=$(printf 'Latest release.yml run:\n\n```json\n%s\n```' "$run_json")
+          fi
+          gh issue comment 56 --body "$body"
+
+      - name: Remove one-shot status reporter
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/report-v0.6.3-release.yml
+          git commit -m "ci: remove NexRoute 0.6.3 release status reporter"
+          git push origin HEAD:main
