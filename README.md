@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](docs/UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.6.2-24e1d6)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.6.3-24e1d6)](.service/version.txt)
 
 **Локальная Windows-система управления стратегиями обхода DPI с изолированными сервисными workers, проверяемыми обновлениями и честным release validation.**
 
@@ -15,6 +15,22 @@
 
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранные стратегии только к трафику включённых сервисов.
+
+## NexRoute 0.6.3 — Discord and YouTube strategy refresh 🧭
+
+Версия `0.6.3` обновляет все 21 встроенную DPI-стратегию для полевого сценария, где Discord и YouTube отвечали на ping, но HTTP/TLS блокировались.
+
+- 21 уникальный профиль вместо одинакового поведения;
+- семейства `multisplit`, `multidisorder`, `fakedsplit`, `hostfakesplit` и `syndata`;
+- дополнительные split/fooling/sequence-overlap варианты;
+- усиленная обработка QUIC и Discord UDP;
+- отдельные critical hostlist для Discord и YouTube;
+- build-only refresh без перезаписи установленных BAT при обычном runtime `Apply`;
+- SHA-256 provenance для каждой обновлённой стратегии;
+- формализованный Strategy Lab live-gate для семи критических целей и контрольных Google/Cloudflare targets;
+- strategy-refresh кандидат прошёл полный CI, а 7 августа 2026 года владелец подтвердил успешные обязательные полевые проверки и разрешил stable release.
+
+Подробный критерий: [docs/RELEASE_0.6.3_ACCEPTANCE.md](docs/RELEASE_0.6.3_ACCEPTANCE.md).
 
 ## NexRoute 0.6.2 — Hot Bug Fix 🩹
 
@@ -92,13 +108,13 @@
 
 ## Проверяемый релиз 🔏
 
-Для версии 0.6.2 публикуются четыре связанных asset:
+Для версии 0.6.3 публикуются четыре связанных asset:
 
 ```text
-NexRoute-0.6.2-win-x64.zip
-NexRoute-0.6.2-win-x64.zip.sha256
-NexRoute-0.6.2-validation.json
-NexRoute-0.6.2-validation.md
+NexRoute-0.6.3-win-x64.zip
+NexRoute-0.6.3-win-x64.zip.sha256
+NexRoute-0.6.3-validation.json
+NexRoute-0.6.3-validation.md
 ```
 
 Все четыре файла входят в одну GitHub artifact attestation. Portable verifier проверяет immutable release URLs, SHA-256 package и attestation каждого subject. После успешной проверки validation report и digest-matched receipt атомарно устанавливаются в `.service`.
@@ -106,10 +122,10 @@ NexRoute-0.6.2-validation.md
 Дополнительная ручная проверка:
 
 ```powershell
-gh attestation verify .\NexRoute-0.6.2-win-x64.zip --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.2-win-x64.zip.sha256 --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.2-validation.json --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.2-validation.md --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.3-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.3-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.3-validation.json --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.3-validation.md --repo Onmaynec/NexRoute
 ```
 
 Validation Viewer не доверяет импортированному JSON автоматически. До появления matching local receipt документ отображается как `attestation-not-verified`. Wrong product/version, duplicate check IDs, неизвестные статусы и несогласованный `overallStatus` отклоняются.
@@ -180,7 +196,7 @@ NEXROUTE_BUILD_INFO.txt
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.2 `
+  -Version 0.6.3 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -189,7 +205,7 @@ pwsh ./scripts/Build-Release.ps1 `
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.2 `
+  -Version 0.6.3 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
 ```
@@ -254,7 +270,7 @@ Release workflow дополнительно создаёт JSON/Markdown validat
 
 Автоматизация не доказывает:
 
-- эффективность обхода DPI у конкретного ISP;
+- эффективность обхода DPI у конкретного ISP без отдельного полевого теста;
 - реальный interactive toast в пользовательской Windows session;
 - Dashboard mouse/theme rendering на каждом Windows build;
 - физические Ethernet/Wi-Fi transitions;
@@ -273,4 +289,4 @@ Release workflow дополнительно создаёт JSON/Markdown validat
 
 ---
 
-**NexRoute 0.6.2** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64
+**NexRoute 0.6.3** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64
