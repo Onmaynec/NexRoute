@@ -1,9 +1,9 @@
 name: NexRoute 0.6.3 release prep
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/nexroute-0.6.3-strategy-refresh
+      - main
     paths:
       - '.github/workflows/nexroute-063-release-prep.yml'
 
@@ -31,8 +31,6 @@ jobs:
         run: |
           Set-StrictMode -Version Latest
           $ErrorActionPreference = 'Stop'
-          $version = '0.6.3'
-          $releaseDate = '2026-08-07'
 
           function Read-Utf8([string]$Path) {
             return [IO.File]::ReadAllText((Resolve-Path -LiteralPath $Path), [Text.Encoding]::UTF8)
