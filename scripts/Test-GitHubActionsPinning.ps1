@@ -17,9 +17,7 @@ $approved = [ordered]@{
 }
 
 $workflowRoot = Join-Path $Root '.github/workflows'
-if (-not (Test-Path -LiteralPath $workflowRoot -PathType Container)) {
-    throw "GitHub Actions workflow directory is missing: $workflowRoot"
-}
+if (-not (Test-Path -LiteralPath $workflowRoot -PathType Container)) { throw "GitHub Actions workflow directory is missing: $workflowRoot" }
 
 $errors = New-Object 'System.Collections.Generic.List[string]'
 $usesCount = 0
@@ -30,7 +28,7 @@ foreach ($file in $workflowFiles) {
     $lines = @(Get-Content -LiteralPath $file.FullName -Encoding UTF8)
     for ($index = 0; $index -lt $lines.Count; $index++) {
         $line = [string]$lines[$index]
-        $match = [regex]::Match($line, '^\s*-\s+uses:\s*(?<action>[^@\s#]+)@(?<ref>[^\s#]+)(?<comment>\s+#.*)?$')
+        $match = [regex]::Match($line, '^\s*(?:-\s+)?uses:\s*(?<action>[^@\s#]+)@(?<ref>[^\s#]+)(?<comment>\s+#.*)?$')
         if (-not $match.Success) { continue }
         $usesCount++
         $action = [string]$match.Groups['action'].Value
@@ -56,19 +54,12 @@ foreach ($file in $workflowFiles) {
         }
 
         $expectedComment = '# {0} {1}' -f $action, $entry.version
-        if ($comment.Trim() -ne $expectedComment) {
-            $errors.Add("$location must keep the human-readable pin comment '$expectedComment'.")
-        }
+        if ($comment.Trim() -ne $expectedComment) { $errors.Add("$location must keep the human-readable pin comment '$expectedComment'.") }
     }
 }
 
-if ($externalCount -eq 0) {
-    $errors.Add('No external GitHub Actions references were found; the pinning validator cannot prove the workflow supply-chain contract.')
-}
-
-if ($errors.Count -gt 0) {
-    throw ("GitHub Actions pinning validation failed:`n - " + ($errors -join "`n - "))
-}
+if ($externalCount -eq 0) { $errors.Add('No external GitHub Actions references were found; the pinning validator cannot prove the workflow supply-chain contract.') }
+if ($errors.Count -gt 0) { throw ("GitHub Actions pinning validation failed:`n - " + ($errors -join "`n - ")) }
 
 [pscustomobject]@{
     status = 'passed'
@@ -77,8 +68,6 @@ if ($errors.Count -gt 0) {
     externalActionCount = $externalCount
     approvedActionCount = $approved.Count
     approved = @(
-        foreach ($name in $approved.Keys) {
-            [pscustomobject]@{ action = $name; version = $approved[$name].version; sha = $approved[$name].sha }
-        }
+        foreach ($name in $approved.Keys) { [pscustomobject]@{ action = $name; version = $approved[$name].version; sha = $approved[$name].sha } }
     )
 }
