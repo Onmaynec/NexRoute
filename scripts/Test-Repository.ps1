@@ -33,10 +33,12 @@ $required=@(
     'native/NexRoute.Tray/Program.cs','native/NexRoute.Notifier/Program.cs','native/NexRoute.Dashboard/Program.cs','native/NexRoute.Validation/Program.cs',
     'scripts/Build-Package.ps1','scripts/Build-Release.ps1','scripts/New-ValidationReport.ps1','scripts/NexRoute.Upstream.psm1',
     'scripts/Test-Package.ps1','scripts/Test-Release.ps1','scripts/Test-V06Desktop.ps1','scripts/Test-WindowsLaunchers.ps1',
-    'scripts/Test-StrategyLab063Evidence.ps1','scripts/New-StrategyLabFieldEvidence.ps1','scripts/Test-StrategyLabFieldEvidence.ps1','scripts/Test-GitHubActionsPinning.ps1','scripts/Test-Updater063MigrationEvidence.ps1',
+    'scripts/Test-StrategyLab063Evidence.ps1','scripts/New-StrategyLabFieldEvidence.ps1','scripts/Test-StrategyLabFieldEvidence.ps1',
+    'scripts/Test-GitHubActionsPinning.ps1','scripts/Test-Updater063MigrationEvidence.ps1',
     'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/UpdaterMigration.Tests.ps1',
     'tests/ReleaseAttestation.Tests.ps1','tests/ReleaseCoherence.Tests.ps1','tests/LauncherHotfix.Tests.ps1','tests/Hotfix062.Tests.ps1',
-    'tests/StrategyRefresh063.Tests.ps1','tests/StrategyLab063Evidence.Tests.ps1','tests/StrategyLabFieldEvidence064.Tests.ps1','tests/StrategyRanking064.Tests.ps1','tests/UpdaterHealthRollback064.Tests.ps1','tests/GitHubActionsPinning064.Tests.ps1',
+    'tests/StrategyRefresh063.Tests.ps1','tests/StrategyLab063Evidence.Tests.ps1','tests/StrategyLabFieldEvidence064.Tests.ps1',
+    'tests/StrategyRanking064.Tests.ps1','tests/UpdaterHealthRollback064.Tests.ps1','tests/GitHubActionsPinning064.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml','.github/workflows/pages.yml',
     '.github/release-notes/v0.6.0.md','.github/release-notes/v0.6.1.md','.github/release-notes/v0.6.2.md','.github/release-notes/v0.6.3.md',
     'docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/RELEASE_0.6.3_ACCEPTANCE.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/RELEASES.md','docs/FIELD_EVIDENCE.md',
@@ -44,9 +46,7 @@ $required=@(
     'website/app/layout.tsx','website/app/page.tsx','website/app/download/page.tsx','website/app/docs/[slug]/page.tsx',
     'website/components/layout/site-header.tsx','website/components/product/demos.tsx','website/content/docs.ts','website/lib/github.ts'
 )
-foreach ($relative in $required) {
-    Assert-True (Test-Path -LiteralPath (Join-Path $root $relative) -PathType Leaf) "Required file exists: $relative"
-}
+foreach ($relative in $required) { Assert-True (Test-Path -LiteralPath (Join-Path $root $relative) -PathType Leaf) "Required file exists: $relative" }
 
 $version=(Read-Text '.service/version.txt').Trim()
 $releaseNotes=Read-Text '.github/release-notes/v0.6.3.md'
@@ -113,7 +113,8 @@ $ranking064=Read-Text 'overlay/.service/next/nexroute-strategy-ranking.ps1'
 $console064=Read-Text 'overlay/.service/nexroute-console.ps1'
 $updater064=Read-Text 'overlay/.service/nexroute-updater.ps1'
 $migration064=Read-Text 'scripts/Test-Updater063MigrationEvidence.ps1'
-$dashboard064=Read-Text 'native/NexRoute.Dashboard/Program.cs'foreach ($token in @('Get-NexRoute063StrategyCatalog','nr063-01','nr063-21','multisplit','multidisorder','fakedsplit','hostfakesplit','syndata')) {
+$dashboard064=Read-Text 'native/NexRoute.Dashboard/Program.cs'
+foreach ($token in @('Get-NexRoute063StrategyCatalog','nr063-01','nr063-21','multisplit','multidisorder','fakedsplit','hostfakesplit','syndata')) {
     Assert-True ($refresh -match [regex]::Escape($token)) "0.6.3 refresh contains $token"
 }
 foreach ($token in @('strategy-refresh-report.json','list-nexroute-discord-critical.txt','list-nexroute-youtube-critical.txt','StrategyCount')) {
@@ -129,6 +130,7 @@ foreach ($token in @('canonicalPayloadSha256','sourceLogSha256','candidateSha256
     Assert-True ($fieldEvidenceValidator -match [regex]::Escape($token)) "0.6.4 field-evidence validator contains $token"
 }
 Assert-True ($fieldEvidence -notmatch 'verifiedUtc|provider\s*=|location\s*=') '0.6.4 field-evidence receipt has no nondeterministic time/provider/location fields'
+
 foreach ($token in @('criticalAvailabilityPercent','stabilityPercent','minimumObservationCount','inconclusiveReason','recommendationReason','missingMetricPolicy','tieBreak')) {
     Assert-True ($ranking064 -match [regex]::Escape($token)) "0.6.4 Strategy Lab ranking contains $token"
 }
@@ -142,6 +144,7 @@ foreach ($token in @('v0.6.2','v0.6.3','pathHasSpaces','pathHasNonAscii','absolu
 foreach ($token in @('RankingState','RecommendationReason','InconclusiveReason','CriticalAvailabilityPercent','StabilityPercent')) {
     Assert-True ($dashboard064 -match [regex]::Escape($token)) "Dashboard exposes ranking field $token"
 }
+
 $build=(Read-Text 'scripts/Build-Release.ps1')+(Read-Text 'scripts/Build-Package.ps1')
 foreach ($token in @('upstream-lock.json','patch-report.json','Expected 23 tracked patch targets','UpstreamCachePath','UpstreamArchive','UpdaterEntryIncluded')) {
     Assert-True ($build -match [regex]::Escape($token)) "Build contract contains $token"
@@ -162,9 +165,7 @@ foreach ($token in @('actions/configure-pages v5.0.0','actions/upload-pages-arti
 try {
     $pinResult=& (Join-Path $root 'scripts/Test-GitHubActionsPinning.ps1') -Root $root
     Assert-True ($pinResult.status -eq 'passed') 'Every external GitHub Action is allowlisted and pinned to the reviewed full commit SHA'
-} catch {
-    Assert-True $false "GitHub Actions pinning contract validates: $($_.Exception.Message)"
-}
+} catch { Assert-True $false "GitHub Actions pinning contract validates: $($_.Exception.Message)" }
 
 $websiteText=((Get-ChildItem -LiteralPath (Join-Path $root 'website') -File -Recurse -Force | Where-Object { $_.FullName -notmatch '[\\/](node_modules|\.next|\.vercel)[\\/]' -and $_.Extension -in @('.ts','.tsx','.css','.md','.json','.mjs') } | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw -ErrorAction SilentlyContinue }) -join [Environment]::NewLine)
 foreach ($token in @('Onmaynec/NexRoute','Service Matrix','Strategy Lab','gh attestation verify','prefers-reduced-motion','NEXT_PUBLIC_SITE_URL','getLatestStableRelease','SoftwareApplication')) {
