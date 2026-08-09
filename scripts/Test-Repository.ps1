@@ -124,7 +124,7 @@ foreach ($token in @('canonicalPayloadSha256','sourceLogSha256','candidateSha256
     Assert-True ($fieldEvidence -match [regex]::Escape($token)) "0.6.4 field-evidence generator contains $token"
     Assert-True ($fieldEvidenceValidator -match [regex]::Escape($token)) "0.6.4 field-evidence validator contains $token"
 }
-Assert-True ($fieldEvidence -notmatch 'verifiedUtc|provider\s*=|location\s*=') '0.6.4 field-evidence receipt has no nondeterministic time/provider/location fields'
+Assert-True ($fieldEvidence -notmatch 'verifiedUtc|provider\\s*=|location\\s*=') '0.6.4 field-evidence receipt has no nondeterministic time/provider/location fields'
 
 $build=(Read-Text 'scripts/Build-Release.ps1')+(Read-Text 'scripts/Build-Package.ps1')
 foreach ($token in @('upstream-lock.json','patch-report.json','Expected 23 tracked patch targets','UpstreamCachePath','UpstreamArchive','UpdaterEntryIncluded')) {
