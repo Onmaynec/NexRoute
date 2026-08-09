@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write # temporary 0.6.4 materializer
+  contents: read
 
 jobs:
   validate:
@@ -20,26 +20,6 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # actions/checkout v6.1.0
         with:
           show-progress: false
-
-      # BEGIN NEXROUTE 064 BOOTSTRAP
-      - name: Materialize NexRoute 0.6.4 integration once
-        if: github.event_name == 'pull_request' && github.head_ref == 'agent/nexroute-0.6.4-hardening'
-        shell: pwsh
-        run: |
-          Set-StrictMode -Version Latest
-          $ErrorActionPreference='Stop'
-          git fetch origin agent/nexroute-0.6.4-hardening
-          git checkout -B agent/nexroute-0.6.4-hardening origin/agent/nexroute-0.6.4-hardening
-          ./scripts/Invoke-NexRoute064CodeMaterializer.ps1
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --check
-          if (-not (git diff --cached --quiet)) {
-            git commit -m "Integrate NexRoute 0.6.4 runtime hardening"
-            git push origin HEAD:agent/nexroute-0.6.4-hardening
-          }
-      # END NEXROUTE 064 BOOTSTRAP
 
       - name: Install pinned Pester
         shell: pwsh
@@ -204,6 +184,14 @@ jobs:
           "NEXROUTE_OFFLINE_DIAGNOSTIC=$($launchers.diagnosticCompatibility)" >> $env:GITHUB_ENV
           "NEXROUTE_OFFLINE_UPDATER_FALLBACK=$($launchers.updaterFallbackVersion)" >> $env:GITHUB_ENV
 
+      - name: Prove real 0.6.2 to 0.6.3 updater migration and rollback
+        shell: pwsh
+        run: |
+          $migration = ./scripts/Test-Updater063MigrationEvidence.ps1 -OutputPath ./updater-063-migration-evidence.json
+          if ($migration.status -ne 'passed') { throw 'Real updater migration evidence gate did not pass.' }
+          if (-not $migration.forcedHealthFailureRollback) { throw 'Forced health-check rollback was not proven.' }
+          if (-not $migration.pathHasSpaces -or -not $migration.pathHasNonAscii -or $migration.absolutePathPublished) { throw 'Migration path/privacy evidence is incomplete.' }
+
       - name: Upload logs and smoke package
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # actions/upload-artifact v7.0.1
@@ -214,6 +202,7 @@ jobs:
             package-online.log
             build-offline.log
             package-offline.log
+            updater-063-migration-evidence.json
             artifacts/NexRoute-0.6.3-win-x64.zip
             artifacts/NexRoute-0.6.3-win-x64.zip.sha256
           if-no-files-found: warn
