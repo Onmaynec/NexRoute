@@ -30,13 +30,13 @@ jobs:
           $ErrorActionPreference='Stop'
           git fetch origin agent/nexroute-0.6.4-hardening
           git checkout -B agent/nexroute-0.6.4-hardening origin/agent/nexroute-0.6.4-hardening
-          ./scripts/Invoke-NexRoute064Materializer.ps1
+          ./scripts/Invoke-NexRoute064CodeMaterializer.ps1
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --check
           if (-not (git diff --cached --quiet)) {
-            git commit -m "Integrate NexRoute 0.6.4 hardening gates"
+            git commit -m "Integrate NexRoute 0.6.4 runtime hardening"
             git push origin HEAD:agent/nexroute-0.6.4-hardening
           }
       # END NEXROUTE 064 BOOTSTRAP
