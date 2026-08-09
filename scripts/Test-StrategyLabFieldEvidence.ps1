@@ -12,6 +12,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# PrivacyReview is intentionally a generator-side publication review. This validator
+# enforces the same boundary by rejecting unknown or extra receipt fields fail-closed.
 $requiredTargets = @(
     'DiscordGateway',
     'DiscordCDN',
