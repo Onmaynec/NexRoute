@@ -33,13 +33,13 @@ $required=@(
     'native/NexRoute.Tray/Program.cs','native/NexRoute.Notifier/Program.cs','native/NexRoute.Dashboard/Program.cs','native/NexRoute.Validation/Program.cs',
     'scripts/Build-Package.ps1','scripts/Build-Release.ps1','scripts/New-ValidationReport.ps1','scripts/NexRoute.Upstream.psm1',
     'scripts/Test-Package.ps1','scripts/Test-Release.ps1','scripts/Test-V06Desktop.ps1','scripts/Test-WindowsLaunchers.ps1',
-    'scripts/Test-StrategyLab063Evidence.ps1',
+    'scripts/Test-StrategyLab063Evidence.ps1','scripts/New-StrategyLabFieldEvidence.ps1','scripts/Test-StrategyLabFieldEvidence.ps1','scripts/Test-GitHubActionsPinning.ps1',
     'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/UpdaterMigration.Tests.ps1',
     'tests/ReleaseAttestation.Tests.ps1','tests/ReleaseCoherence.Tests.ps1','tests/LauncherHotfix.Tests.ps1','tests/Hotfix062.Tests.ps1',
-    'tests/StrategyRefresh063.Tests.ps1','tests/StrategyLab063Evidence.Tests.ps1',
+    'tests/StrategyRefresh063.Tests.ps1','tests/StrategyLab063Evidence.Tests.ps1','tests/StrategyLabFieldEvidence064.Tests.ps1','tests/GitHubActionsPinning064.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml','.github/workflows/pages.yml',
     '.github/release-notes/v0.6.0.md','.github/release-notes/v0.6.1.md','.github/release-notes/v0.6.2.md','.github/release-notes/v0.6.3.md',
-    'docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/RELEASE_0.6.3_ACCEPTANCE.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/RELEASES.md',
+    'docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/RELEASE_0.6.3_ACCEPTANCE.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/RELEASES.md','docs/FIELD_EVIDENCE.md',
     'website/package.json','website/package-lock.json','website/tsconfig.json','website/next.config.ts','website/postcss.config.mjs',
     'website/app/layout.tsx','website/app/page.tsx','website/app/download/page.tsx','website/app/docs/[slug]/page.tsx',
     'website/components/layout/site-header.tsx','website/components/product/demos.tsx','website/content/docs.ts','website/lib/github.ts'
@@ -107,6 +107,8 @@ $refresh=Read-Text 'overlay/.service/next/nexroute-strategy-refresh.ps1'
 $refreshBuild=Read-Text 'overlay/.service/next/nexroute-strategy-refresh-build.ps1'
 $serviceEntry=Read-Text 'overlay/.service/nexroute-services-entry.ps1'
 $evidence=Read-Text 'scripts/Test-StrategyLab063Evidence.ps1'
+$fieldEvidence=Read-Text 'scripts/New-StrategyLabFieldEvidence.ps1'
+$fieldEvidenceValidator=Read-Text 'scripts/Test-StrategyLabFieldEvidence.ps1'
 foreach ($token in @('Get-NexRoute063StrategyCatalog','nr063-01','nr063-21','multisplit','multidisorder','fakedsplit','hostfakesplit','syndata')) {
     Assert-True ($refresh -match [regex]::Escape($token)) "0.6.3 refresh contains $token"
 }
@@ -116,7 +118,13 @@ foreach ($token in @('strategy-refresh-report.json','list-nexroute-discord-criti
 Assert-True ($serviceEntry -match 'Invoke-NexRoute063StrategyRefreshBuild') '0.6.3 refresh is integrated into release build entry'
 foreach ($target in @('DiscordGateway','DiscordCDN','DiscordUpdates','YouTubeWeb','YouTubeShort','YouTubeImage','YouTubeVideoRedirect','GoogleMain','CloudflareWeb')) {
     Assert-True ($evidence -match [regex]::Escape($target)) "0.6.3 evidence validator covers $target"
+    Assert-True ($fieldEvidence -match [regex]::Escape($target)) "0.6.4 privacy-safe evidence covers $target"
 }
+foreach ($token in @('canonicalPayloadSha256','sourceLogSha256','candidateSha256','PrivacyReview','trustModel')) {
+    Assert-True ($fieldEvidence -match [regex]::Escape($token)) "0.6.4 field-evidence generator contains $token"
+    Assert-True ($fieldEvidenceValidator -match [regex]::Escape($token)) "0.6.4 field-evidence validator contains $token"
+}
+Assert-True ($fieldEvidence -notmatch 'verifiedUtc|provider\s*=|location\s*=') '0.6.4 field-evidence receipt has no nondeterministic time/provider/location fields'
 
 $build=(Read-Text 'scripts/Build-Release.ps1')+(Read-Text 'scripts/Build-Package.ps1')
 foreach ($token in @('upstream-lock.json','patch-report.json','Expected 23 tracked patch targets','UpstreamCachePath','UpstreamArchive','UpdaterEntryIncluded')) {
@@ -126,14 +134,21 @@ foreach ($token in @('upstream-lock.json','patch-report.json','Expected 23 track
 $validate=Read-Text '.github/workflows/validate.yml'
 $release=Read-Text '.github/workflows/release.yml'
 $pages=Read-Text '.github/workflows/pages.yml'
-foreach ($token in @('NexRoute 0.6.3','Test-WindowsLaunchers.ps1','diagnosticCompatibility','updaterFallbackVersion','UpstreamArchive','npm run typecheck','npm run build','actions/checkout@v6','actions/setup-node@v6','actions/upload-artifact@v7')) {
+foreach ($token in @('NexRoute 0.6.3','Test-WindowsLaunchers.ps1','diagnosticCompatibility','updaterFallbackVersion','UpstreamArchive','npm run typecheck','npm run build','actions/checkout v6.1.0','actions/setup-node v6.5.0','actions/upload-artifact v7.0.1')) {
     Assert-True ($validate -match [regex]::Escape($token)) "Validation workflow contains $token"
 }
-foreach ($token in @('id-token: write','attestations: write','artifact-metadata: write','actions/attest@v4','gh attestation verify','actions/checkout@v6','actions/upload-artifact@v7','gh release create')) {
+foreach ($token in @('id-token: write','attestations: write','artifact-metadata: write','actions/attest v4.2.2','gh attestation verify','actions/checkout v6.1.0','actions/upload-artifact v7.0.1','gh release create')) {
     Assert-True ($release -match [regex]::Escape($token)) "Release workflow contains $token"
 }
-Assert-True (($validate+$release+$pages) -notmatch 'actions/checkout@v4|actions/setup-node@v4|actions/upload-artifact@v4|actions/upload-pages-artifact@v4') 'Workflows contain no deprecated Node 20 action majors'
-Assert-True ($pages -match 'actions/upload-pages-artifact@v5') 'Pages workflow uses upload-pages-artifact v5'
+foreach ($token in @('actions/configure-pages v5.0.0','actions/upload-pages-artifact v5.0.0','actions/deploy-pages v4.0.5')) {
+    Assert-True ($pages -match [regex]::Escape($token)) "Pages workflow contains $token"
+}
+try {
+    $pinResult=& (Join-Path $root 'scripts/Test-GitHubActionsPinning.ps1') -Root $root
+    Assert-True ($pinResult.status -eq 'passed') 'Every external GitHub Action is allowlisted and pinned to the reviewed full commit SHA'
+} catch {
+    Assert-True $false "GitHub Actions pinning contract validates: $($_.Exception.Message)"
+}
 
 $websiteText=((Get-ChildItem -LiteralPath (Join-Path $root 'website') -File -Recurse -Force | Where-Object { $_.FullName -notmatch '[\\/](node_modules|\.next|\.vercel)[\\/]' -and $_.Extension -in @('.ts','.tsx','.css','.md','.json','.mjs') } | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw -ErrorAction SilentlyContinue }) -join [Environment]::NewLine)
 foreach ($token in @('Onmaynec/NexRoute','Service Matrix','Strategy Lab','gh attestation verify','prefers-reduced-motion','NEXT_PUBLIC_SITE_URL','getLatestStableRelease','SoftwareApplication')) {
