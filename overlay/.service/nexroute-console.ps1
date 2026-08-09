@@ -12,6 +12,7 @@ $next=Join-Path $PSScriptRoot 'next'
 foreach ($module in @(
     'nexroute-common.ps1',
     'nexroute-strategies.ps1',
+    'nexroute-strategy-ranking.ps1',
     'nexroute-network.ps1',
     'nexroute-diagnostics.ps1',
     'nexroute-management.ps1',

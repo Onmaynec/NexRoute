@@ -240,6 +240,11 @@ namespace NexRoute.Dashboard
             AddGridColumn("Network", "Network", 100);
             AddGridColumn("Strategy", "Strategy", 150);
             AddGridColumn("Score", "Score", 70, "N2");
+            AddGridColumn("RankingState", "State", 85);
+            AddGridColumn("CriticalAvailabilityPercent", "Critical %", 85, "N1");
+            AddGridColumn("StabilityPercent", "Stability %", 85, "N1");
+            AddGridColumn("ObservationCount", "Samples", 70);
+            AddGridColumn("RecommendationReason", "Why winner", 220);
             AddGridColumn("DownloadMbps", "Mbps", 75, "N2");
             AddGridColumn("JitterMs", "Jitter", 70, "N1");
             AddGridColumn("PacketLossPercent", "Loss %", 70, "N1");
@@ -317,8 +322,9 @@ namespace NexRoute.Dashboard
                 strategySelector.SelectedIndex = index >= 0 ? index : 0;
                 strategySelector.EndUpdate();
                 runValue.Text = runs.Count.ToString(CultureInfo.InvariantCulture);
-                StrategyPoint best = points.OrderByDescending(delegate(StrategyPoint point) { return point.Score; }).FirstOrDefault();
+                StrategyPoint best = points.Where(delegate(StrategyPoint point) { return !string.Equals(point.RankingState, "inconclusive", StringComparison.OrdinalIgnoreCase); }).OrderByDescending(delegate(StrategyPoint point) { return point.Score; }).FirstOrDefault();
                 bestValue.Text = best == null ? "—" : best.Strategy + " · " + best.Score.ToString("N2", CultureInfo.InvariantCulture);
+                toolTip.SetToolTip(bestValue, best == null || string.IsNullOrWhiteSpace(best.RecommendationReason) ? string.Empty : best.RecommendationReason);
                 updatedValue.Text = runs.Count == 0 ? "—" : runs.Max(delegate(StrategyRun run) { return run.CreatedUtc; }).ToLocalTime().ToString("g");
                 RenderChart();
             }
@@ -353,6 +359,10 @@ namespace NexRoute.Dashboard
             if (!string.Equals(selected, "All strategies", StringComparison.OrdinalIgnoreCase))
             {
                 points = points.Where(delegate(StrategyPoint point) { return string.Equals(point.Strategy, selected, StringComparison.OrdinalIgnoreCase); }).ToList();
+            }
+            if (string.Equals(metric, "Score", StringComparison.OrdinalIgnoreCase))
+            {
+                points = points.Where(delegate(StrategyPoint point) { return !string.Equals(point.RankingState, "inconclusive", StringComparison.OrdinalIgnoreCase); }).ToList();
             }
             chart.Series.Clear();
             foreach (IGrouping<string, StrategyPoint> group in points.GroupBy(delegate(StrategyPoint point) { return point.Strategy ?? "Unknown"; }, StringComparer.OrdinalIgnoreCase))
@@ -420,10 +430,14 @@ namespace NexRoute.Dashboard
             var point = e.HitTestResult.Object as DataPoint;
             var model = point == null ? null : point.Tag as StrategyPoint;
             if (model == null) return;
+            string rankingText = string.Equals(model.RankingState, "inconclusive", StringComparison.OrdinalIgnoreCase)
+                ? "INCONCLUSIVE: " + (model.InconclusiveReason ?? "insufficient evidence")
+                : "Score " + model.Score.ToString("N2") + " · critical " + model.CriticalAvailabilityPercent.ToString("N1") + "% · stability " + model.StabilityPercent.ToString("N1") + "%";
+            string why = string.IsNullOrWhiteSpace(model.RecommendationReason) ? string.Empty : Environment.NewLine + "WHY: " + model.RecommendationReason;
             e.Text = model.Strategy + Environment.NewLine +
                      model.CreatedUtc.ToLocalTime().ToString("g") + Environment.NewLine +
-                     "Score " + model.Score.ToString("N2") + " · " + model.DownloadMbps.ToString("N2") + " Mbps" + Environment.NewLine +
-                     "Jitter " + model.JitterMs.ToString("N1") + " ms · Loss " + model.PacketLossPercent.ToString("N1") + "%";
+                     rankingText + Environment.NewLine +
+                     model.DownloadMbps.ToString("N2") + " Mbps · Jitter " + model.JitterMs.ToString("N1") + " ms · Loss " + model.PacketLossPercent.ToString("N1") + "%" + why;
         }
 
         private void UpdateServiceState()
@@ -558,14 +572,20 @@ namespace NexRoute.Dashboard
                             {
                                 Strategy = ConvertEx.String(result, "strategy", "unknown"),
                                 Score = ConvertEx.Double(result, "score", 0),
+                                RankingState = ConvertEx.String(result, "rankingState", "legacy"),
+                                CriticalAvailabilityPercent = ConvertEx.Double(result, "criticalAvailabilityPercent", ConvertEx.Double(result, "availabilityPercent", 0)),
+                                StabilityPercent = ConvertEx.Double(result, "stabilityPercent", 0),
+                                ObservationCount = ConvertEx.Int(result, "observationCount", 0),
+                                RecommendationReason = ConvertEx.String(result, "recommendationReason", null),
+                                InconclusiveReason = ConvertEx.String(result, "inconclusiveReason", null),
                                 DownloadMbps = ConvertEx.Double(result, "measuredDownloadMbps", ConvertEx.Double(result, "peakDownloadMbps", 0)),
                                 JitterMs = ConvertEx.Double(result, "averageJitterMs", 0),
                                 PacketLossPercent = ConvertEx.Double(result, "averagePacketLossPercent", 0),
                                 HttpLatencyMs = ConvertEx.Double(result, "averageHttpLatencyMs", 0),
                                 AvailabilityPercent = ConvertEx.Double(result, "availabilityPercent", 0),
-                                YoutubeReady = ConvertEx.Bool(result, "youtubePlaybackReady", false),
-                                DiscordReady = ConvertEx.Bool(result, "discordRealtimeTransportReady", false),
-                                TelegramReady = ConvertEx.Bool(result, "telegramRealtimeTransportReady", false)
+                                YoutubeReady = ConvertEx.Bool(result, "youtubePlaybackReady", ConvertEx.Bool(result, "youtubeVideoReady", false)),
+                                DiscordReady = ConvertEx.Bool(result, "discordRealtimeTransportReady", ConvertEx.Bool(result, "discordVoiceReady", false)),
+                                TelegramReady = ConvertEx.Bool(result, "telegramRealtimeTransportReady", ConvertEx.Bool(result, "telegramVoiceReady", false))
                             });
                         }
                     }
@@ -591,6 +611,12 @@ namespace NexRoute.Dashboard
         public string Network { get; set; }
         public string Strategy { get; set; }
         public double Score { get; set; }
+        public string RankingState { get; set; }
+        public double CriticalAvailabilityPercent { get; set; }
+        public double StabilityPercent { get; set; }
+        public int ObservationCount { get; set; }
+        public string RecommendationReason { get; set; }
+        public string InconclusiveReason { get; set; }
         public double DownloadMbps { get; set; }
         public double JitterMs { get; set; }
         public double PacketLossPercent { get; set; }
