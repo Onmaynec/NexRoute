@@ -58,6 +58,37 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  hardening:
+    name: Hardening ${{ matrix.test }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test:
+          - StrategyLabFieldEvidence064.Tests.ps1
+          - StrategyRanking064.Tests.ps1
+          - UpdaterHealthRollback064.Tests.ps1
+          - GitHubActionsPinning064.Tests.ps1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # actions/checkout v6.1.0
+        with:
+          show-progress: false
+
+      - name: Install pinned Pester
+        shell: pwsh
+        run: |
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+          Install-Module Pester -RequiredVersion 5.6.1 -Scope CurrentUser -Force -SkipPublisherCheck -AllowClobber
+
+      - name: Run isolated hardening regression
+        shell: pwsh
+        run: |
+          $path = Join-Path './tests' '${{ matrix.test }}'
+          $result = Invoke-Pester -Path $path -CI -Output Detailed -PassThru
+          if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) isolated tests failed in $path." }
+
   website:
     name: Typecheck and build website
     runs-on: ubuntu-latest
@@ -92,6 +123,7 @@ jobs:
     name: Build and test NexRoute 0.6.3
     needs:
       - validate
+      - hardening
       - website
     runs-on: windows-latest
     env:
@@ -144,7 +176,7 @@ jobs:
           if ([int]$desktop.DashboardSelfTestExitCode -ne 0) { throw 'Online dashboard self-test did not pass.' }
           if ($desktop.DashboardSha256 -ne $env:NEXROUTE_ONLINE_DASHBOARD_SHA) { throw 'Online dashboard hash differs from its build result.' }
           if ([int]$desktop.ValidationSelfTestExitCode -ne 0) { throw 'Online validation viewer self-test did not pass.' }
-          if ($desktop.ValidationSha256 -ne $env:NEXROUTE_ONLINE_VALIDATION_SHA) { throw 'Online validation viewer hash differs from its build result.' }
+          if ($desktop.ValidationSha256 -ne $env:NEXROUTE_ONLINE_VALIDATION_SHA) { throw 'Online validation viewer hash differs from the build result.' }
           if ([string]$desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Online validation viewer trust-state fixture failed.' }
           if ([string]$desktop.NotificationToastChannel -ne 'windows-toast') { throw 'Online package did not prove the Windows toast channel.' }
           if ([string]$desktop.NotificationFallbackChannel -ne 'native-balloon') { throw 'Online package did not prove the native notification fallback.' }
@@ -189,9 +221,9 @@ jobs:
           $offline = $result | Select-Object -Last 1
           $desktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $extract
           if ([int]$desktop.DashboardSelfTestExitCode -ne 0) { throw 'Offline dashboard self-test did not pass.' }
-          if ($desktop.DashboardSha256 -ne $env:NEXROUTE_OFFLINE_DASHBOARD_SHA) { throw 'Offline dashboard hash differs from its build result.' }
+          if ($desktop.DashboardSha256 -ne $env:NEXROUTE_OFFLINE_DASHBOARD_SHA) { throw 'Offline dashboard hash differs from the build result.' }
           if ([int]$desktop.ValidationSelfTestExitCode -ne 0) { throw 'Offline validation viewer self-test did not pass.' }
-          if ($desktop.ValidationSha256 -ne $env:NEXROUTE_OFFLINE_VALIDATION_SHA) { throw 'Offline validation viewer hash differs from its build result.' }
+          if ($desktop.ValidationSha256 -ne $env:NEXROUTE_OFFLINE_VALIDATION_SHA) { throw 'Offline validation viewer digest differs from the build result.' }
           if ([string]$desktop.ValidationTrustState -ne 'attestation-receipt-matched') { throw 'Offline validation viewer trust-state fixture failed.' }
           $launchers = ./scripts/Test-WindowsLaunchers.ps1 -ExtractDirectory $extract
           if ($launchers.status -ne 'passed' -or [int]$launchers.launcherCount -ne 3) { throw 'Offline Windows launcher smoke test did not pass.' }
