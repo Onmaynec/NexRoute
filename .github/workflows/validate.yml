@@ -34,8 +34,29 @@ jobs:
       - name: Run behavior, upstream, updater, strategy and attestation tests
         shell: pwsh
         run: |
-          $result = Invoke-Pester -Path ./tests -CI -Output Detailed -PassThru
+          $config = [PesterConfiguration]::Default
+          $config.Run.Path = './tests'
+          $config.Run.PassThru = $true
+          $config.Run.Exit = $false
+          $config.Output.Verbosity = 'Detailed'
+          $config.TestResult.Enabled = $true
+          $config.TestResult.OutputFormat = 'NUnitXml'
+          $config.TestResult.OutputPath = 'pester-results.xml'
+          $result = Invoke-Pester -Configuration $config
+          foreach ($test in @($result.Tests | Where-Object { $_.Result -eq 'Failed' })) {
+            Write-Host ("FAILED TEST: {0}" -f $test.Name)
+            if ($test.ErrorRecord) { Write-Host (($test.ErrorRecord | Out-String).Trim()) }
+          }
           if ($result.FailedCount -gt 0) { throw "$($result.FailedCount) Pester tests failed." }
+
+      - name: Upload Pester diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # actions/upload-artifact v7.0.1
+        with:
+          name: NexRoute-Pester-results
+          path: pester-results.xml
+          if-no-files-found: warn
+          retention-days: 7
 
   website:
     name: Typecheck and build website
