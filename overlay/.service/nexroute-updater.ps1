@@ -267,14 +267,17 @@ function Get-NexRoutePackageRoot {
     $strategies = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object {
         $_.Name -notin @('service.bat', 'nexroute.bat', 'nexroute-update.cmd')
     })
-    if ($strategies.Count -ne 22) {
-        throw "Downloaded package contains $($strategies.Count) strategies instead of 22."
+    $packageSemVer = ConvertTo-NexRouteVersion -Value $packageVersion
+    $expectedStrategyCount = if ($packageSemVer -ge [version]'0.6.4') { 22 } else { 21 }
+    if ($strategies.Count -ne $expectedStrategyCount) {
+        throw "Downloaded package contains $($strategies.Count) strategies instead of $expectedStrategyCount."
     }
 
     $patchReport = Get-Content -LiteralPath (Join-Path $packageRoot '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     $targetCount = [int](Get-NexRoutePropertyValue -InputObject (Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary') -Name 'targetCount')
-    if ($targetCount -ne 24) {
-        throw "Downloaded package patch report contains $targetCount targets instead of 24."
+    $expectedTargetCount = if ($packageSemVer -ge [version]'0.6.4') { 24 } else { 23 }
+    if ($targetCount -ne $expectedTargetCount) {
+        throw "Downloaded package patch report contains $targetCount targets instead of $expectedTargetCount."
     }
 
     return $packageRoot
@@ -483,7 +486,8 @@ function Test-NexRoutePostUpdateHealth {
     $patchReport = Get-Content -LiteralPath (Join-Path $Root '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     $summary = Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary'
     $targetCount = [int](Get-NexRoutePropertyValue -InputObject $summary -Name 'targetCount')
-    if ($targetCount -ne 24) {
+    $expectedTargetCount = if ($packageSemVer -ge [version]'0.6.4') { 24 } else { 23 }
+    if ($targetCount -ne $expectedTargetCount) {
         throw "NexRoute post-update health check failed: patch report contains $targetCount targets instead of 24."
     }
 
