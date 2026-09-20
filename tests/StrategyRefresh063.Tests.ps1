@@ -7,7 +7,7 @@ Describe 'NexRoute 0.6.3 strategy refresh' {
         $script:requiredPayloads = @(
             'bin/winws.exe',
             'bin/quic_initial_www_google_com.bin',
-            'bin/quic_initial_4pda.to.bin',
+            'bin/quic_initial_4pda_to.bin',
             'bin/ACTIVE_DISCORD_UDP.bin',
             'bin/ACTIVE_GAME_UDP.bin',
             'bin/stun.bin',
