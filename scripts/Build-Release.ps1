@@ -369,7 +369,7 @@ try {
     & $controller -Mode Apply -Root $packageRoot | Out-Null
 
     $strategyFiles = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') })
-    if ($strategyFiles.Count -ne 21) { throw "Expected 21 real strategy BAT files, got $($strategyFiles.Count)." }
+    if ($strategyFiles.Count -ne 22) { throw "Expected 22 real strategy BAT files, got $($strategyFiles.Count)." }
     foreach ($strategyFile in $strategyFiles) {
         $current = $strategyFile
         Invoke-TrackedPatch -Id ("strategy.{0}" -f $current.BaseName.ToLowerInvariant()) -Target $current.FullName -Action {
