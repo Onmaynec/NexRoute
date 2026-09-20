@@ -152,7 +152,7 @@ jobs:
           if (-not $offlineBuild.UpdaterIncluded -or -not $offlineBuild.UpdaterEntryIncluded) { throw 'Offline build was not finalized with both updater layers.' }
           if (-not $offlineBuild.NativeDashboardIncluded -or -not $offlineBuild.NativeValidationIncluded) { throw 'Offline build did not compile native desktop validation components.' }
           if ($offlineBuild.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Online and offline upstream hashes differ.' }
-          if ([int]$offlineBuild.PatchTargetCount -ne 23) { throw 'Offline build did not apply 23 tracked patch targets.' }
+          if ([int]$offlineBuild.PatchTargetCount -ne 24) { throw 'Offline build did not apply 24 tracked patch targets.' }
           "NEXROUTE_OFFLINE_DASHBOARD_SHA=$($offlineBuild.NativeDashboardSha256)" >> $env:GITHUB_ENV
           "NEXROUTE_OFFLINE_VALIDATION_SHA=$($offlineBuild.NativeValidationSha256)" >> $env:GITHUB_ENV
 
