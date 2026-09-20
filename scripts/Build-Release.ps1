@@ -450,7 +450,7 @@ try {
         UpstreamResolution = [string]$resolvedUpstream.ResolutionMode
         PatchTargetCount = $patchJournal.Count
         PatchOperationCount = [int]$operationCount
-        StrategyCount = 21
+        StrategyCount = [int]$resolvedUpstream.Lock.strategyCount
         ServiceCount = 15
         Archive = $zipPath
         Checksum = $checksumPath
