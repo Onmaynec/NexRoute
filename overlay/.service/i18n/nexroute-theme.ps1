@@ -138,7 +138,7 @@ function Write-NexRouteHeader {
     Write-NexRouteLogo
 
     $version = Get-NexRouteEnvironmentValue -Name 'NEXROUTE_VERSION' -Fallback '0.2.1'
-    $baseline = Get-NexRouteEnvironmentValue -Name 'NEXROUTE_BASELINE' -Fallback '1.10.0'
+    $baseline = Get-NexRouteEnvironmentValue -Name 'NEXROUTE_BASELINE' -Fallback '1.10.3'
     $strategy = Get-NexRouteEnvironmentValue -Name 'NEXROUTE_STRATEGY' -Fallback 'none'
     $strategy = ($strategy -replace '^(Current\s+)?Strategy\s*:\s*', '').Trim()
     $privilege = if (Test-NexRouteAdministrator) { $script:Text.elevated } else { $script:Text.standard }
