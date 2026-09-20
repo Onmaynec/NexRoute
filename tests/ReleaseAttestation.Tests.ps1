@@ -12,7 +12,7 @@ Describe 'NexRoute 0.6.0 release artifact attestations' {
     }
 
     It 'uses the current official attestation action' {
-        $workflow | Should -Match 'uses: actions/attest@v4'
+        $workflow | Should -Match ([regex]::Escape('uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # actions/attest v4.2.2'))
     }
 
     It 'attests the release archive and its checksum file plus both validation report formats' {
