@@ -405,7 +405,7 @@ try {
         summary = [ordered]@{
             targetCount = $patchJournal.Count
             operationCount = [int]$operationCount
-            strategyTargets = 21
+            strategyTargets = 22
             infrastructureTargets = 2
         }
         patches = @($patchJournal.ToArray())
@@ -423,7 +423,7 @@ try {
         ('Tracked patch operations: {0}' -f $operationCount),
         'Service Matrix schema: 2',
         'State schema: 2 with legacy migration and backup',
-        'Strategy integration: 21/21 real Flowseal BAT profiles',
+        'Strategy integration: 22/22 real Flowseal BAT profiles',
         'Dynamic filters: isolated per-service domain/IP/TCP/UDP groups',
         'Shared-domain policy: excluded only when every owner is disabled',
         'IP sources: strict IPv4 CIDR validation and 14-day last-known-good cache',
