@@ -26,7 +26,7 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
                 repository='Flowseal/zapret-discord-youtube'
                 tag='1.10.3'
                 assetName='zapret-discord-youtube-1.10.3.zip'
-                assetPattern='^zapret-discord-youtube-1\.10\.3\.zip
+                assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$
                 minimumBytes=1
                 expectedSha256=$sha
                 requiredPaths=@('service.bat')
