@@ -130,7 +130,7 @@ jobs:
           "NEXROUTE_NOTIFICATION_TOAST_CHANNEL=$($desktop.NotificationToastChannel)" >> $env:GITHUB_ENV
           "NEXROUTE_NOTIFICATION_FALLBACK_CHANNEL=$($desktop.NotificationFallbackChannel)" >> $env:GITHUB_ENV
           if ($result.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Built package contains a different upstream lock.' }
-          if ([int]$result.PatchTargetCount -ne 23) { throw 'Built package patch report is incomplete.' }
+          if ([int]$result.PatchTargetCount -ne 24) { throw 'Built package patch report is incomplete.' }
           if ([int]$result.NativeTrayExitCode -ne 0) { throw 'Native tray self-test did not pass in the release package.' }
 
       - name: Generate hardware and OS validation report
@@ -203,7 +203,7 @@ jobs:
             -ExtractDirectory (Join-Path $env:RUNNER_TEMP 'nexroute-offline-release-test') `
             -SkipRuntime | Select-Object -Last 1
           if ($offline.UpstreamSha256 -ne $env:NEXROUTE_UPSTREAM_SHA256) { throw 'Offline package lock differs.' }
-          if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
+          if ([int]$offline.PatchTargetCount -ne 24) { throw 'Offline package patch report is incomplete.' }
           if ([int]$offline.NativeTrayExitCode -ne 0) { throw 'Native tray self-test failed in the offline package.' }
           $offlineDesktop = ./scripts/Test-V06Desktop.ps1 -ExtractDirectory $offline.ExtractPath
           if ([int]$offlineDesktop.ValidationSelfTestExitCode -ne 0) { throw 'Native validation viewer self-test failed in the offline package.' }
