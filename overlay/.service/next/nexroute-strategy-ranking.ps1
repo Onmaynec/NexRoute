@@ -23,6 +23,19 @@ function Get-NrObservationProperty064 {
     return $null
 }
 
+function Expand-NrObservations064 {
+    param($Value)
+    $result = New-Object 'System.Collections.Generic.List[object]'
+    foreach ($item in @($Value)) {
+        if ($item -is [System.Array]) {
+            foreach ($nested in $item) { if ($null -ne $nested) { $result.Add($nested) } }
+        } elseif ($null -ne $item) {
+            $result.Add($item)
+        }
+    }
+    return $result.ToArray()
+}
+
 function Get-NrPassRate064 {
     param([object[]]$Observations)
     $known = @($Observations | Where-Object { $null -ne (Get-NrObservationProperty064 -Observation $_ -Name 'success') })
@@ -47,7 +60,7 @@ function Get-NrStrategyRanking064 {
         if ([string]::IsNullOrWhiteSpace($strategy)) { throw 'Strategy ranking candidate is missing strategy id.' }
         $startedValue = Get-NrObservationProperty064 -Observation $candidate -Name 'started'
         $started = if ($null -eq $startedValue) { $true } else { [bool]$startedValue }
-        $observations = @(Get-NrObservationProperty064 -Observation $candidate -Name 'observations')
+        $observations = @(Expand-NrObservations064 -Value (Get-NrObservationProperty064 -Observation $candidate -Name 'observations'))
         $known = @($observations | Where-Object { $null -ne (Get-NrObservationProperty064 -Observation $_ -Name 'success') })
         $controls = @($known | Where-Object { [bool](Get-NrObservationProperty064 -Observation $_ -Name 'control') })
         $critical = @($known | Where-Object { [bool](Get-NrObservationProperty064 -Observation $_ -Name 'critical') -and -not [bool](Get-NrObservationProperty064 -Observation $_ -Name 'control') })
