@@ -1,9 +1,9 @@
-Describe 'NexRoute 0.6.3 release coherence' {
+Describe 'NexRoute 0.6.4 release coherence' {
     BeforeAll {
         $root=Split-Path -Parent $PSScriptRoot
         $script:version=(Get-Content -LiteralPath (Join-Path $root '.service/version.txt') -Raw -Encoding UTF8).Trim()
-        $script:releaseNotes=Get-Content -LiteralPath (Join-Path $root '.github/release-notes/v0.6.3.md') -Raw -Encoding UTF8
-        $script:acceptance=Get-Content -LiteralPath (Join-Path $root 'docs/RELEASE_0.6.3_ACCEPTANCE.md') -Raw -Encoding UTF8
+        $script:releaseNotes=Get-Content -LiteralPath (Join-Path $root '.github/release-notes/v0.6.4.md') -Raw -Encoding UTF8
+        $script:acceptance=Get-Content -LiteralPath (Join-Path $root 'docs/RELEASE_0.6.4_ACCEPTANCE.md') -Raw -Encoding UTF8
         $script:websitePackage=Get-Content -LiteralPath (Join-Path $root 'website/package.json') -Raw -Encoding UTF8 | ConvertFrom-Json
         $script:websiteLock=Get-Content -LiteralPath (Join-Path $root 'website/package-lock.json') -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
         $script:validateWorkflow=Get-Content -LiteralPath (Join-Path $root '.github/workflows/validate.yml') -Raw -Encoding UTF8
@@ -15,23 +15,23 @@ Describe 'NexRoute 0.6.3 release coherence' {
         $script:evidence=Get-Content -LiteralPath (Join-Path $root 'scripts/Test-StrategyLab063Evidence.ps1') -Raw -Encoding UTF8
     }
 
-    It 'uses 0.6.3 as the canonical package and website version' {
-        $script:version | Should -Be '0.6.3'
+    It 'uses 0.6.4 as the canonical package and website version' {
+        $script:version | Should -Be '0.6.4'
         [string]$script:websitePackage.version | Should -Be $script:version
         [string]$script:websiteLock['version'] | Should -Be $script:version
         [string]$script:websiteLock['packages']['']['version'] | Should -Be $script:version
-        $script:releaseNotes | Should -Match ([regex]::Escape('# NexRoute 0.6.3 — Discord and YouTube strategy refresh'))
-        $script:acceptance | Should -Match ([regex]::Escape('NexRoute 0.6.3 release acceptance'))
+        $script:releaseNotes | Should -Match ([regex]::Escape('# NexRoute 0.6.4 — обновление Flowseal и hardening'))
+        $script:acceptance | Should -Match ([regex]::Escape('NexRoute 0.6.4 release acceptance'))
     }
 
-    It 'uses 0.6.3 package names and job labels in the validation workflow' {
+    It 'uses 0.6.4 package names and job labels in the validation workflow' {
         foreach ($token in @(
-            'Validate NexRoute 0.6.3 sources',
-            'Build and test NexRoute 0.6.3',
-            "if (`$version -ne '0.6.3')",
-            'NexRoute-0.6.3-smoke',
-            'artifacts/NexRoute-0.6.3-win-x64.zip',
-            'artifacts/NexRoute-0.6.3-win-x64.zip.sha256'
+            'Validate NexRoute 0.6.4 sources',
+            'Build and test NexRoute 0.6.4',
+            "if (`$version -ne '0.6.4')",
+            'NexRoute-0.6.4-smoke',
+            'artifacts/NexRoute-0.6.4-win-x64.zip',
+            'artifacts/NexRoute-0.6.4-win-x64.zip.sha256'
         )) { $script:validateWorkflow | Should -Match ([regex]::Escape($token)) }
     }
 
@@ -76,8 +76,8 @@ Describe 'NexRoute 0.6.3 release coherence' {
         (& (Join-Path $root 'scripts/Test-GitHubActionsPinning.ps1') -Root $root).status | Should -Be 'passed'
     }
 
-    It 'documents the four-subject 0.6.3 release trust flow' {
-        foreach ($token in @('NexRoute-0.6.3-win-x64.zip','NexRoute-0.6.3-win-x64.zip.sha256','NexRoute-0.6.3-validation.json','NexRoute-0.6.3-validation.md')) { $script:releaseNotes | Should -Match ([regex]::Escape($token)) }
+    It 'documents the four-subject 0.6.4 release trust flow' {
+        foreach ($token in @('NexRoute-0.6.3-win-x64.zip','NexRoute-0.6.3-win-x64.zip.sha256','NexRoute-0.6.4-validation.json','NexRoute-0.6.4-validation.md')) { $script:releaseNotes | Should -Match ([regex]::Escape($token)) }
         foreach ($token in @('NotificationToastChannel','NotificationFallbackChannel','actions/attest v4.2.2','gh attestation verify','NexRoute-${{ steps.version.outputs.version }}-validation.json','NexRoute-${{ steps.version.outputs.version }}-validation.md')) { $script:releaseWorkflow | Should -Match ([regex]::Escape($token)) }
     }
 }
