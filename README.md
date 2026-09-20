@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
-[![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](docs/UPSTREAM.md)
+[![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.3-6f42c1)](docs/UPSTREAM.md)
 [![Version](https://img.shields.io/badge/version-0.6.3-24e1d6)](.service/version.txt)
 
 **Локальная Windows-система управления стратегиями обхода DPI с изолированными сервисными workers, проверяемыми обновлениями и честным release validation.**
@@ -181,7 +181,7 @@ NexRoute содержит stable-only updater:
 
 ## Воспроизводимая сборка 🧾
 
-NexRoute использует immutable Flowseal `1.10.0` archive с locked SHA-256.
+NexRoute использует immutable Flowseal `1.10.3` archive с locked SHA-256.
 
 В package создаются:
 
@@ -198,7 +198,7 @@ NEXROUTE_BUILD_INFO.txt
 pwsh ./scripts/Build-Release.ps1 `
   -Version 0.6.3 `
   -OutputDirectory ./artifacts `
-  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
+  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 ```
 
 Полностью offline rebuild:
@@ -207,10 +207,10 @@ pwsh ./scripts/Build-Release.ps1 `
 pwsh ./scripts/Build-Release.ps1 `
   -Version 0.6.3 `
   -OutputDirectory ./artifacts-offline `
-  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
+  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip
 ```
 
-Offline package обязан использовать тот же upstream digest, 23 tracked patch targets, 21 strategies и 15 service profiles.
+Offline package обязан использовать тот же upstream digest, 24 tracked patch targets, 22 strategies и 15 service profiles.
 
 ## Diagnostics 🩺
 
@@ -289,4 +289,4 @@ Release workflow дополнительно создаёт JSON/Markdown validat
 
 ---
 
-**NexRoute 0.6.3** · Baseline: **Flowseal 1.10.0** · Windows 10/11 x64
+**NexRoute 0.6.3** · Baseline: **Flowseal 1.10.3** · Windows 10/11 x64
