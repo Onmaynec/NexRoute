@@ -6,7 +6,7 @@ param(
 
     [Parameter()]
     [ValidatePattern('^\d+\.\d+\.\d+[A-Za-z0-9.-]*$')]
-    [string]$UpstreamVersion = '1.10.0',
+    [string]$UpstreamVersion = '1.10.3',
 
     [Parameter()]
     [string]$OutputDirectory
@@ -221,7 +221,7 @@ if exist "!NEXROUTE_LANGUAGE_FILE!" set /p NEXROUTE_LANG=<"!NEXROUTE_LANGUAGE_FI
 if /I not "!NEXROUTE_LANG!"=="RU" if /I not "!NEXROUTE_LANG!"=="EN" set "NEXROUTE_LANG=RU"
 
 set "NEXROUTE_VERSION=!LOCAL_VERSION!"
-set "NEXROUTE_BASELINE=1.10.0"
+set "NEXROUTE_BASELINE=1.10.3"
 set "NEXROUTE_STRATEGY=!CurrentStrategy!"
 set "NEXROUTE_GAME_STATUS=!GameFilterStatus!"
 set "NEXROUTE_IPSET_STATUS=!IPsetStatus!"
