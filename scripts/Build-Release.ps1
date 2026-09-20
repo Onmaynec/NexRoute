@@ -369,7 +369,7 @@ try {
     & $controller -Mode Apply -Root $packageRoot | Out-Null
 
     $strategyFiles = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') })
-    if ($strategyFiles.Count -ne 21) { throw "Expected 21 real strategy BAT files, got $($strategyFiles.Count)." }
+    if ($strategyFiles.Count -ne 22) { throw "Expected 22 real strategy BAT files, got $($strategyFiles.Count)." }
     foreach ($strategyFile in $strategyFiles) {
         $current = $strategyFile
         Invoke-TrackedPatch -Id ("strategy.{0}" -f $current.BaseName.ToLowerInvariant()) -Target $current.FullName -Action {
@@ -387,8 +387,8 @@ try {
         Patch-NexRouteTestLab -Path $testLabPath
     }
 
-    if ($patchJournal.Count -ne 23) {
-        throw "Expected 23 tracked patch targets, got $($patchJournal.Count)."
+    if ($patchJournal.Count -ne 24) {
+        throw "Expected 24 tracked patch targets, got $($patchJournal.Count)."
     }
     if ($patchIds.Count -ne $patchJournal.Count) {
         throw 'Patch report contains duplicate IDs.'
@@ -450,7 +450,7 @@ try {
         UpstreamResolution = [string]$resolvedUpstream.ResolutionMode
         PatchTargetCount = $patchJournal.Count
         PatchOperationCount = [int]$operationCount
-        StrategyCount = 21
+        StrategyCount = [int]$resolvedUpstream.Lock.strategyCount
         ServiceCount = 15
         Archive = $zipPath
         Checksum = $checksumPath
