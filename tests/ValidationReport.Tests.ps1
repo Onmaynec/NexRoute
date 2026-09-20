@@ -158,7 +158,7 @@ Describe 'NexRoute 0.6.0 signed validation report' {
             'NEXROUTE_VALIDATION_VIEWER_SELF_TEST_EXIT_CODE',
             'NexRoute-${{ steps.version.outputs.version }}-validation.json',
             'NexRoute-${{ steps.version.outputs.version }}-validation.md',
-            'actions/attest@v4',
+            'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # actions/attest v4.2.2',
             'gh attestation verify'
         )) {
             $workflow | Should -Match ([regex]::Escape($token))
