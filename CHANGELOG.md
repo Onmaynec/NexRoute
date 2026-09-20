@@ -6,6 +6,28 @@
 
 Пока нет изменений.
 
+## [0.6.4] - 2026-09-20
+
+### Changed
+
+- обновлён upstream Flowseal с `1.10.0` до `1.10.3` с закреплённым SHA-256 официального архива;
+- пакет и release contract расширены до 22 upstream-стратегий и 24 patch-targets;
+- GameFilter переведён на совместимый формат `mode/tcp/udp` с сохранением пользовательских диапазонов портов и поддержкой старого формата;
+- учтено upstream-переименование QUIC payload;
+- Strategy Lab получил повторные наблюдения, стабильность, explainable ranking и privacy-safe evidence receipts;
+- updater получил post-update health gate и forced rollback regression;
+- GitHub Actions закреплены на проверенных commit SHA.
+
+### Fixed
+
+- исправлено падение Strategy Lab ranking при сериализации endpoint/protocol pass-rate коллекций;
+- обновлены updater/package fixtures и validation contract под Flowseal 1.10.3.
+
+### Release
+
+- stable updater сохраняет контракт GitHub Releases и может предложить пользователям 0.6.3 обновление до опубликованной 0.6.4;
+- release assets: ZIP, SHA-256, validation JSON и validation Markdown с artifact attestation.
+
 ## [0.6.3] - 2026-08-07
 
 ### Changed

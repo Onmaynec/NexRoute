@@ -264,17 +264,19 @@ function Get-NexRoutePackageRoot {
         throw "Downloaded package version $packageVersion differs from release version $ExpectedVersion."
     }
 
+    $patchReport = Get-Content -LiteralPath (Join-Path $packageRoot '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    $targetCount = [int](Get-NexRoutePropertyValue -InputObject (Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary') -Name 'targetCount')
+    $expectedStrategyCount = switch ($targetCount) {
+        23 { 21 }
+        24 { 22 }
+        default { throw "Downloaded package patch report contains unsupported target count: $targetCount." }
+    }
+
     $strategies = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object {
         $_.Name -notin @('service.bat', 'nexroute.bat', 'nexroute-update.cmd')
     })
-    if ($strategies.Count -ne 21) {
-        throw "Downloaded package contains $($strategies.Count) strategies instead of 21."
-    }
-
-    $patchReport = Get-Content -LiteralPath (Join-Path $packageRoot '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    $targetCount = [int](Get-NexRoutePropertyValue -InputObject (Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary') -Name 'targetCount')
-    if ($targetCount -ne 23) {
-        throw "Downloaded package patch report contains $targetCount targets instead of 23."
+    if ($strategies.Count -ne $expectedStrategyCount) {
+        throw "Downloaded package contains $($strategies.Count) strategies, but its patch report requires $expectedStrategyCount."
     }
 
     return $packageRoot
@@ -451,6 +453,65 @@ function Limit-NexRouteBackups {
     }
 }
 
+function Test-NexRoutePostUpdateHealth {
+    param(
+        [Parameter(Mandatory)][string]$ExpectedVersion,
+        [bool]$WasRunning = $false
+    )
+
+    if ([Environment]::GetEnvironmentVariable('NEXROUTE_UPDATE_FORCE_HEALTH_FAILURE') -eq '1') {
+        throw 'NexRoute post-update health check was forced to fail for rollback validation.'
+    }
+
+    foreach ($relativePath in @(
+        '.service/version.txt',
+        '.service/nexroute-updater.ps1',
+        '.service/upstream-lock.json',
+        '.service/patch-report.json',
+        'nexroute.bat',
+        'nexroute-update.cmd',
+        'service.bat'
+    )) {
+        if (-not (Test-Path -LiteralPath (Join-Path $Root $relativePath) -PathType Leaf)) {
+            throw "NexRoute post-update health check failed: required file is missing: $relativePath"
+        }
+    }
+
+    $installedVersion = Get-NexRouteCurrentVersion
+    if ($installedVersion -ne $ExpectedVersion) {
+        throw "NexRoute post-update health check failed: expected version $ExpectedVersion, got $installedVersion."
+    }
+
+    $patchReport = Get-Content -LiteralPath (Join-Path $Root '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    $summary = Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary'
+    $targetCount = [int](Get-NexRoutePropertyValue -InputObject $summary -Name 'targetCount')
+    $expectedStrategyCount = switch ($targetCount) {
+        23 { 21 }
+        24 { 22 }
+        default { throw "NexRoute post-update health check failed: unsupported patch target count: $targetCount." }
+    }
+    $installedStrategies = @(Get-ChildItem -LiteralPath $Root -Filter '*.bat' -File | Where-Object {
+        $_.Name -notin @('service.bat', 'nexroute.bat', 'nexroute-update.cmd')
+    })
+    if ($installedStrategies.Count -ne $expectedStrategyCount) {
+        throw "NexRoute post-update health check failed: found $($installedStrategies.Count) strategies, but patch report requires $expectedStrategyCount."
+    }
+
+    if ($WasRunning -and $env:OS -eq 'Windows_NT') {
+        $runtimeHealthy = $false
+        try {
+            $service = Get-Service -Name 'zapret' -ErrorAction Stop
+            $runtimeHealthy = $service.Status -eq 'Running'
+        } catch { }
+        if (-not $runtimeHealthy) {
+            try { $runtimeHealthy = $null -ne (Get-Process -Name 'winws' -ErrorAction SilentlyContinue | Select-Object -First 1) } catch { }
+        }
+        if (-not $runtimeHealthy) {
+            throw 'NexRoute post-update health check failed: runtime was active before the update but did not return to a healthy running state.'
+        }
+    }
+    return $true
+}
 function Install-NexRouteVerifiedPackage {
     param(
         [Parameter(Mandatory)]$VerifiedPackage,
@@ -489,6 +550,7 @@ function Install-NexRouteVerifiedPackage {
         }
 
         $restartMessage = Start-NexRouteRuntime -WasRunning $wasRunning
+        [void](Test-NexRoutePostUpdateHealth -ExpectedVersion $Release.Version -WasRunning $wasRunning)
         $State.latestVersion = $Release.Version
         $State.lastStatus = 'updated'
         $State.lastMessage = if ($restartMessage) { [string]$restartMessage } else { 'Update installed successfully.' }

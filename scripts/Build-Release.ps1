@@ -369,7 +369,7 @@ try {
     & $controller -Mode Apply -Root $packageRoot | Out-Null
 
     $strategyFiles = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') })
-    if ($strategyFiles.Count -ne 21) { throw "Expected 21 real strategy BAT files, got $($strategyFiles.Count)." }
+    if ($strategyFiles.Count -ne 22) { throw "Expected 22 real strategy BAT files, got $($strategyFiles.Count)." }
     foreach ($strategyFile in $strategyFiles) {
         $current = $strategyFile
         Invoke-TrackedPatch -Id ("strategy.{0}" -f $current.BaseName.ToLowerInvariant()) -Target $current.FullName -Action {
@@ -387,8 +387,8 @@ try {
         Patch-NexRouteTestLab -Path $testLabPath
     }
 
-    if ($patchJournal.Count -ne 23) {
-        throw "Expected 23 tracked patch targets, got $($patchJournal.Count)."
+    if ($patchJournal.Count -ne 24) {
+        throw "Expected 24 tracked patch targets, got $($patchJournal.Count)."
     }
     if ($patchIds.Count -ne $patchJournal.Count) {
         throw 'Patch report contains duplicate IDs.'
@@ -405,7 +405,7 @@ try {
         summary = [ordered]@{
             targetCount = $patchJournal.Count
             operationCount = [int]$operationCount
-            strategyTargets = 21
+            strategyTargets = 22
             infrastructureTargets = 2
         }
         patches = @($patchJournal.ToArray())
@@ -423,7 +423,7 @@ try {
         ('Tracked patch operations: {0}' -f $operationCount),
         'Service Matrix schema: 2',
         'State schema: 2 with legacy migration and backup',
-        'Strategy integration: 21/21 real Flowseal BAT profiles',
+        'Strategy integration: 22/22 real Flowseal BAT profiles',
         'Dynamic filters: isolated per-service domain/IP/TCP/UDP groups',
         'Shared-domain policy: excluded only when every owner is disabled',
         'IP sources: strict IPv4 CIDR validation and 14-day last-known-good cache',
@@ -450,7 +450,7 @@ try {
         UpstreamResolution = [string]$resolvedUpstream.ResolutionMode
         PatchTargetCount = $patchJournal.Count
         PatchOperationCount = [int]$operationCount
-        StrategyCount = 21
+        StrategyCount = [int]$resolvedUpstream.Lock.strategyCount
         ServiceCount = 15
         Archive = $zipPath
         Checksum = $checksumPath

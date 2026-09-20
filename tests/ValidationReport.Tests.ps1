@@ -13,7 +13,7 @@ Describe 'NexRoute 0.6.0 signed validation report' {
             -Version '0.6.0' `
             -PackageSha256 $script:validDigest `
             -UpstreamSha256 ('b' * 64) `
-            -PatchTargetCount 23 `
+            -PatchTargetCount 24 `
             -StrategyCount 21 `
             -ServiceCount 15 `
             -NativeTrayIncluded $true `
@@ -41,7 +41,7 @@ Describe 'NexRoute 0.6.0 signed validation report' {
         $json.schemaVersion | Should -Be 1
         $json.product | Should -Be 'NexRoute'
         $json.version | Should -Be '0.6.0'
-        $json.release.patchTargetCount | Should -Be 23
+        $json.release.patchTargetCount | Should -Be 24
         @($json.checks | Where-Object id -eq 'native-tray.self-test').status | Should -Be 'passed'
         @($json.checks | Where-Object id -eq 'native-dashboard.self-test').status | Should -Be 'passed'
         @($json.checks | Where-Object id -eq 'native-validation.self-test').status | Should -Be 'passed'
@@ -63,7 +63,7 @@ Describe 'NexRoute 0.6.0 signed validation report' {
             -Version '0.6.0' `
             -PackageSha256 $script:validDigest `
             -UpstreamSha256 ('b' * 64) `
-            -PatchTargetCount 23 `
+            -PatchTargetCount 24 `
             -StrategyCount 21 `
             -ServiceCount 15 `
             -NativeTrayIncluded $true `
@@ -122,7 +122,7 @@ Describe 'NexRoute 0.6.0 signed validation report' {
             -Version '0.6.0' `
             -PackageSha256 $script:validDigest `
             -UpstreamSha256 ('b' * 64) `
-            -PatchTargetCount 23 `
+            -PatchTargetCount 24 `
             -StrategyCount 21 `
             -ServiceCount 15 `
             -NativeTrayIncluded $true `
@@ -158,7 +158,7 @@ Describe 'NexRoute 0.6.0 signed validation report' {
             'NEXROUTE_VALIDATION_VIEWER_SELF_TEST_EXIT_CODE',
             'NexRoute-${{ steps.version.outputs.version }}-validation.json',
             'NexRoute-${{ steps.version.outputs.version }}-validation.md',
-            'actions/attest@v4',
+            'actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # actions/attest v4.2.2',
             'gh attestation verify'
         )) {
             $workflow | Should -Match ([regex]::Escape($token))

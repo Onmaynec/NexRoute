@@ -150,8 +150,17 @@ function Invoke-NexRouteInstalledServiceRefresh {
 function Show-NexRouteGameFilter {
     $flagPath = Join-Path $script:Root 'utils\game_filter.enabled'
     $current = '0'
+    $tcpRange = '1024-65535'
+    $udpRange = '1024-65535'
     if (Test-Path -LiteralPath $flagPath -PathType Leaf) {
-        $mode = (Get-Content -LiteralPath $flagPath -Raw -ErrorAction SilentlyContinue).Trim().ToLowerInvariant()
+        $mode = 'disabled'
+        foreach ($line in @(Get-Content -LiteralPath $flagPath -ErrorAction SilentlyContinue)) {
+            $value = $line.Trim()
+            if ($value -match '(?i)^mode=(all|tcp|udp)$') { $mode = $Matches[1].ToLowerInvariant() }
+            elseif ($value -match '(?i)^tcp=(.+)$') { $tcpRange = $Matches[1].Trim() }
+            elseif ($value -match '(?i)^udp=(.+)$') { $udpRange = $Matches[1].Trim() }
+            elseif ($value.ToLowerInvariant() -in @('all','tcp','udp')) { $mode = $value.ToLowerInvariant() }
+        }
         if ($mode -eq 'all') { $current = '1' } elseif ($mode -eq 'tcp') { $current = '2' } elseif ($mode -eq 'udp') { $current = '3' }
     }
     Write-NexRouteHeader -Title $script:Text.gameTitle
@@ -170,7 +179,12 @@ function Show-NexRouteGameFilter {
     if ($choice -eq '0') { Remove-Item -LiteralPath $flagPath -Force -ErrorAction SilentlyContinue }
     else {
         $value = if ($choice -eq '1') { 'all' } elseif ($choice -eq '2') { 'tcp' } else { 'udp' }
-        [System.IO.File]::WriteAllText($flagPath, $value + [Environment]::NewLine, [System.Text.Encoding]::ASCII)
+        $content = @(
+            ('mode=' + $value),
+            ('tcp=' + $tcpRange),
+            ('udp=' + $udpRange)
+        ) -join [Environment]::NewLine
+        [System.IO.File]::WriteAllText($flagPath, $content + [Environment]::NewLine, [System.Text.Encoding]::ASCII)
     }
     Invoke-NexRouteAnimation -Label $script:Text.gameRestart -Duration 220
     $refresh = Invoke-NexRouteInstalledServiceRefresh

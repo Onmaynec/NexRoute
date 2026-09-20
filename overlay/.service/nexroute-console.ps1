@@ -12,6 +12,7 @@ $next=Join-Path $PSScriptRoot 'next'
 foreach ($module in @(
     'nexroute-common.ps1',
     'nexroute-strategies.ps1',
+    'nexroute-strategy-ranking.ps1',
     'nexroute-network.ps1',
     'nexroute-diagnostics.ps1',
     'nexroute-management.ps1',
@@ -23,14 +24,30 @@ foreach ($module in @(
 }
 Initialize-NrEnvironment -RootPath $Root
 
-function Get-NrGameFilterStatus {
+function Get-NrGameFilterConfig {
     $path=Join-Path $script:NrRoot 'utils\game_filter.enabled'
-    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return (T 'disabled') }
+    $config=[ordered]@{ mode='disabled'; tcp='1024-65535'; udp='1024-65535' }
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return [pscustomobject]$config }
     try {
-        $mode=(Get-Content -LiteralPath $path -Raw -Encoding ASCII).Trim().ToUpperInvariant()
-        if ($mode) { return $mode }
+        foreach ($line in @(Get-Content -LiteralPath $path -Encoding ASCII)) {
+            $value=$line.Trim()
+            if (-not $value) { continue }
+            if ($value -match '(?i)^(mode|tcp|udp)=(.+)$') {
+                $key=$Matches[1].ToLowerInvariant()
+                $config[$key]=$Matches[2].Trim().ToLowerInvariant()
+            } elseif ($value.ToLowerInvariant() -in @('all','tcp','udp')) {
+                $config.mode=$value.ToLowerInvariant()
+            }
+        }
     } catch { }
-    return (T 'enabled')
+    if ($config.mode -notin @('all','tcp','udp')) { $config.mode='disabled' }
+    return [pscustomobject]$config
+}
+
+function Get-NrGameFilterStatus {
+    $config=Get-NrGameFilterConfig
+    if ($config.mode -eq 'disabled') { return (T 'disabled') }
+    return ([string]$config.mode).ToUpperInvariant()
 }
 
 function Get-NrIpSetMode {
@@ -68,7 +85,13 @@ function Show-NrGameFilterMenu {
     else {
         $parent=Split-Path -Parent $path
         if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Path $parent -Force | Out-Null }
-        [IO.File]::WriteAllText($path,$choice+[Environment]::NewLine,[Text.Encoding]::ASCII)
+        $config=Get-NrGameFilterConfig
+        $content=@(
+            ('mode=' + $choice),
+            ('tcp=' + [string]$config.tcp),
+            ('udp=' + [string]$config.udp)
+        ) -join [Environment]::NewLine
+        [IO.File]::WriteAllText($path,$content+[Environment]::NewLine,[Text.Encoding]::ASCII)
     }
     try { Restart-NrCurrentStrategy } catch { }
     Show-NrMessage -Title (T 'gameFilter') -Message (T 'operationComplete') -Color Green
