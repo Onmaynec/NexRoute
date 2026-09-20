@@ -77,7 +77,7 @@ Describe 'NexRoute 0.6.4 release coherence' {
     }
 
     It 'documents the four-subject 0.6.4 release trust flow' {
-        foreach ($token in @('NexRoute-0.6.3-win-x64.zip','NexRoute-0.6.3-win-x64.zip.sha256','NexRoute-0.6.4-validation.json','NexRoute-0.6.4-validation.md')) { $script:releaseNotes | Should -Match ([regex]::Escape($token)) }
+        foreach ($token in @('NexRoute-0.6.4-win-x64.zip','NexRoute-0.6.4-win-x64.zip.sha256','NexRoute-0.6.4-validation.json','NexRoute-0.6.4-validation.md')) { $script:releaseNotes | Should -Match ([regex]::Escape($token)) }
         foreach ($token in @('NotificationToastChannel','NotificationFallbackChannel','actions/attest v4.2.2','gh attestation verify','NexRoute-${{ steps.version.outputs.version }}-validation.json','NexRoute-${{ steps.version.outputs.version }}-validation.md')) { $script:releaseWorkflow | Should -Match ([regex]::Escape($token)) }
     }
 }
