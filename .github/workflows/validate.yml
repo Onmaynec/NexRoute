@@ -71,6 +71,7 @@ jobs:
           - UpdaterHealthRollback064.Tests.ps1
           - GitHubActionsPinning064.Tests.ps1
           - StrategyLab065.Tests.ps1
+          - Updater065.Tests.ps1
 
     steps:
       - name: Checkout repository
