@@ -240,10 +240,10 @@ function New-NrValidationReportDocument {
         $(if ($upstreamOk) {$UpstreamSha256.ToLowerInvariant()} else {'Missing or invalid upstream digest.'}) `
         $(if ($upstreamOk) {$null} else {'The source archive cannot be reproduced or verified.'})
 
-    $patchesOk = $PatchTargetCount -eq 23
+    $patchesOk = $PatchTargetCount -eq 24
     $checks += & $add 'patches.contract' 'supply-chain' $(if ($patchesOk) {'passed'} else {'failed'}) $true `
         'All tracked upstream patch targets were applied.' "$PatchTargetCount tracked patch target(s)." `
-        $(if ($patchesOk) {$null} else {'Expected exactly 23 tracked patch targets.'})
+        $(if ($patchesOk) {$null} else {'Expected exactly 24 tracked patch targets.'})
 
     $catalogsOk = $StrategyCount -gt 0 -and $ServiceCount -gt 0
     $checks += & $add 'package.catalogs' 'package' $(if ($catalogsOk) {'passed'} else {'failed'}) $true `
