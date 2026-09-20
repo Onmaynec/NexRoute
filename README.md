@@ -212,7 +212,7 @@ NEXROUTE_BUILD_INFO.txt
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.3 `
+  -Version 0.6.4 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 ```
