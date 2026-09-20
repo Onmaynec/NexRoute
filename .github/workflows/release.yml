@@ -73,9 +73,9 @@ jobs:
       - name: Build finalized package from immutable pinned upstream
         shell: pwsh
         run: |
-          $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.0.zip'
+          $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.3.zip'
           $resolved = ./scripts/Resolve-PinnedUpstream.ps1 -OutputPath $cache
-          if ($resolved.sha256 -ne '6b7c5a66cfd055b8e361f8b5fb00f00b167260f21b1c03d589f6008417fb94a2') {
+          if ($resolved.sha256 -ne '244314ae1c24538a0d751601da8e0c925c843371eec4456eb15f14c4fd6b7058') {
             throw "Pinned upstream resolver returned an unexpected SHA-256: $($resolved.sha256)"
           }
           $result = ./scripts/Build-Package.ps1 `
