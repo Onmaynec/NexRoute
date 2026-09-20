@@ -267,14 +267,14 @@ function Get-NexRoutePackageRoot {
     $strategies = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object {
         $_.Name -notin @('service.bat', 'nexroute.bat', 'nexroute-update.cmd')
     })
-    if ($strategies.Count -ne 21) {
-        throw "Downloaded package contains $($strategies.Count) strategies instead of 21."
+    if ($strategies.Count -ne 22) {
+        throw "Downloaded package contains $($strategies.Count) strategies instead of 22."
     }
 
     $patchReport = Get-Content -LiteralPath (Join-Path $packageRoot '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     $targetCount = [int](Get-NexRoutePropertyValue -InputObject (Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary') -Name 'targetCount')
-    if ($targetCount -ne 23) {
-        throw "Downloaded package patch report contains $targetCount targets instead of 23."
+    if ($targetCount -ne 24) {
+        throw "Downloaded package patch report contains $targetCount targets instead of 24."
     }
 
     return $packageRoot
