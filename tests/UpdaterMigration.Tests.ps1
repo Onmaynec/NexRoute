@@ -29,12 +29,12 @@ Describe 'NexRoute 0.6.2 updater migration transactions' {
             Set-Content -LiteralPath (Join-Path $payload '.service/version.txt') -Value $version -Encoding UTF8
             Copy-Item -LiteralPath $script:updaterPath -Destination (Join-Path $payload '.service/nexroute-updater.ps1') -Force
             Set-Content -LiteralPath (Join-Path $payload '.service/i18n/nexroute-pages-update.ps1') -Value 'function Invoke-NexRouteUpdateWatch { }' -Encoding UTF8
-            Set-Content -LiteralPath (Join-Path $payload '.service/upstream-lock.json') -Value '{"schemaVersion":1,"sha256":"6b7c5a66cfd055b8e361f8b5fb00f00b167260f21b1c03d589f6008417fb94a2"}' -Encoding UTF8
-            Set-Content -LiteralPath (Join-Path $payload '.service/patch-report.json') -Value '{"schemaVersion":1,"summary":{"targetCount":23}}' -Encoding UTF8
+            Set-Content -LiteralPath (Join-Path $payload '.service/upstream-lock.json') -Value '{"schemaVersion":1,"sha256":"244314ae1c24538a0d751601da8e0c925c843371eec4456eb15f14c4fd6b7058"}' -Encoding UTF8
+            Set-Content -LiteralPath (Join-Path $payload '.service/patch-report.json') -Value '{"schemaVersion":1,"summary":{"targetCount":24}}' -Encoding UTF8
             Set-Content -LiteralPath (Join-Path $payload 'nexroute.bat') -Value '@echo off' -Encoding ASCII
             Set-Content -LiteralPath (Join-Path $payload 'nexroute-update.cmd') -Value '@echo off' -Encoding ASCII
             Set-Content -LiteralPath (Join-Path $payload 'service.bat') -Value '@echo off' -Encoding ASCII
-            1..21 | ForEach-Object { Set-Content -LiteralPath (Join-Path $payload ('strategy-{0:d2}.bat' -f $_)) -Value '@echo off' -Encoding ASCII }
+            1..22 | ForEach-Object { Set-Content -LiteralPath (Join-Path $payload ('strategy-{0:d2}.bat' -f $_)) -Value '@echo off' -Encoding ASCII }
             $padding=New-Object byte[] 180000
             $rng=[Security.Cryptography.RandomNumberGenerator]::Create()
             try { $rng.GetBytes($padding) } finally { $rng.Dispose() }
