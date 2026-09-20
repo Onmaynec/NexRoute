@@ -4,7 +4,7 @@ This document separates automated evidence from checks that still require a real
 
 ## Scope
 
-0.6.4 is the hardening release for issues #50, #51, #52 and #53. The 0.7.0 strategy-manifest redesign is explicitly outside this release.
+0.6.4 is the hardening and upstream-sync release for issues #50, #51, #52, #53 and #64. It is pinned to Flowseal 1.10.3. The 0.7.0 strategy-manifest redesign is explicitly outside this release.
 
 ## Automated gates
 
@@ -43,7 +43,7 @@ The release candidate must pass all of these checks on the exact commit proposed
 - Online package build and verification pass.
 - Offline rebuild from the verified pinned upstream cache passes.
 - Online and offline package locks agree.
-- Patch report contains exactly 23 tracked targets.
+- Patch report contains exactly 24 tracked targets.
 - Native tray, notifier, Dashboard and validation viewer package checks pass.
 - Windows launchers and first-run diagnostic compatibility checks pass.
 - Real published 0.6.2 -> 0.6.3 migration evidence passes on a Windows runner.
@@ -91,4 +91,4 @@ A synthetic fixture proving receipt behavior is automated evidence for the imple
 
 ## Release decision
 
-0.6.4 may be merged as release-ready source only when all automated gates are green. Final GitHub Release publication should additionally have the manual Windows and real-field checks recorded, or the release decision must explicitly document which manual evidence is still pending instead of claiming it was performed.
+0.6.4 may be merged as release-ready source only when all automated gates are green. The project owner requested stable publication on 2026-09-20 after the automated gates. Manual Windows/ISP-specific checks that were not rerun for this candidate remain explicit limitations and must not be presented as completed evidence.
