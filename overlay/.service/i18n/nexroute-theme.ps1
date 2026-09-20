@@ -105,7 +105,7 @@ function Get-NexRouteStateColor {
 }
 
 function Write-NexRouteRule {
-    param([char]$Fill = '-', [ConsoleColor]$Color = [ConsoleColor]::DarkCyan)
+    param([char]$Fill = '-', [ConsoleColor]$Color = [ConsoleColor]::DarkRed)
     Write-Host ('+' + ($Fill.ToString() * ($script:Width - 2)) + '+') -ForegroundColor $Color
 }
 
@@ -117,15 +117,15 @@ function Write-NexRouteCentered {
 
 function Write-NexRouteLogo {
     $logo = @(
-        ' _   _  _____ __  __ ____   ___  _   _ _____ _____ ',
-        '| \ | || ____|\ \/ /|  _ \ / _ \| | | |_   _| ____|',
-        '|  \| ||  _|   \  / | |_) | | | | | | | | | |  _|  ',
-        '| |\  || |___  /  \ |  _ <| |_| | |_| | | | | |___ ',
-        '|_| \_||_____|/_/\_\|_| \_\\___/ \___/  |_| |_____|'
+        '███╗░░██╗███████╗██╗░░██╗██████╗░░█████╗░██╗░░░██╗████████╗███████╗',
+        '████╗░██║██╔════╝╚██╗██╔╝██╔══██╗██╔══██╗██║░░░██║╚══██╔══╝██╔════╝',
+        '██╔██╗██║█████╗░░░╚███╔╝░██████╔╝██║░░██║██║░░░██║░░░██║░░░█████╗░░',
+        '██║╚████║██╔══╝░░░██╔██╗░██╔══██╗██║░░██║██║░░░██║░░░██║░░░██╔══╝░░',
+        '██║░╚███║███████╗██╔╝╚██╗██║░░██║╚█████╔╝╚██████╔╝░░░██║░░░███████╗',
+        '╚═╝░░╚══╝╚══════╝╚═╝░░╚═╝╚═╝░░╚═╝░╚════╝░░╚═════╝░░░░╚═╝░░░╚══════╝'
     )
-    $colors = @('Cyan', 'DarkCyan', 'Cyan', 'Magenta', 'Cyan')
-    for ($index = 0; $index -lt $logo.Count; $index++) {
-        Write-NexRouteCentered -Value $logo[$index] -Color $colors[$index]
+    foreach ($line in $logo) {
+        Write-NexRouteCentered -Value $line -Color Red
     }
     Write-NexRouteCentered -Value $script:Text.tagline -Color DarkGray
 }
@@ -137,7 +137,7 @@ function Write-NexRouteHeader {
     try { $Host.UI.RawUI.WindowTitle = "NexRoute // $Title" } catch {}
     Write-NexRouteLogo
 
-    $version = Get-NexRouteEnvironmentValue -Name 'NEXROUTE_VERSION' -Fallback '0.2.1'
+    $version = Get-NexRouteEnvironmentValue -Name 'NEXROUTE_VERSION' -Fallback '0.6.5'
     $baseline = Get-NexRouteEnvironmentValue -Name 'NEXROUTE_BASELINE' -Fallback '1.10.3'
     $strategy = Get-NexRouteEnvironmentValue -Name 'NEXROUTE_STRATEGY' -Fallback 'none'
     $strategy = ($strategy -replace '^(Current\s+)?Strategy\s*:\s*', '').Trim()
@@ -152,11 +152,11 @@ function Write-NexRouteHeader {
     $left = Format-NexRouteText -Value ("  $($script:Text.profile): $strategy") -Length $leftLength
     $spaces = [Math]::Max(1, $script:Width - 2 - $left.Length - $right.Length)
 
-    Write-Host '|' -NoNewline -ForegroundColor DarkCyan
+    Write-Host '|' -NoNewline -ForegroundColor DarkRed
     Write-Host $left -NoNewline -ForegroundColor Gray
     Write-Host (' ' * $spaces) -NoNewline
     Write-Host $right -NoNewline -ForegroundColor DarkGray
-    Write-Host '|' -ForegroundColor DarkCyan
+    Write-Host '|' -ForegroundColor DarkRed
     Write-NexRouteRule -Color DarkCyan
 
     if ($Title -and $Title -notmatch '^CONTROL NODE') {
@@ -168,7 +168,7 @@ function Write-NexRoutePanel {
     param([string]$Title)
     $label = "[ $Title ]"
     $remaining = [Math]::Max(0, $script:Width - 4 - $label.Length)
-    Write-Host ('+--' + $label + ('-' * $remaining) + '+') -ForegroundColor DarkCyan
+    Write-Host ('+--' + $label + ('-' * $remaining) + '+') -ForegroundColor DarkRed
 }
 
 function Write-NexRouteOption {
@@ -179,27 +179,27 @@ function Write-NexRouteOption {
     $titleText = ' ' + $Label
     $padding = [Math]::Max(1, $script:Width - 4 - $numberText.Length - $titleText.Length - $statusText.Length)
 
-    Write-Host '|' -NoNewline -ForegroundColor DarkCyan
-    Write-Host (' ' + $numberText) -NoNewline -ForegroundColor Cyan
+    Write-Host '|' -NoNewline -ForegroundColor DarkRed
+    Write-Host (' ' + $numberText) -NoNewline -ForegroundColor Red
     Write-Host $titleText -NoNewline -ForegroundColor White
     Write-Host (' ' * $padding) -NoNewline
     if ($statusText) { Write-Host $statusText -NoNewline -ForegroundColor (Get-NexRouteStateColor -State $Status) }
-    Write-Host ' |' -ForegroundColor DarkCyan
+    Write-Host ' |' -ForegroundColor DarkRed
 }
 
 function Write-NexRouteKeyValue {
     param([string]$Key, [string]$Value, [ConsoleColor]$ValueColor = [ConsoleColor]::White)
 
     $keyWidth = [Math]::Min(30, [Math]::Max(18, [int]($script:Width * 0.28)))
-    Write-Host '|' -NoNewline -ForegroundColor DarkCyan
+    Write-Host '|' -NoNewline -ForegroundColor DarkRed
     Write-Host ('  ' + (Format-NexRouteText -Value $Key -Length $keyWidth)) -NoNewline -ForegroundColor DarkGray
-    Write-Host ' : ' -NoNewline -ForegroundColor DarkCyan
+    Write-Host ' : ' -NoNewline -ForegroundColor DarkRed
     Write-Host (Format-NexRouteText -Value $Value -Length ($script:Width - $keyWidth - 8)) -NoNewline -ForegroundColor $ValueColor
-    Write-Host '|' -ForegroundColor DarkCyan
+    Write-Host '|' -ForegroundColor DarkRed
 }
 
 function Write-NexRouteProgress {
-    param([string]$Label, [int]$Percent, [ConsoleColor]$Color = [ConsoleColor]::Cyan)
+    param([string]$Label, [int]$Percent, [ConsoleColor]$Color = [ConsoleColor]::Red)
 
     $barWidth = [Math]::Min(42, [Math]::Max(20, $script:Width - 46))
     $filled = [int][Math]::Floor($barWidth * ($Percent / 100.0))
@@ -219,7 +219,7 @@ function Write-NexRouteProgress {
 }
 
 function Invoke-NexRouteAnimation {
-    param([string]$Label, [int]$Duration = 160, [ConsoleColor]$Color = [ConsoleColor]::Cyan)
+    param([string]$Label, [int]$Duration = 160, [ConsoleColor]$Color = [ConsoleColor]::Red)
     foreach ($percent in @(0, 20, 40, 60, 80, 100)) {
         Write-NexRouteProgress -Label $Label -Percent $percent -Color $Color
         Start-Sleep -Milliseconds ([Math]::Max(5, [int]($Duration / 6)))
