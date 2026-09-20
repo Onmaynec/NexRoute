@@ -119,7 +119,7 @@ foreach ($target in @('DiscordGateway','DiscordCDN','DiscordUpdates','YouTubeWeb
 }
 
 $build=(Read-Text 'scripts/Build-Release.ps1')+(Read-Text 'scripts/Build-Package.ps1')
-foreach ($token in @('upstream-lock.json','patch-report.json','Expected 23 tracked patch targets','UpstreamCachePath','UpstreamArchive','UpdaterEntryIncluded')) {
+foreach ($token in @('upstream-lock.json','patch-report.json','Expected 24 tracked patch targets','UpstreamCachePath','UpstreamArchive','UpdaterEntryIncluded')) {
     Assert-True ($build -match [regex]::Escape($token)) "Build contract contains $token"
 }
 
