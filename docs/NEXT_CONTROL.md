@@ -1,3 +1,5 @@
+> **Актуально для 0.6.5:** основной Control Node снова использует числовое меню `[01] … [00]` в стиле NexRoute 0.2.2. Описанная ниже arrow-key архитектура относится к версии 0.5.x и сохранена как историческая справка.
+
 # NexRoute 0.5.0 control architecture
 
 NexRoute 0.5.0 uses an arrow-key PowerShell TUI as the only primary interactive menu. The original verified batch service engine is retained internally as `.service/legacy-service.bat` and is called only for low-level installation and compatibility commands.
