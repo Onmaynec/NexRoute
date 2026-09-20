@@ -38,7 +38,7 @@ $required=@(
     'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/UpdaterMigration.Tests.ps1',
     'tests/ReleaseAttestation.Tests.ps1','tests/ReleaseCoherence.Tests.ps1','tests/LauncherHotfix.Tests.ps1','tests/Hotfix062.Tests.ps1',
     'tests/StrategyRefresh063.Tests.ps1','tests/StrategyLab063Evidence.Tests.ps1','tests/StrategyLabFieldEvidence064.Tests.ps1',
-    'tests/StrategyRanking064.Tests.ps1','tests/StrategyLab065.Tests.ps1','tests/UpdaterHealthRollback064.Tests.ps1','tests/GitHubActionsPinning064.Tests.ps1',
+    'tests/StrategyRanking064.Tests.ps1','tests/StrategyLab065.Tests.ps1','tests/Updater065.Tests.ps1','tests/UpdaterHealthRollback064.Tests.ps1','tests/GitHubActionsPinning064.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml','.github/workflows/pages.yml',
     '.github/release-notes/v0.6.0.md','.github/release-notes/v0.6.1.md','.github/release-notes/v0.6.2.md','.github/release-notes/v0.6.3.md','.github/release-notes/v0.6.4.md','.github/release-notes/v0.6.5.md',
     'docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/RELEASE_0.6.3_ACCEPTANCE.md','docs/RELEASE_0.6.4_ACCEPTANCE.md','docs/RELEASE_0.6.5_ACCEPTANCE.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/RELEASES.md','docs/FIELD_EVIDENCE.md','docs/STRATEGY_LAB_RANKING.md','docs/GITHUB_ACTIONS_PINNING.md',
