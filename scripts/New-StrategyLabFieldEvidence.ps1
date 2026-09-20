@@ -8,7 +8,7 @@ param(
     [string]$CandidateSha256,
 
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string]$Version = '0.6.4',
+    [string]$Version = '0.6.5',
 
     [string]$OutputPath,
 
