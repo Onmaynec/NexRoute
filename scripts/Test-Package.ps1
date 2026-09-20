@@ -128,7 +128,7 @@ if (Get-Command powershell.exe -ErrorAction SilentlyContinue) {
 $uiPath = Join-Path $extractPath '.service/nexroute-ui.ps1'
 $themePath = Join-Path $extractPath '.service/i18n/nexroute-theme.ps1'
 $theme = Get-Content -LiteralPath $themePath -Raw
-if ($theme -notmatch [regex]::Escape('| \ | || ____|\ \/ /|  _ \ / _ \| | | |_   _| ____|')) { throw 'Classic 0.1.1 logo layout is missing.' }
+if ($theme -notmatch [regex]::Escape('███╗░░██╗███████╗██╗░░██╗')) { throw 'Classic 0.6.5 NEXROUTE logo layout is missing.' }
 
 $servicesPath = Join-Path $extractPath '.service/services.json'
 $controllerPath = Join-Path $extractPath '.service/nexroute-services.ps1'
