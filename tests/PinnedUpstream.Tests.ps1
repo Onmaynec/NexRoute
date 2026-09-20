@@ -26,7 +26,8 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
                 repository='Flowseal/zapret-discord-youtube'
                 tag='1.10.3'
                 assetName='zapret-discord-youtube-1.10.3.zip'
-                assetPattern='^zapret-discord-youtube-1\.10\.3\.zip                minimumBytes=1
+                assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
+                minimumBytes=1
                 expectedSha256=$sha
                 requiredPaths=@('service.bat')
             } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
@@ -50,7 +51,7 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
                     repository='Flowseal/zapret-discord-youtube'
                     tag='1.10.3'
                     assetName=$assetName
-                    assetPattern='.*'
+                    assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
                     minimumBytes=1
                     expectedSha256=('0'*64)
                     requiredPaths=@('service.bat')
@@ -92,7 +93,7 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
                     repository='Flowseal/zapret-discord-youtube'
                     tag='1.10.3'
                     assetName=$assetName
-                    assetPattern='.*'
+                    assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
                     minimumBytes=1
                     expectedSha256=('0'*64)
                     requiredPaths=@('service.bat')
@@ -134,7 +135,7 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
                     repository='Flowseal/zapret-discord-youtube'
                     tag='1.10.3'
                     assetName=$assetName
-                    assetPattern='.*'
+                    assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
                     minimumBytes=1
                     expectedSha256=('0'*64)
                     requiredPaths=@('service.bat')
@@ -176,7 +177,7 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
                     repository='Flowseal/zapret-discord-youtube'
                     tag='1.10.3'
                     assetName=$assetName
-                    assetPattern='.*'
+                    assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
                     minimumBytes=1
                     expectedSha256=('0'*64)
                     requiredPaths=@('service.bat')
