@@ -26,7 +26,7 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
                 repository='Flowseal/zapret-discord-youtube'
                 tag='1.10.3'
                 assetName='zapret-discord-youtube-1.10.3.zip'
-                assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
+                assetPattern='^zapret-discord-youtube-1\.10\.0\.zip$'
                 minimumBytes=1
                 expectedSha256=$sha
                 requiredPaths=@('service.bat')
@@ -51,133 +51,7 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
                     repository='Flowseal/zapret-discord-youtube'
                     tag='1.10.3'
                     assetName=$assetName
-                    assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
-                    minimumBytes=1
-                    expectedSha256=('0'*64)
-                    requiredPaths=@('service.bat')
-                } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
-                { & $script:resolver -ManifestPath $manifestPath -OutputPath (Join-Path $fixture 'output.zip') } | Should -Throw '*assetName*'
-            }
-        } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'contains no GitHub Releases API dependency' {
-        $source=Get-Content -LiteralPath $script:resolver -Raw -Encoding UTF8
-        $source | Should -Match 'releases/download'
-        $source | Should -Match 'Get-FileHash'
-        $source | Should -Not -Match 'api\.github\.com|Invoke-RestMethod|releases/tags'
-    }
-}
-
-                minimumBytes=1
-                expectedSha256=$sha
-                requiredPaths=@('service.bat')
-            } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
-
-            $result=& $script:resolver -ManifestPath $manifestPath -OutputPath $archive
-            $result.cached | Should -BeTrue
-            $result.sha256 | Should -Be $sha
-            $result.path | Should -Be ([IO.Path]::GetFullPath($archive))
-            $result.url | Should -Be 'https://github.com/Flowseal/zapret-discord-youtube/releases/download/1.10.3/zapret-discord-youtube-1.10.3.zip'
-        } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'rejects unsafe or ambiguous asset names before attempting a download' {
-        $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-pinned-upstream-invalid-'+[guid]::NewGuid().ToString('N'))
-        try {
-            New-Item -ItemType Directory -Path $fixture -Force | Out-Null
-            foreach ($assetName in @('../release.zip','folder/release.zip','release.exe')) {
-                $manifestPath=Join-Path $fixture (([guid]::NewGuid().ToString('N'))+'.json')
-                [ordered]@{
-                    schemaVersion=1
-                    repository='Flowseal/zapret-discord-youtube'
-                    tag='1.10.3'
-                    assetName=$assetName
-                    assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
-                    minimumBytes=1
-                    expectedSha256=('0'*64)
-                    requiredPaths=@('service.bat')
-                } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
-                { & $script:resolver -ManifestPath $manifestPath -OutputPath (Join-Path $fixture 'output.zip') } | Should -Throw '*assetName*'
-            }
-        } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'contains no GitHub Releases API dependency' {
-        $source=Get-Content -LiteralPath $script:resolver -Raw -Encoding UTF8
-        $source | Should -Match 'releases/download'
-        $source | Should -Match 'Get-FileHash'
-        $source | Should -Not -Match 'api\.github\.com|Invoke-RestMethod|releases/tags'
-    }
-}
-
-                minimumBytes=1
-                expectedSha256=$sha
-                requiredPaths=@('service.bat')
-            } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
-
-            $result=& $script:resolver -ManifestPath $manifestPath -OutputPath $archive
-            $result.cached | Should -BeTrue
-            $result.sha256 | Should -Be $sha
-            $result.path | Should -Be ([IO.Path]::GetFullPath($archive))
-            $result.url | Should -Be 'https://github.com/Flowseal/zapret-discord-youtube/releases/download/1.10.3/zapret-discord-youtube-1.10.3.zip'
-        } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'rejects unsafe or ambiguous asset names before attempting a download' {
-        $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-pinned-upstream-invalid-'+[guid]::NewGuid().ToString('N'))
-        try {
-            New-Item -ItemType Directory -Path $fixture -Force | Out-Null
-            foreach ($assetName in @('../release.zip','folder/release.zip','release.exe')) {
-                $manifestPath=Join-Path $fixture (([guid]::NewGuid().ToString('N'))+'.json')
-                [ordered]@{
-                    schemaVersion=1
-                    repository='Flowseal/zapret-discord-youtube'
-                    tag='1.10.3'
-                    assetName=$assetName
-                    assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
-                    minimumBytes=1
-                    expectedSha256=('0'*64)
-                    requiredPaths=@('service.bat')
-                } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
-                { & $script:resolver -ManifestPath $manifestPath -OutputPath (Join-Path $fixture 'output.zip') } | Should -Throw '*assetName*'
-            }
-        } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'contains no GitHub Releases API dependency' {
-        $source=Get-Content -LiteralPath $script:resolver -Raw -Encoding UTF8
-        $source | Should -Match 'releases/download'
-        $source | Should -Match 'Get-FileHash'
-        $source | Should -Not -Match 'api\.github\.com|Invoke-RestMethod|releases/tags'
-    }
-}
-
-                minimumBytes=1
-                expectedSha256=$sha
-                requiredPaths=@('service.bat')
-            } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
-
-            $result=& $script:resolver -ManifestPath $manifestPath -OutputPath $archive
-            $result.cached | Should -BeTrue
-            $result.sha256 | Should -Be $sha
-            $result.path | Should -Be ([IO.Path]::GetFullPath($archive))
-            $result.url | Should -Be 'https://github.com/Flowseal/zapret-discord-youtube/releases/download/1.10.3/zapret-discord-youtube-1.10.3.zip'
-        } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'rejects unsafe or ambiguous asset names before attempting a download' {
-        $fixture=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-pinned-upstream-invalid-'+[guid]::NewGuid().ToString('N'))
-        try {
-            New-Item -ItemType Directory -Path $fixture -Force | Out-Null
-            foreach ($assetName in @('../release.zip','folder/release.zip','release.exe')) {
-                $manifestPath=Join-Path $fixture (([guid]::NewGuid().ToString('N'))+'.json')
-                [ordered]@{
-                    schemaVersion=1
-                    repository='Flowseal/zapret-discord-youtube'
-                    tag='1.10.3'
-                    assetName=$assetName
-                    assetPattern='^zapret-discord-youtube-1\.10\.3\.zip$'
+                    assetPattern='.*'
                     minimumBytes=1
                     expectedSha256=('0'*64)
                     requiredPaths=@('service.bat')
