@@ -140,7 +140,7 @@ function Get-NrStrategyRanking064 {
             minimumObservationCount=$MinimumObservations; criticalTargetCount=$criticalTargets.Count; controlTargetCount=$controlTargets.Count
             averageHttpLatencyMs=$latency; averagePacketLossPercent=$loss; averageJitterMs=$jitter; peakDownloadMbps=$download
             youtubeVideoReady=[bool]$youtubeReady; discordVoiceReady=[bool]$discordReady; telegramVoiceReady=[bool]$telegramReady
-            targetPassRates=@($targetPassRates); protocolPassRates=@($protocolPassRates)
+            targetPassRates=@($targetPassRates.ToArray()); protocolPassRates=@($protocolPassRates.ToArray())
             inconclusiveReason=$(if($eligible){$null}else{$inconclusiveReasons -join '; '}); recommendationReason=$null; observations=@($observations)
             probeError=Get-NrObservationProperty064 -Observation $candidate -Name 'probeError'
         })
