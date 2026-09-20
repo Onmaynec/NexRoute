@@ -136,7 +136,7 @@ function New-NexRoute063StrategyCommand {
         ('--filter-udp=443 --ipset="%LISTS%ipset-all.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --hostlist-exclude="%LISTS%list-exclude-user.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --dpi-desync=fake --dpi-desync-repeats={0} --dpi-desync-fake-quic="%BIN%quic_initial_www_google_com.bin" --new ^' -f [int]$Spec.QuicRepeats),
         ('--filter-tcp=80,443,8443 --ipset="%LISTS%ipset-all.txt" --hostlist-exclude="%LISTS%list-exclude.txt" --hostlist-exclude="%LISTS%list-exclude-user.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" {0}{1} --new ^' -f $fallbackArgs,$httpFakeSuffix),
         ('--filter-tcp=%GameFilterTCP% --ipset="%LISTS%ipset-all.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" {0}{1} --new ^' -f $gameArgs,$httpFakeSuffix),
-        ('--filter-udp=%GameFilterUDP% --ipset="%LISTS%ipset-all.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --dpi-desync=fake --dpi-desync-repeats=10 --dpi-desync-any-protocol=1 --dpi-desync-fake-unknown-udp="%BIN%quic_initial_4pda.to.bin" --dpi-desync-fake-unknown-udp="%BIN%ACTIVE_GAME_UDP.bin" --dpi-desync-cutoff=n{0} ^' -f [int]$Spec.Cutoff),
+        ('--filter-udp=%GameFilterUDP% --ipset="%LISTS%ipset-all.txt" --ipset-exclude="%LISTS%ipset-exclude.txt" --ipset-exclude="%LISTS%ipset-exclude-user.txt" --dpi-desync=fake --dpi-desync-repeats=10 --dpi-desync-any-protocol=1 --dpi-desync-fake-unknown-udp="%BIN%quic_initial_4pda_to.bin" --dpi-desync-fake-unknown-udp="%BIN%ACTIVE_GAME_UDP.bin" --dpi-desync-cutoff=n{0} ^' -f [int]$Spec.Cutoff),
         '%NEXROUTE_SERVICE_TCP_ARGS% ^',
         '%NEXROUTE_SERVICE_UDP_ARGS%'
     )
@@ -184,7 +184,7 @@ function Assert-NexRoute063Payloads {
     foreach ($relativePath in @(
         'bin/winws.exe',
         'bin/quic_initial_www_google_com.bin',
-        'bin/quic_initial_4pda.to.bin',
+        'bin/quic_initial_4pda_to.bin',
         'bin/ACTIVE_DISCORD_UDP.bin',
         'bin/ACTIVE_GAME_UDP.bin',
         'bin/stun.bin',
