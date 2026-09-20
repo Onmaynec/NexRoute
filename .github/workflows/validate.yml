@@ -140,7 +140,7 @@ jobs:
         shell: pwsh
         run: |
           $version = (Get-Content ./.service/version.txt -Raw).Trim()
-          if ($version -ne '0.6.3') { throw "Expected 0.6.3, got $version" }
+          if ($version -ne '0.6.4') { throw "Expected 0.6.4, got $version" }
           $cache = Join-Path $env:RUNNER_TEMP 'zapret-discord-youtube-1.10.3.zip'
           $resolved = ./scripts/Resolve-PinnedUpstream.ps1 -OutputPath $cache
           if ($resolved.sha256 -ne '244314ae1c24538a0d751601da8e0c925c843371eec4456eb15f14c4fd6b7058') {
@@ -230,7 +230,7 @@ jobs:
           if ($launchers.diagnosticCompatibility -ne 'passed') { throw 'Offline first-run diagnostic compatibility did not pass.' }
           if ($launchers.updaterFallbackVersion -ne '0.6.3') { throw 'Offline API-free updater fallback did not resolve 0.6.3.' }
           if ($offline.UpstreamSha256 -ne $env:NEXROUTE_ONLINE_UPSTREAM_SHA) { throw 'Offline package lock differs from the online package lock.' }
-          if ([int]$offline.PatchTargetCount -ne 23) { throw 'Offline package patch report is incomplete.' }
+          if ([int]$offline.PatchTargetCount -ne 24) { throw 'Offline package patch report is incomplete.' }
           if ([int]$offline.StrategyCount -ne [int]$env:NEXROUTE_STRATEGIES) { throw 'Online and offline strategy counts differ.' }
           if ([int]$offline.ServiceCount -ne [int]$env:NEXROUTE_SERVICES) { throw 'Online and offline service counts differ.' }
           "NEXROUTE_OFFLINE_LAUNCHER_COUNT=$($launchers.launcherCount)" >> $env:GITHUB_ENV
@@ -249,15 +249,15 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # actions/upload-artifact v7.0.1
         with:
-          name: NexRoute-0.6.3-smoke
+          name: NexRoute-0.6.4-smoke
           path: |
             build-online.log
             package-online.log
             build-offline.log
             package-offline.log
             updater-063-migration-evidence.json
-            artifacts/NexRoute-0.6.3-win-x64.zip
-            artifacts/NexRoute-0.6.3-win-x64.zip.sha256
+            artifacts/NexRoute-0.6.4-win-x64.zip
+            artifacts/NexRoute-0.6.4-win-x64.zip.sha256
           if-no-files-found: warn
           retention-days: 7
 
