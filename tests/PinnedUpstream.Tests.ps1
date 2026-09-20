@@ -7,10 +7,10 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
     It 'pins one exact immutable upstream asset and digest in the production manifest' {
         $manifest=Get-Content -LiteralPath (Join-Path $script:repositoryRoot '.service/upstream-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
         $manifest.repository | Should -Be 'Flowseal/zapret-discord-youtube'
-        $manifest.tag | Should -Be '1.10.0'
-        $manifest.assetName | Should -Be 'zapret-discord-youtube-1.10.0.zip'
+        $manifest.tag | Should -Be '1.10.3'
+        $manifest.assetName | Should -Be 'zapret-discord-youtube-1.10.3.zip'
         $manifest.assetName | Should -Match $manifest.assetPattern
-        $manifest.expectedSha256 | Should -Be '6b7c5a66cfd055b8e361f8b5fb00f00b167260f21b1c03d589f6008417fb94a2'
+        $manifest.expectedSha256 | Should -Be '244314ae1c24538a0d751601da8e0c925c843371eec4456eb15f14c4fd6b7058'
     }
 
     It 'uses an already verified cache without contacting GitHub API or release metadata' {
@@ -24,8 +24,8 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
             [ordered]@{
                 schemaVersion=1
                 repository='Flowseal/zapret-discord-youtube'
-                tag='1.10.0'
-                assetName='zapret-discord-youtube-1.10.0.zip'
+                tag='1.10.3'
+                assetName='zapret-discord-youtube-1.10.3.zip'
                 assetPattern='^zapret-discord-youtube-1\.10\.0\.zip$'
                 minimumBytes=1
                 expectedSha256=$sha
@@ -36,7 +36,7 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
             $result.cached | Should -BeTrue
             $result.sha256 | Should -Be $sha
             $result.path | Should -Be ([IO.Path]::GetFullPath($archive))
-            $result.url | Should -Be 'https://github.com/Flowseal/zapret-discord-youtube/releases/download/1.10.0/zapret-discord-youtube-1.10.0.zip'
+            $result.url | Should -Be 'https://github.com/Flowseal/zapret-discord-youtube/releases/download/1.10.3/zapret-discord-youtube-1.10.3.zip'
         } finally { Remove-Item -LiteralPath $fixture -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
@@ -49,7 +49,7 @@ Describe 'NexRoute 0.6.0 pinned upstream resolver' {
                 [ordered]@{
                     schemaVersion=1
                     repository='Flowseal/zapret-discord-youtube'
-                    tag='1.10.0'
+                    tag='1.10.3'
                     assetName=$assetName
                     assetPattern='.*'
                     minimumBytes=1
