@@ -33,7 +33,7 @@ $required = @(
     '.service/next/nexroute-workers.ps1','.service/next/nexroute-worker-plans.ps1','.service/next/nexroute-runtime-extensions.ps1',
     '.service/next/nexroute-portable-verifier.ps1','.service/next/nexroute-attestation-v2.ps1',
     '.service/next/nexroute-dot.ps1','.service/next/nexroute-dot-snapshot-v2.ps1','.service/next/nexroute-tray-install.ps1',
-    '.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1','.service/next/nexroute-update-transaction.ps1',
+    '.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1','.service/next/nexroute-strategy-lab-classic.ps1','.service/next/nexroute-update-transaction.ps1',
     '.service/services-state.json','.service/i18n/ru.json','.service/i18n/en.json',
     '.service/i18n/nexroute-theme.ps1','.service/i18n/nexroute-pages.ps1',
     '.service/i18n/nexroute-services-ui.ps1','.service/language.txt','.service/version.txt',
@@ -54,9 +54,15 @@ foreach ($nextScript in $nextScripts) {
     }
 }
 $newService = Get-Content -LiteralPath (Join-Path $extractPath 'service.bat') -Raw
-if ($newService -notmatch 'nexroute-console\.ps1') { throw 'service.bat does not launch the arrow-key control node.' }
+if ($newService -notmatch 'nexroute-console\.ps1') { throw 'service.bat does not launch the NexRoute control node.' }
 $nextConsole = Get-Content -LiteralPath (Join-Path $extractPath '.service/next/nexroute-common.ps1') -Raw
-if ($nextConsole -notmatch [regex]::Escape('>[+]') -or $nextConsole -notmatch "'UpArrow'" -or $nextConsole -notmatch "'DownArrow'") { throw 'Arrow-key [+] menu contract is missing.' }
+foreach ($token in @('███╗░░██╗███████╗','[00]','Read-Host','[ConsoleColor]::Red','schemaVersion = 4')) {
+    if ($nextConsole -notmatch [regex]::Escape($token)) { throw "Classic 0.2.2-style menu contract is missing: $token" }
+}
+$classicLab = Get-Content -LiteralPath (Join-Path $extractPath '.service/next/nexroute-strategy-lab-classic.ps1') -Raw
+foreach ($token in @('Test-NrLabDns065','Test-NrLabDpiFreeze065','Show-NrLabPreflight065','Invoke-NrStrategyProbe065','Save-NrStrategyLabRun065')) {
+    if ($classicLab -notmatch [regex]::Escape($token)) { throw "Strategy Lab 0.6.5 contract is missing: $token" }
+}
 
 $transactionPath = Join-Path $extractPath '.service/next/nexroute-update-transaction.ps1'
 . $transactionPath
