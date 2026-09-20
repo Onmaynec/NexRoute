@@ -253,7 +253,7 @@ Pull request gate проверяет:
 - PowerShell AST parsing;
 - Pester behavioral acceptance suite;
 - website typecheck и production build;
-- pinned upstream SHA-256 и 23 patch targets;
+- pinned upstream SHA-256 и 24 patch targets;
 - online package build и extraction self-test;
 - полностью offline rebuild и повторный self-test;
 - native tray, notifier, Dashboard и Validation Viewer assemblies;
