@@ -273,8 +273,8 @@ function Get-NexRoutePackageRoot {
 
     $patchReport = Get-Content -LiteralPath (Join-Path $packageRoot '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     $targetCount = [int](Get-NexRoutePropertyValue -InputObject (Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary') -Name 'targetCount')
-    if ($targetCount -ne 23) {
-        throw "Downloaded package patch report contains $targetCount targets instead of 23."
+    if ($targetCount -ne 24) {
+        throw "Downloaded package patch report contains $targetCount targets instead of 24."
     }
 
     return $packageRoot
