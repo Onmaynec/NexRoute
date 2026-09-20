@@ -483,8 +483,8 @@ function Test-NexRoutePostUpdateHealth {
     $patchReport = Get-Content -LiteralPath (Join-Path $Root '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     $summary = Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary'
     $targetCount = [int](Get-NexRoutePropertyValue -InputObject $summary -Name 'targetCount')
-    if ($targetCount -ne 23) {
-        throw "NexRoute post-update health check failed: patch report contains $targetCount targets instead of 23."
+    if ($targetCount -ne 24) {
+        throw "NexRoute post-update health check failed: patch report contains $targetCount targets instead of 24."
     }
 
     if ($WasRunning -and $env:OS -eq 'Windows_NT') {
