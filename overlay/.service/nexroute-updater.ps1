@@ -264,20 +264,19 @@ function Get-NexRoutePackageRoot {
         throw "Downloaded package version $packageVersion differs from release version $ExpectedVersion."
     }
 
+    $patchReport = Get-Content -LiteralPath (Join-Path $packageRoot '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    $targetCount = [int](Get-NexRoutePropertyValue -InputObject (Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary') -Name 'targetCount')
+    $expectedStrategyCount = switch ($targetCount) {
+        23 { 21 }
+        24 { 22 }
+        default { throw "Downloaded package patch report contains unsupported target count: $targetCount." }
+    }
+
     $strategies = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object {
         $_.Name -notin @('service.bat', 'nexroute.bat', 'nexroute-update.cmd')
     })
-    $packageSemVer = ConvertTo-NexRouteVersion -Value $packageVersion
-    $expectedStrategyCount = if ($packageSemVer -ge [version]'0.6.4') { 22 } else { 21 }
     if ($strategies.Count -ne $expectedStrategyCount) {
-        throw "Downloaded package contains $($strategies.Count) strategies instead of $expectedStrategyCount."
-    }
-
-    $patchReport = Get-Content -LiteralPath (Join-Path $packageRoot '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
-    $targetCount = [int](Get-NexRoutePropertyValue -InputObject (Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary') -Name 'targetCount')
-    $expectedTargetCount = if ($packageSemVer -ge [version]'0.6.4') { 24 } else { 23 }
-    if ($targetCount -ne $expectedTargetCount) {
-        throw "Downloaded package patch report contains $targetCount targets instead of $expectedTargetCount."
+        throw "Downloaded package contains $($strategies.Count) strategies, but its patch report requires $expectedStrategyCount."
     }
 
     return $packageRoot
@@ -486,10 +485,16 @@ function Test-NexRoutePostUpdateHealth {
     $patchReport = Get-Content -LiteralPath (Join-Path $Root '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
     $summary = Get-NexRoutePropertyValue -InputObject $patchReport -Name 'summary'
     $targetCount = [int](Get-NexRoutePropertyValue -InputObject $summary -Name 'targetCount')
-    $installedSemVer = ConvertTo-NexRouteVersion -Value $installedVersion
-    $expectedTargetCount = if ($installedSemVer -ge [version]'0.6.4') { 24 } else { 23 }
-    if ($targetCount -ne $expectedTargetCount) {
-        throw "NexRoute post-update health check failed: patch report contains $targetCount targets instead of $expectedTargetCount."
+    $expectedStrategyCount = switch ($targetCount) {
+        23 { 21 }
+        24 { 22 }
+        default { throw "NexRoute post-update health check failed: unsupported patch target count: $targetCount." }
+    }
+    $installedStrategies = @(Get-ChildItem -LiteralPath $Root -Filter '*.bat' -File | Where-Object {
+        $_.Name -notin @('service.bat', 'nexroute.bat', 'nexroute-update.cmd')
+    })
+    if ($installedStrategies.Count -ne $expectedStrategyCount) {
+        throw "NexRoute post-update health check failed: found $($installedStrategies.Count) strategies, but patch report requires $expectedStrategyCount."
     }
 
     if ($WasRunning -and $env:OS -eq 'Windows_NT') {
