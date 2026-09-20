@@ -440,7 +440,7 @@ export const docsPages: Record<string, DocPage> = {
         id: "layers",
         title: "Основные слои",
         bullets: [
-          "Arrow-key Control Node и Service Matrix controller.",
+          "Classic numeric Control Node в стиле 0.2.2 и Service Matrix controller.",
           "Per-service worker plans, supervisor и product worker host.",
           "Strategy Lab probes, history и native Dashboard.",
           "Native tray, notifier и Validation Viewer.",
