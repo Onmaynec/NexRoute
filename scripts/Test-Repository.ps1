@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $errors=New-Object 'System.Collections.Generic.List[string]'
-$expectedVersion='0.6.3'
+$expectedVersion='0.6.4'
 
 function Assert-True {
     param([bool]$Condition,[string]$Message)
@@ -40,8 +40,8 @@ $required=@(
     'tests/StrategyRefresh063.Tests.ps1','tests/StrategyLab063Evidence.Tests.ps1','tests/StrategyLabFieldEvidence064.Tests.ps1',
     'tests/StrategyRanking064.Tests.ps1','tests/UpdaterHealthRollback064.Tests.ps1','tests/GitHubActionsPinning064.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml','.github/workflows/pages.yml',
-    '.github/release-notes/v0.6.0.md','.github/release-notes/v0.6.1.md','.github/release-notes/v0.6.2.md','.github/release-notes/v0.6.3.md',
-    'docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/RELEASE_0.6.3_ACCEPTANCE.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/RELEASES.md','docs/FIELD_EVIDENCE.md',
+    '.github/release-notes/v0.6.0.md','.github/release-notes/v0.6.1.md','.github/release-notes/v0.6.2.md','.github/release-notes/v0.6.3.md','.github/release-notes/v0.6.4.md',
+    'docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/RELEASE_0.6.3_ACCEPTANCE.md','docs/RELEASE_0.6.4_ACCEPTANCE.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/RELEASES.md','docs/FIELD_EVIDENCE.md','docs/STRATEGY_LAB_RANKING.md','docs/GITHUB_ACTIONS_PINNING.md',
     'website/package.json','website/package-lock.json','website/tsconfig.json','website/next.config.ts','website/postcss.config.mjs',
     'website/app/layout.tsx','website/app/page.tsx','website/app/download/page.tsx','website/app/docs/[slug]/page.tsx',
     'website/components/layout/site-header.tsx','website/components/product/demos.tsx','website/content/docs.ts','website/lib/github.ts'
@@ -49,17 +49,17 @@ $required=@(
 foreach ($relative in $required) { Assert-True (Test-Path -LiteralPath (Join-Path $root $relative) -PathType Leaf) "Required file exists: $relative" }
 
 $version=(Read-Text '.service/version.txt').Trim()
-$releaseNotes=Read-Text '.github/release-notes/v0.6.3.md'
-$acceptance=Read-Text 'docs/RELEASE_0.6.3_ACCEPTANCE.md'
+$releaseNotes=Read-Text '.github/release-notes/v0.6.4.md'
+$acceptance=Read-Text 'docs/RELEASE_0.6.4_ACCEPTANCE.md'
 $websitePackage=Read-Text 'website/package.json' | ConvertFrom-Json
 $websiteLock=Read-Text 'website/package-lock.json' | ConvertFrom-Json -AsHashtable
 Assert-True ($version -eq $expectedVersion) "Repository version is $expectedVersion"
 Assert-True ([string]$websitePackage.version -eq $expectedVersion) 'Website package version matches repository version'
 Assert-True ([string]$websiteLock['version'] -eq $expectedVersion) 'Website lockfile version matches repository version'
 Assert-True ([string]$websiteLock['packages']['']['version'] -eq $expectedVersion) 'Website root lock package version matches repository version'
-Assert-True ($releaseNotes -match [regex]::Escape('# NexRoute 0.6.3 — Discord and YouTube strategy refresh')) 'Release notes describe 0.6.3'
-Assert-True ($acceptance -match [regex]::Escape('NexRoute 0.6.3 release acceptance')) '0.6.3 acceptance document exists'
-foreach ($asset in @('NexRoute-0.6.3-win-x64.zip','NexRoute-0.6.3-win-x64.zip.sha256','NexRoute-0.6.3-validation.json','NexRoute-0.6.3-validation.md')) {
+Assert-True ($releaseNotes -match [regex]::Escape('# NexRoute 0.6.4 — обновление Flowseal и hardening')) 'Release notes describe 0.6.4'
+Assert-True ($acceptance -match [regex]::Escape('NexRoute 0.6.4 release acceptance')) '0.6.4 acceptance document exists'
+foreach ($asset in @('NexRoute-0.6.4-win-x64.zip','NexRoute-0.6.4-win-x64.zip.sha256','NexRoute-0.6.4-validation.json','NexRoute-0.6.4-validation.md')) {
     Assert-True ($releaseNotes -match [regex]::Escape($asset)) "Release notes document $asset"
 }
 
@@ -77,7 +77,7 @@ try {
     $manifest=Read-NexRouteUpstreamManifest -Path (Join-Path $root '.service/upstream-manifest.json')
     Assert-True ($manifest.schemaVersion -eq 1) 'Upstream manifest uses schema version 1'
     Assert-True ($manifest.repository -eq 'Flowseal/zapret-discord-youtube') 'Upstream manifest pins Flowseal'
-    Assert-True ($manifest.tag -eq '1.10.0') 'Upstream manifest pins Flowseal 1.10.0'
+    Assert-True ($manifest.tag -eq '1.10.3') 'Upstream manifest pins Flowseal 1.10.3'
     Assert-True ($manifest.expectedSha256 -match '^[0-9a-f]{64}$') 'Upstream manifest contains a locked SHA-256'
 } catch { Assert-True $false "Upstream manifest validates: $($_.Exception.Message)" }
 
@@ -146,14 +146,14 @@ foreach ($token in @('RankingState','RecommendationReason','InconclusiveReason',
 }
 
 $build=(Read-Text 'scripts/Build-Release.ps1')+(Read-Text 'scripts/Build-Package.ps1')
-foreach ($token in @('upstream-lock.json','patch-report.json','Expected 23 tracked patch targets','UpstreamCachePath','UpstreamArchive','UpdaterEntryIncluded')) {
+foreach ($token in @('upstream-lock.json','patch-report.json','Expected 24 tracked patch targets','UpstreamCachePath','UpstreamArchive','UpdaterEntryIncluded')) {
     Assert-True ($build -match [regex]::Escape($token)) "Build contract contains $token"
 }
 
 $validate=Read-Text '.github/workflows/validate.yml'
 $release=Read-Text '.github/workflows/release.yml'
 $pages=Read-Text '.github/workflows/pages.yml'
-foreach ($token in @('NexRoute 0.6.3','Test-WindowsLaunchers.ps1','diagnosticCompatibility','updaterFallbackVersion','UpstreamArchive','npm run typecheck','npm run build','actions/checkout v6.1.0','actions/setup-node v6.5.0','actions/upload-artifact v7.0.1')) {
+foreach ($token in @('NexRoute 0.6.4','Test-WindowsLaunchers.ps1','diagnosticCompatibility','updaterFallbackVersion','UpstreamArchive','npm run typecheck','npm run build','actions/checkout v6.1.0','actions/setup-node v6.5.0','actions/upload-artifact v7.0.1')) {
     Assert-True ($validate -match [regex]::Escape($token)) "Validation workflow contains $token"
 }
 foreach ($token in @('id-token: write','attestations: write','artifact-metadata: write','actions/attest v4.2.2','gh attestation verify','actions/checkout v6.1.0','actions/upload-artifact v7.0.1','gh release create')) {
