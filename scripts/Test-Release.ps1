@@ -55,7 +55,7 @@ if ($upstreamLock.tag -ne $sourceManifest.tag) { throw 'Upstream lock tag differ
 if ([string]$upstreamLock.assetName -notmatch [string]$sourceManifest.assetPattern) { throw 'Upstream lock asset does not match the declared pattern.' }
 if ([string]$upstreamLock.sha256 -notmatch '^[0-9a-f]{64}$') { throw 'Upstream lock does not contain a valid SHA-256.' }
 if ([long]$upstreamLock.assetSize -lt [long]$sourceManifest.minimumBytes) { throw 'Upstream lock asset size is below the manifest minimum.' }
-if ([int]$upstreamLock.strategyCount -ne 21) { throw "Expected upstream lock to report 21 strategies, got $($upstreamLock.strategyCount)." }
+if ([int]$upstreamLock.strategyCount -ne 22) { throw "Expected upstream lock to report 22 strategies, got $($upstreamLock.strategyCount)." }
 if ($sourceManifest.expectedSha256 -and $upstreamLock.sha256 -ne ([string]$sourceManifest.expectedSha256).ToLowerInvariant()) {
     throw 'Upstream lock SHA-256 differs from the committed source lock.'
 }
@@ -65,13 +65,13 @@ $patches = @($patchReport.patches)
 if ([int]$patchReport.schemaVersion -ne 1) { throw 'Patch report schema must be 1.' }
 if ($patchReport.nexRouteVersion -ne $expectedVersion) { throw 'Patch report contains the wrong NexRoute version.' }
 if ($patchReport.upstreamSha256 -ne $upstreamLock.sha256) { throw 'Patch report and upstream lock use different archive hashes.' }
-if ([int]$patchReport.summary.targetCount -ne 23 -or $patches.Count -ne 23) {
-    throw "Expected 23 tracked patch targets, got $($patches.Count)."
+if ([int]$patchReport.summary.targetCount -ne 24 -or $patches.Count -ne 24) {
+    throw "Expected 24 tracked patch targets, got $($patches.Count)."
 }
-if ([int]$patchReport.summary.strategyTargets -ne 21) { throw 'Patch report does not declare 21 strategy targets.' }
+if ([int]$patchReport.summary.strategyTargets -ne 22) { throw 'Patch report does not declare 22 strategy targets.' }
 if ([int]$patchReport.summary.infrastructureTargets -ne 2) { throw 'Patch report does not declare two infrastructure targets.' }
 if (($patches.id | Sort-Object -Unique).Count -ne $patches.Count) { throw 'Patch report contains duplicate IDs.' }
-if (@($patches | Where-Object { $_.id -like 'strategy.*' }).Count -ne 21) { throw 'Patch report does not contain 21 strategy records.' }
+if (@($patches | Where-Object { $_.id -like 'strategy.*' }).Count -ne 22) { throw 'Patch report does not contain 22 strategy records.' }
 foreach ($patch in $patches) {
     if ([string]::IsNullOrWhiteSpace([string]$patch.id)) { throw 'Patch report contains an empty ID.' }
     if ([string]::IsNullOrWhiteSpace([string]$patch.target)) { throw "Patch '$($patch.id)' has no target." }
@@ -117,7 +117,7 @@ $nativeNotifierSelfTest = Start-Process -FilePath $nativeNotifierPath -ArgumentL
 if ($nativeNotifierSelfTest.ExitCode -ne 0) { throw "Native notifier self-test failed with exit code $($nativeNotifierSelfTest.ExitCode)." }
 
 $strategyFiles = @(Get-ChildItem -LiteralPath $root -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat','nexroute.bat') })
-if ($strategyFiles.Count -ne 21) { throw "Expected 21 patched real strategies, got $($strategyFiles.Count)" }
+if ($strategyFiles.Count -ne 22) { throw "Expected 22 patched real strategies, got $($strategyFiles.Count)" }
 foreach ($strategy in $strategyFiles) {
     $content = Get-Content -LiteralPath $strategy.FullName -Raw
     foreach ($token in @('NEXROUTE_SERVICE_FILTERS_V4','services-runtime.cmd','%NEXROUTE_SERVICE_TCP_ARGS%','%NEXROUTE_SERVICE_UDP_ARGS%')) {
