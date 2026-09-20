@@ -197,7 +197,7 @@ function Show-NrAdvancedToolkit {
         $choice=Invoke-NrMenu -Title (T 'advancedToolkit') -Items $items -AllowEscape
         if (-not $choice -or $choice -eq 'back') { return }
         switch ($choice) {
-            'lab' { Show-NrStrategyTools }
+            'lab' { Invoke-NrStrategyLab }
             'network' { Show-NrNetworkMenu }
             'backups' { Show-NrBackupManager }
             'configuration' { Show-NrConfigurationManager }
@@ -211,7 +211,7 @@ function Show-NrAdvancedToolkit {
 function Invoke-NrFirstRun {
     if ([bool]$script:NrState.firstRunComplete) { return }
     Write-NrHeader -Title (T 'firstRun')
-    Write-Host '  Windows / PowerShell / administrator / service / DNS / IPv6 / conflicts' -ForegroundColor Cyan
+    Write-Host '  Windows / PowerShell / administrator / service / DNS / IPv6 / conflicts' -ForegroundColor Red
     $report=Get-NrDiagnosticReport
     Write-Host ('  Administrator: ' + [string]$report.administrator) -ForegroundColor $(if ($report.administrator) { [ConsoleColor]::Green } else { [ConsoleColor]::Red })
     Write-Host ('  Service: ' + [string]$report.runtime.zapret) -ForegroundColor Gray
@@ -227,18 +227,21 @@ function Get-NrMainItems {
     $items.Add((New-NrMenuItem -Id 'install' -Label (T 'installConfig') -Section (T 'serviceControl') -HotKey 'I'))
     $items.Add((New-NrMenuItem -Id 'delete' -Label (T 'deleteConfig') -Section (T 'serviceControl') -HotKey 'D'))
     $items.Add((New-NrMenuItem -Id 'status' -Label (T 'systemStatus') -Section (T 'serviceControl') -Status $(if (Test-NrServiceRunning zapret) { T 'running' } else { T 'stopped' }) -HotKey 'S'))
+
     $items.Add((New-NrMenuItem -Id 'game' -Label (T 'gameFilter') -Section (T 'filterMatrix') -Status (Get-NrGameFilterStatus)))
     $items.Add((New-NrMenuItem -Id 'ipset' -Label (T 'ipsetFilter') -Section (T 'filterMatrix') -Status (Get-NrIpSetMode)))
     $items.Add((New-NrMenuItem -Id 'autoupdate' -Label (T 'autoUpdate') -Section (T 'filterMatrix') -Status $(if (Get-NrAutoUpdateEnabled) { T 'enabled' } else { T 'disabled' })))
     $items.Add((New-NrMenuItem -Id 'payload' -Label (T 'payloadVault') -Section (T 'filterMatrix')))
+
     $items.Add((New-NrMenuItem -Id 'syncipset' -Label (T 'updateIpset') -Section (T 'dataChannels')))
     $items.Add((New-NrMenuItem -Id 'synchosts' -Label (T 'updateHosts') -Section (T 'dataChannels')))
     $items.Add((New-NrMenuItem -Id 'update' -Label (T 'checkUpdate') -Section (T 'dataChannels') -HotKey 'U'))
-    $items.Add((New-NrMenuItem -Id 'services' -Label (T 'serviceMatrix') -Section (T 'serviceBypass') -Status (Get-NrServiceSummary)))
+
     $items.Add((New-NrMenuItem -Id 'diagnostics' -Label (T 'diagnosticCore') -Section (T 'systemToolkit') -HotKey 'L'))
     $items.Add((New-NrMenuItem -Id 'lab' -Label (T 'checkingConfig') -Section (T 'systemToolkit') -HotKey 'T'))
     $items.Add((New-NrMenuItem -Id 'language' -Label (T 'switchLanguage') -Section (T 'systemToolkit') -Status $script:NrLanguage))
-    if ([string]$script:NrState.mode -eq 'advanced') { $items.Add((New-NrMenuItem -Id 'advanced' -Label (T 'advancedToolkit') -Section (T 'systemToolkit') -Status (T 'advanced'))) }
+    $items.Add((New-NrMenuItem -Id 'services' -Label (T 'serviceMatrix') -Section (T 'serviceBypass') -Status (Get-NrServiceSummary)))
+    $items.Add((New-NrMenuItem -Id 'advanced' -Label (T 'advancedToolkit') -Section (T 'systemToolkit') -Status (T 'advanced')))
     $items.Add((New-NrMenuItem -Id 'exit' -Label (T 'exit') -Section ''))
     return $items.ToArray()
 }
@@ -275,5 +278,5 @@ function Start-NrConsole {
 
 if ($Update) { Invoke-NrCheckUpdate; exit 0 }
 if ($Status) { Show-NrSystemStatus; exit 0 }
-if ($Lab) { Show-NrStrategyTools; exit 0 }
+if ($Lab) { Invoke-NrStrategyLab; exit 0 }
 Start-NrConsole
