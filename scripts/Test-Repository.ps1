@@ -77,7 +77,7 @@ try {
     $manifest=Read-NexRouteUpstreamManifest -Path (Join-Path $root '.service/upstream-manifest.json')
     Assert-True ($manifest.schemaVersion -eq 1) 'Upstream manifest uses schema version 1'
     Assert-True ($manifest.repository -eq 'Flowseal/zapret-discord-youtube') 'Upstream manifest pins Flowseal'
-    Assert-True ($manifest.tag -eq '1.10.0') 'Upstream manifest pins Flowseal 1.10.0'
+    Assert-True ($manifest.tag -eq '1.10.3') 'Upstream manifest pins Flowseal 1.10.3'
     Assert-True ($manifest.expectedSha256 -match '^[0-9a-f]{64}$') 'Upstream manifest contains a locked SHA-256'
 } catch { Assert-True $false "Upstream manifest validates: $($_.Exception.Message)" }
 
