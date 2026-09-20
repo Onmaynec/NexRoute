@@ -32,7 +32,23 @@ function Get-NrGameFilterConfig {
         foreach ($line in @(Get-Content -LiteralPath $path -Encoding ASCII)) {
             $value=$line.Trim()
             if (-not $value) { continue }
-            if ($value -match '^(?i)(mode|tcp|udp)=(.+)
+            if ($value -match '(?i)^(mode|tcp|udp)=(.+)$') {
+                $key=$Matches[1].ToLowerInvariant()
+                $config[$key]=$Matches[2].Trim().ToLowerInvariant()
+            } elseif ($value.ToLowerInvariant() -in @('all','tcp','udp')) {
+                $config.mode=$value.ToLowerInvariant()
+            }
+        }
+    } catch { }
+    if ($config.mode -notin @('all','tcp','udp')) { $config.mode='disabled' }
+    return [pscustomobject]$config
+}
+
+function Get-NrGameFilterStatus {
+    $config=Get-NrGameFilterConfig
+    if ($config.mode -eq 'disabled') { return (T 'disabled') }
+    return ([string]$config.mode).ToUpperInvariant()
+}
 
 function Get-NrIpSetMode {
     $path=Join-Path $script:NrRoot 'lists\ipset-all.txt'
