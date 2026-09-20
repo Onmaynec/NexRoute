@@ -150,8 +150,220 @@ function Invoke-NexRouteInstalledServiceRefresh {
 function Show-NexRouteGameFilter {
     $flagPath = Join-Path $script:Root 'utils\game_filter.enabled'
     $current = '0'
+    $tcpRange = '1024-65535'
+    $udpRange = '1024-65535'
     if (Test-Path -LiteralPath $flagPath -PathType Leaf) {
-        $mode = (Get-Content -LiteralPath $flagPath -Raw -ErrorAction SilentlyContinue).Trim().ToLowerInvariant()
+        $mode = 'disabled'
+        foreach ($line in @(Get-Content -LiteralPath $flagPath -ErrorAction SilentlyContinue)) {
+            $value = $line.Trim()
+            if ($value -match '^(?i)mode=(all|tcp|udp)
+    Write-NexRouteHeader -Title $script:Text.gameTitle
+    Write-NexRouteKeyValue -Key $script:Text.gameCurrent -Value $current -ValueColor Yellow
+    Write-NexRouteOption -Number 0 -Label $script:Text.game0
+    Write-NexRouteOption -Number 1 -Label $script:Text.game1
+    Write-NexRouteOption -Number 2 -Label $script:Text.game2
+    Write-NexRouteOption -Number 3 -Label $script:Text.game3
+    Write-NexRouteRule -Fill '=' -Color Cyan
+    if ($NonInteractive) { return }
+    Write-Host ''
+    Write-Host ('  > ' + $script:Text.gamePrompt + ': ') -NoNewline -ForegroundColor Cyan
+    $choice = (Read-Host).Trim()
+    if ($choice -notin @('0','1','2','3')) { Write-NexRouteResult -Success $false -Message $script:Text.invalid; Wait-NexRouteKey; return }
+    Invoke-NexRouteAnimation -Label $script:Text.transitionApply -Duration 190
+    if ($choice -eq '0') { Remove-Item -LiteralPath $flagPath -Force -ErrorAction SilentlyContinue }
+    else {
+        $value = if ($choice -eq '1') { 'all' } elseif ($choice -eq '2') { 'tcp' } else { 'udp' }
+        $content = @(
+            ('mode=' + $value),
+            ('tcp=' + $tcpRange),
+            ('udp=' + $udpRange)
+        ) -join [Environment]::NewLine
+        [System.IO.File]::WriteAllText($flagPath, $content + [Environment]::NewLine, [System.Text.Encoding]::ASCII)
+    }
+    Invoke-NexRouteAnimation -Label $script:Text.gameRestart -Duration 220
+    $refresh = Invoke-NexRouteInstalledServiceRefresh
+    $message = $script:Text.gameSaved
+    if ($refresh -and $refresh.Installed -and -not $refresh.Restarted) { $message += ': ' + $refresh.Message }
+    Write-NexRouteResult -Success $true -Message $message
+    Wait-NexRouteKey
+}
+
+function Invoke-NexRouteUpdateWatch {
+    $flagPath = Join-Path $script:Root 'utils\check_updates.enabled'
+    $enable = -not (Test-Path -LiteralPath $flagPath -PathType Leaf)
+    Write-NexRouteHeader -Title $script:Text.updatesTitle
+    if ($enable) {
+        Invoke-NexRouteAnimation -Label $script:Text.updatesEnable -Duration 210
+        [System.IO.File]::WriteAllText($flagPath, "ENABLED`r`n", [System.Text.Encoding]::ASCII)
+        Write-NexRouteResult -Success $true -Message $script:Text.updatesEnabled
+    } else {
+        Invoke-NexRouteAnimation -Label $script:Text.updatesDisable -Duration 210
+        Remove-Item -LiteralPath $flagPath -Force
+        Write-NexRouteResult -Success $true -Message $script:Text.updatesDisabled
+    }
+    Wait-NexRouteKey
+}
+
+function Show-NexRouteTestsIntro {
+    Write-NexRouteHeader -Title $script:Text.testsTitle
+    Invoke-NexRouteAnimation -Label $script:Text.testsStart -Duration 190
+    Invoke-NexRouteAnimation -Label 'Checking PowerShell and curl runtime' -Duration 160
+    Invoke-NexRouteAnimation -Label $script:Text.testsMatrix -Duration 220
+    Invoke-NexRouteAnimation -Label $script:Text.testsNetwork -Duration 220
+    Invoke-NexRouteAnimation -Label $script:Text.testsWindow -Duration 150 -Color Green
+    Wait-NexRouteKey
+}
+
+function Show-NexRouteTestHeader {
+    Write-NexRouteHeader -Title $script:Text.testHeader
+    Write-NexRouteKeyValue -Key 'SESSION' -Value ([DateTime]::Now.ToString('yyyy-MM-dd HH:mm:ss')) -ValueColor Cyan
+    $privilege = if (Test-NexRouteAdministrator) { $script:Text.elevated } else { $script:Text.standard }
+    Write-NexRouteKeyValue -Key $script:Text.privilege -Value $privilege -ValueColor Yellow
+    Write-NexRouteKeyValue -Key $script:Text.servicesTargets -Value (Get-NexRouteServiceSummary) -ValueColor Green
+    Write-NexRouteRule -Color DarkCyan
+}
+
+function Show-NexRouteScreen {
+    $title = if ($ScreenId) { $ScreenId.ToUpperInvariant() } else { 'SYSTEM SCREEN' }
+    Write-NexRouteHeader -Title $title
+}
+) { $mode = $Matches[1].ToLowerInvariant() }
+            elseif ($value -match '^(?i)tcp=(.+)
+    Write-NexRouteHeader -Title $script:Text.gameTitle
+    Write-NexRouteKeyValue -Key $script:Text.gameCurrent -Value $current -ValueColor Yellow
+    Write-NexRouteOption -Number 0 -Label $script:Text.game0
+    Write-NexRouteOption -Number 1 -Label $script:Text.game1
+    Write-NexRouteOption -Number 2 -Label $script:Text.game2
+    Write-NexRouteOption -Number 3 -Label $script:Text.game3
+    Write-NexRouteRule -Fill '=' -Color Cyan
+    if ($NonInteractive) { return }
+    Write-Host ''
+    Write-Host ('  > ' + $script:Text.gamePrompt + ': ') -NoNewline -ForegroundColor Cyan
+    $choice = (Read-Host).Trim()
+    if ($choice -notin @('0','1','2','3')) { Write-NexRouteResult -Success $false -Message $script:Text.invalid; Wait-NexRouteKey; return }
+    Invoke-NexRouteAnimation -Label $script:Text.transitionApply -Duration 190
+    if ($choice -eq '0') { Remove-Item -LiteralPath $flagPath -Force -ErrorAction SilentlyContinue }
+    else {
+        $value = if ($choice -eq '1') { 'all' } elseif ($choice -eq '2') { 'tcp' } else { 'udp' }
+        [System.IO.File]::WriteAllText($flagPath, $value + [Environment]::NewLine, [System.Text.Encoding]::ASCII)
+    }
+    Invoke-NexRouteAnimation -Label $script:Text.gameRestart -Duration 220
+    $refresh = Invoke-NexRouteInstalledServiceRefresh
+    $message = $script:Text.gameSaved
+    if ($refresh -and $refresh.Installed -and -not $refresh.Restarted) { $message += ': ' + $refresh.Message }
+    Write-NexRouteResult -Success $true -Message $message
+    Wait-NexRouteKey
+}
+
+function Invoke-NexRouteUpdateWatch {
+    $flagPath = Join-Path $script:Root 'utils\check_updates.enabled'
+    $enable = -not (Test-Path -LiteralPath $flagPath -PathType Leaf)
+    Write-NexRouteHeader -Title $script:Text.updatesTitle
+    if ($enable) {
+        Invoke-NexRouteAnimation -Label $script:Text.updatesEnable -Duration 210
+        [System.IO.File]::WriteAllText($flagPath, "ENABLED`r`n", [System.Text.Encoding]::ASCII)
+        Write-NexRouteResult -Success $true -Message $script:Text.updatesEnabled
+    } else {
+        Invoke-NexRouteAnimation -Label $script:Text.updatesDisable -Duration 210
+        Remove-Item -LiteralPath $flagPath -Force
+        Write-NexRouteResult -Success $true -Message $script:Text.updatesDisabled
+    }
+    Wait-NexRouteKey
+}
+
+function Show-NexRouteTestsIntro {
+    Write-NexRouteHeader -Title $script:Text.testsTitle
+    Invoke-NexRouteAnimation -Label $script:Text.testsStart -Duration 190
+    Invoke-NexRouteAnimation -Label 'Checking PowerShell and curl runtime' -Duration 160
+    Invoke-NexRouteAnimation -Label $script:Text.testsMatrix -Duration 220
+    Invoke-NexRouteAnimation -Label $script:Text.testsNetwork -Duration 220
+    Invoke-NexRouteAnimation -Label $script:Text.testsWindow -Duration 150 -Color Green
+    Wait-NexRouteKey
+}
+
+function Show-NexRouteTestHeader {
+    Write-NexRouteHeader -Title $script:Text.testHeader
+    Write-NexRouteKeyValue -Key 'SESSION' -Value ([DateTime]::Now.ToString('yyyy-MM-dd HH:mm:ss')) -ValueColor Cyan
+    $privilege = if (Test-NexRouteAdministrator) { $script:Text.elevated } else { $script:Text.standard }
+    Write-NexRouteKeyValue -Key $script:Text.privilege -Value $privilege -ValueColor Yellow
+    Write-NexRouteKeyValue -Key $script:Text.servicesTargets -Value (Get-NexRouteServiceSummary) -ValueColor Green
+    Write-NexRouteRule -Color DarkCyan
+}
+
+function Show-NexRouteScreen {
+    $title = if ($ScreenId) { $ScreenId.ToUpperInvariant() } else { 'SYSTEM SCREEN' }
+    Write-NexRouteHeader -Title $title
+}
+) { $tcpRange = $Matches[1].Trim() }
+            elseif ($value -match '^(?i)udp=(.+)
+    Write-NexRouteHeader -Title $script:Text.gameTitle
+    Write-NexRouteKeyValue -Key $script:Text.gameCurrent -Value $current -ValueColor Yellow
+    Write-NexRouteOption -Number 0 -Label $script:Text.game0
+    Write-NexRouteOption -Number 1 -Label $script:Text.game1
+    Write-NexRouteOption -Number 2 -Label $script:Text.game2
+    Write-NexRouteOption -Number 3 -Label $script:Text.game3
+    Write-NexRouteRule -Fill '=' -Color Cyan
+    if ($NonInteractive) { return }
+    Write-Host ''
+    Write-Host ('  > ' + $script:Text.gamePrompt + ': ') -NoNewline -ForegroundColor Cyan
+    $choice = (Read-Host).Trim()
+    if ($choice -notin @('0','1','2','3')) { Write-NexRouteResult -Success $false -Message $script:Text.invalid; Wait-NexRouteKey; return }
+    Invoke-NexRouteAnimation -Label $script:Text.transitionApply -Duration 190
+    if ($choice -eq '0') { Remove-Item -LiteralPath $flagPath -Force -ErrorAction SilentlyContinue }
+    else {
+        $value = if ($choice -eq '1') { 'all' } elseif ($choice -eq '2') { 'tcp' } else { 'udp' }
+        [System.IO.File]::WriteAllText($flagPath, $value + [Environment]::NewLine, [System.Text.Encoding]::ASCII)
+    }
+    Invoke-NexRouteAnimation -Label $script:Text.gameRestart -Duration 220
+    $refresh = Invoke-NexRouteInstalledServiceRefresh
+    $message = $script:Text.gameSaved
+    if ($refresh -and $refresh.Installed -and -not $refresh.Restarted) { $message += ': ' + $refresh.Message }
+    Write-NexRouteResult -Success $true -Message $message
+    Wait-NexRouteKey
+}
+
+function Invoke-NexRouteUpdateWatch {
+    $flagPath = Join-Path $script:Root 'utils\check_updates.enabled'
+    $enable = -not (Test-Path -LiteralPath $flagPath -PathType Leaf)
+    Write-NexRouteHeader -Title $script:Text.updatesTitle
+    if ($enable) {
+        Invoke-NexRouteAnimation -Label $script:Text.updatesEnable -Duration 210
+        [System.IO.File]::WriteAllText($flagPath, "ENABLED`r`n", [System.Text.Encoding]::ASCII)
+        Write-NexRouteResult -Success $true -Message $script:Text.updatesEnabled
+    } else {
+        Invoke-NexRouteAnimation -Label $script:Text.updatesDisable -Duration 210
+        Remove-Item -LiteralPath $flagPath -Force
+        Write-NexRouteResult -Success $true -Message $script:Text.updatesDisabled
+    }
+    Wait-NexRouteKey
+}
+
+function Show-NexRouteTestsIntro {
+    Write-NexRouteHeader -Title $script:Text.testsTitle
+    Invoke-NexRouteAnimation -Label $script:Text.testsStart -Duration 190
+    Invoke-NexRouteAnimation -Label 'Checking PowerShell and curl runtime' -Duration 160
+    Invoke-NexRouteAnimation -Label $script:Text.testsMatrix -Duration 220
+    Invoke-NexRouteAnimation -Label $script:Text.testsNetwork -Duration 220
+    Invoke-NexRouteAnimation -Label $script:Text.testsWindow -Duration 150 -Color Green
+    Wait-NexRouteKey
+}
+
+function Show-NexRouteTestHeader {
+    Write-NexRouteHeader -Title $script:Text.testHeader
+    Write-NexRouteKeyValue -Key 'SESSION' -Value ([DateTime]::Now.ToString('yyyy-MM-dd HH:mm:ss')) -ValueColor Cyan
+    $privilege = if (Test-NexRouteAdministrator) { $script:Text.elevated } else { $script:Text.standard }
+    Write-NexRouteKeyValue -Key $script:Text.privilege -Value $privilege -ValueColor Yellow
+    Write-NexRouteKeyValue -Key $script:Text.servicesTargets -Value (Get-NexRouteServiceSummary) -ValueColor Green
+    Write-NexRouteRule -Color DarkCyan
+}
+
+function Show-NexRouteScreen {
+    $title = if ($ScreenId) { $ScreenId.ToUpperInvariant() } else { 'SYSTEM SCREEN' }
+    Write-NexRouteHeader -Title $title
+}
+) { $udpRange = $Matches[1].Trim() }
+            elseif ($value.ToLowerInvariant() -in @('all','tcp','udp')) { $mode = $value.ToLowerInvariant() }
+        }
         if ($mode -eq 'all') { $current = '1' } elseif ($mode -eq 'tcp') { $current = '2' } elseif ($mode -eq 'udp') { $current = '3' }
     }
     Write-NexRouteHeader -Title $script:Text.gameTitle
