@@ -387,8 +387,8 @@ try {
         Patch-NexRouteTestLab -Path $testLabPath
     }
 
-    if ($patchJournal.Count -ne 23) {
-        throw "Expected 23 tracked patch targets, got $($patchJournal.Count)."
+    if ($patchJournal.Count -ne 24) {
+        throw "Expected 24 tracked patch targets, got $($patchJournal.Count)."
     }
     if ($patchIds.Count -ne $patchJournal.Count) {
         throw 'Patch report contains duplicate IDs.'
