@@ -6,8 +6,8 @@ NexRoute `0.3.0` основан на официальном релизе:
 
 ```text
 Repository: Flowseal/zapret-discord-youtube
-Release:    1.10.0
-Asset:      zapret-discord-youtube-1.10.0.zip
+Release:    1.10.3
+Asset:      zapret-discord-youtube-1.10.3.zip
 ```
 
 Точная идентичность архива хранится в `.service/upstream-manifest.json`. Release-сборка не использует плавающий `latest` и не принимает архив только по совпадению имени.
@@ -46,7 +46,7 @@ Base builder по-прежнему выполняет свою обычную п
 pwsh ./scripts/Build-Release.ps1 `
   -Version 0.3.0 `
   -OutputDirectory ./artifacts `
-  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
+  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 ```
 
 Затем собрать пакет без обращения к upstream:
@@ -55,7 +55,7 @@ pwsh ./scripts/Build-Release.ps1 `
 pwsh ./scripts/Build-Release.ps1 `
   -Version 0.3.0 `
   -OutputDirectory ./artifacts-offline `
-  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
+  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip
 ```
 
 Офлайн-файл проходит тот же SHA-256 и structural contract. Переименование другого ZIP в ожидаемое имя не поможет.
@@ -85,7 +85,7 @@ Lock не содержит локальных путей runner-а или вре
 
 NexRoute не заменяет Flowseal целиком. Build выполняет ограниченный набор проверяемых изменений:
 
-- runtime hooks во всех 21 strategy BAT;
+- runtime hooks во всех 22 strategy BAT;
 - маршруты Control Node и безопасный reinstall в `service.bat`;
 - динамические Service Matrix targets и локализацию Strategy Lab.
 
