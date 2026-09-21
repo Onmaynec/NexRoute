@@ -1,4 +1,4 @@
-Describe 'NexRoute 0.6.0 arrow-key control node' {
+Describe 'NexRoute 0.6.5 classic control node' {
     BeforeAll {
         $root=Split-Path -Parent $PSScriptRoot
         $common=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-common.ps1') -Raw
@@ -10,21 +10,23 @@ Describe 'NexRoute 0.6.0 arrow-key control node' {
         $management=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-management.ps1') -Raw
         $strategy=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-strategies.ps1') -Raw
         $strategyV2=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-strategy-lab-v2.ps1') -Raw
+        $strategyClassic=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-strategy-lab-classic.ps1') -Raw
         $serviceNetwork=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-services-network.ps1') -Raw
         $serviceState=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/i18n/nexroute-services-state.ps1') -Raw
     }
 
-    It 'renders [+] actions and reads arrow keys instead of numeric menu input' {
-        $common | Should -Match ([regex]::Escape("'>[+]'"))
-        $common | Should -Match "'UpArrow'"
-        $common | Should -Match "'DownArrow'"
-        $common | Should -Match "'Enter'"
-        $console | Should -Not -Match '\[10\]\s+RELEASE CHANNEL'
-        $console | Should -Not -Match 'TryParse\(.+menu'
+    It 'renders the 0.2.2-style numeric menu with the new single-color logo' {
+        $common | Should -Match ([regex]::Escape('███╗░░██╗███████╗'))
+        $common | Should -Match ([regex]::Escape("'[00]'"))
+        $common | Should -Match 'Read-Host'
+        $common | Should -Match ([regex]::Escape('[ConsoleColor]::Red'))
+        $common | Should -Match ([regex]::Escape("accent = 'Red'"))
+        $common | Should -Not -Match ([regex]::Escape("'>[+]'"))
+        $console | Should -Match ([regex]::Escape("'lab' { Invoke-NrStrategyLab }"))
     }
 
     It 'contains the fully renamed English and Russian main menu' {
-        foreach ($token in @('Installing Config','Deleting Config','System Status','Game Traffic Filter','Filter IPSET','Auto-Check Update','Fake Payload VAULT','Update IPSET','Update HOSTS','Check Update','Bypassing Services / SERVICE MATRIX','Diagnostic Core','Checking Config','Switch Language','Disconnect / Exit','Установка конфигурации','Проверить обновление','Сменить язык')) {
+        foreach ($token in @('Installing Config','Deleting Config','System Status','Game Traffic Filter','Filter IPSET','Auto-Check Update','Fake Payload VAULT','Update IPSET','Update HOSTS','Check Update','Bypassing Services / SERVICE MATRIX','Diagnostic Core','STRATEGY LAB','Switch Language','Disconnect / Exit','Установка конфигурации','Проверить обновление','Сменить язык')) {
             $common | Should -Match ([regex]::Escape($token))
         }
     }
@@ -44,7 +46,7 @@ Describe 'NexRoute 0.6.0 arrow-key control node' {
 
     It 'implements measured strategy scoring history recommendations and failover' {
         foreach ($token in @('Invoke-NrStrategyLab','score','averageJitterMs','averagePacketLossPercent','measuredDownloadMbps','throughputReceivedBytes','youtubePlaybackReady','discordRealtimeTransportReady','telegramRealtimeTransportReady','Install-NrBestStrategy','Show-NrLabHistory','Apply-NrPerServiceStrategies','automatic-failover')) {
-            ($strategy + $strategyV2 + $monitor) | Should -Match ([regex]::Escape($token))
+            ($strategy + $strategyV2 + $strategyClassic + $monitor) | Should -Match ([regex]::Escape($token))
         }
     }
 

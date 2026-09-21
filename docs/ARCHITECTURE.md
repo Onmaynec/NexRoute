@@ -35,13 +35,14 @@ Immutable Flowseal 1.10.0 archive
 
 | Компонент | Ответственность |
 |---|---|
-| `overlay/.service/nexroute-console.ps1` | arrow-key Control Node и feature routing |
+| `overlay/.service/nexroute-console.ps1` | classic numeric Control Node (0.2.2-style) и feature routing |
 | `overlay/.service/nexroute-services.ps1` | Service Matrix controller и runtime generation |
 | `overlay/.service/next/nexroute-runtime-extensions.ps1` | deterministic loading order новых runtime modules |
 | `overlay/.service/next/nexroute-workers.ps1` | worker lifecycle и persisted state |
 | `overlay/.service/next/nexroute-worker-plans.ps1` | service/address-family plans и scope validation |
 | `overlay/.service/nexroute-worker-host.ps1` | packaged worker entrypoint |
-| `overlay/.service/next/nexroute-strategy-lab-v2.ps1` | measurements, history, scoring и recommendations |
+| `overlay/.service/next/nexroute-strategy-lab-v2.ps1` | базовые measurements/media probes |
+| `overlay/.service/next/nexroute-strategy-lab-classic.ps1` | интерфейс и расширенный probe orchestration Strategy Lab 0.6.5 |
 | `overlay/.service/next/nexroute-update-transaction.ps1` | detached update transaction и rollback |
 | `overlay/.service/next/nexroute-attestation-v2.ps1` | four-subject release verification и receipt install |
 

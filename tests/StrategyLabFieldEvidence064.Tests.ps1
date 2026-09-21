@@ -1,4 +1,4 @@
-Describe 'NexRoute 0.6.4 privacy-safe field evidence' {
+Describe 'NexRoute current privacy-safe field evidence' {
     BeforeAll {
         $script:root = Split-Path -Parent $PSScriptRoot
         $script:generator = Join-Path $script:root 'scripts/New-StrategyLabFieldEvidence.ps1'
@@ -54,7 +54,7 @@ Describe 'NexRoute 0.6.4 privacy-safe field evidence' {
 
         [Convert]::ToBase64String([IO.File]::ReadAllBytes($first)) | Should -Be ([Convert]::ToBase64String([IO.File]::ReadAllBytes($second)))
         $receipt = Get-Content -LiteralPath $first -Raw -Encoding UTF8 | ConvertFrom-Json
-        $receipt.nexRouteVersion | Should -Be '0.6.4'
+        $receipt.nexRouteVersion | Should -Be '0.6.5'
         $receipt.status | Should -Be 'passed'
         $receipt.strategy | Should -Be 'general (ALT).bat'
         $receipt.candidateSha256 | Should -Be $script:candidateSha

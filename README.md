@@ -16,6 +16,22 @@
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранные стратегии только к трафику включённых сервисов.
 
+## NexRoute 0.6.5 — Classic UI + Strategy Lab 🟥
+
+Версия `0.6.5` возвращает удобную консольную компоновку 0.2.2 поверх функциональности 0.6.4.
+
+- числовое главное меню `[01] … [00]` вместо обязательной навигации стрелками;
+- новый одноцветный красный ASCII-логотип NEXROUTE;
+- чёрно-красная тема с зелёными успешными состояниями и жёлтыми предупреждениями;
+- `[12] STRATEGY LAB` умеет проверить все или выбранные конфиги;
+- Strategy Lab показывает preflight, DNS, TLS, HTTPS, ping/loss/jitter, throughput, media и DPI range checks прямо во время теста;
+- repeated observations и explainable ranking 0.6.4 сохранены;
+- неоднозначные результаты остаются `INCONCLUSIVE`;
+- Flowseal 1.10.3, 22 стратегии, 24 patch-targets, Service Matrix и secure updater сохранены;
+- stable auto-update поддерживает переход `0.6.4 → 0.6.5`.
+
+Подробности: [release notes](.github/release-notes/v0.6.5.md) и [release acceptance](docs/RELEASE_0.6.5_ACCEPTANCE.md).
+
 ## NexRoute 0.6.4 — Flowseal 1.10.3 и hardening 🧭
 
 Версия `0.6.4` обновляет функциональную основу до Flowseal `1.10.3` и завершает hardening Strategy Lab, updater и release pipeline без изменения визуального дизайна.
@@ -124,13 +140,13 @@
 
 ## Проверяемый релиз 🔏
 
-Для версии 0.6.4 публикуются четыре связанных asset:
+Для версии 0.6.5 публикуются четыре связанных asset:
 
 ```text
-NexRoute-0.6.4-win-x64.zip
-NexRoute-0.6.4-win-x64.zip.sha256
-NexRoute-0.6.4-validation.json
-NexRoute-0.6.4-validation.md
+NexRoute-0.6.5-win-x64.zip
+NexRoute-0.6.5-win-x64.zip.sha256
+NexRoute-0.6.5-validation.json
+NexRoute-0.6.5-validation.md
 ```
 
 Все четыре файла входят в одну GitHub artifact attestation. Portable verifier проверяет immutable release URLs, SHA-256 package и attestation каждого subject. После успешной проверки validation report и digest-matched receipt атомарно устанавливаются в `.service`.
@@ -212,7 +228,7 @@ NEXROUTE_BUILD_INFO.txt
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.4 `
+  -Version 0.6.5 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 ```

@@ -254,7 +254,7 @@ jobs:
         shell: pwsh
         run: |
           $comment = 'Реализовано и проверено в NexRoute ${{ steps.version.outputs.tag }}.'
-          foreach ($issue in 50,51,52,53,55,64) {
+          foreach ($issue in 66) {
             $state = gh issue view $issue --json state --jq .state 2>$null
             if ($LASTEXITCODE -eq 0 -and $state -eq 'OPEN') {
               gh issue close $issue --comment $comment

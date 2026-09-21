@@ -17,7 +17,7 @@ $script:NrTranslations = @{
         installConfig='Installing Config'; deleteConfig='Deleting Config'; systemStatus='System Status';
         gameFilter='Game Traffic Filter'; ipsetFilter='Filter IPSET'; autoUpdate='Auto-Check Update'; payloadVault='Fake Payload VAULT';
         updateIpset='Update IPSET'; updateHosts='Update HOSTS'; checkUpdate='Check Update'; serviceMatrix='Bypassing Services / SERVICE MATRIX';
-        diagnosticCore='Diagnostic Core'; checkingConfig='Checking Config'; switchLanguage='Switch Language'; exit='Disconnect / Exit';
+        diagnosticCore='Diagnostic Core'; checkingConfig='STRATEGY LAB'; switchLanguage='Switch Language'; exit='Disconnect / Exit';
         strategyLab='Strategy Lab'; autoBest='Automatically choose best strategy'; installSelected='Install selected strategy';
         favorites='Favorite strategies'; history='Strategy history'; availability='Service availability';
         networkDns='Network and DNS'; backups='Backup manager'; configuration='Configuration manager';
@@ -44,7 +44,7 @@ $script:NrTranslations = @{
         validateConfig='Validate configuration'; favoriteToggle='Toggle favorite'; lastWorking='Return to last working strategy';
         speed='Download speed'; jitter='Jitter'; packetLoss='Packet loss'; youtube='YouTube video readiness';
         discordVoice='Discord voice readiness'; telegramVoice='Telegram voice readiness';
-        exportStats='Export statistics'; charts='Stability charts'; hotkeys='Hotkeys'; accent='Accent color';
+        exportStats='Export statistics'; charts='Stability charts'; hotkeys='Hotkeys'; accent='Accent color'; labPreflight='Preflight'; labRunAll='Test all strategies'; labRunSelected='Test selected strategies'; labRound='Round'; labChecks='Checks'; labPassed='Passed'; labFailed='Failed'; labWarnings='Warnings'; labElapsed='Elapsed'; labControl='Control'; labResult='Result'; labDpiFreeze='DPI freeze'; labDns='DNS'; labTls='TLS'; labHttp='HTTP'; labThroughput='Throughput'; labMedia='Media';
         firstRun='First-run diagnostics'; ipv6='IPv6 support'; attestation='Verify GitHub attestation'; sha='Downloaded SHA-256';
         trayEnable='Enable tray controller'; trayDisable='Disable tray controller'; monitorEnable='Enable health monitor'; monitorDisable='Disable health monitor';
         theme='Theme'; interfaceMode='Interface mode'; language='Language';
@@ -64,7 +64,7 @@ $script:NrTranslations = @{
         installConfig='Установка конфигурации'; deleteConfig='Удаление конфигурации'; systemStatus='Состояние системы';
         gameFilter='Фильтр игрового трафика'; ipsetFilter='Фильтр IPSET'; autoUpdate='Автопроверка обновлений'; payloadVault='Хранилище Fake Payload';
         updateIpset='Обновить IPSET'; updateHosts='Обновить HOSTS'; checkUpdate='Проверить обновление'; serviceMatrix='Обход сервисов / МАТРИЦА СЕРВИСОВ';
-        diagnosticCore='Диагностический центр'; checkingConfig='Проверка конфигураций'; switchLanguage='Сменить язык'; exit='Отключиться / Выход';
+        diagnosticCore='Диагностический центр'; checkingConfig='Лаборатория стратегий'; switchLanguage='Сменить язык'; exit='Отключиться / Выход';
         strategyLab='Лаборатория стратегий'; autoBest='Автоматически выбрать лучшую стратегию'; installSelected='Установить выбранную стратегию';
         favorites='Избранные стратегии'; history='История стратегий'; availability='Доступность сервисов';
         networkDns='Сеть и DNS'; backups='Менеджер резервных копий'; configuration='Управление конфигурацией';
@@ -91,7 +91,7 @@ $script:NrTranslations = @{
         validateConfig='Проверить конфигурацию'; favoriteToggle='Добавить или убрать из избранного'; lastWorking='Вернуться к последней рабочей стратегии';
         speed='Скорость загрузки'; jitter='Джиттер'; packetLoss='Потеря пакетов'; youtube='Готовность видеопотока YouTube';
         discordVoice='Готовность голосовой связи Discord'; telegramVoice='Готовность голосовой связи Telegram';
-        exportStats='Экспорт статистики'; charts='Графики стабильности'; hotkeys='Горячие клавиши'; accent='Акцентный цвет';
+        exportStats='Экспорт статистики'; charts='Графики стабильности'; hotkeys='Горячие клавиши'; accent='Акцентный цвет'; labPreflight='Предварительная проверка'; labRunAll='Проверить все стратегии'; labRunSelected='Проверить выбранные стратегии'; labRound='Раунд'; labChecks='Проверки'; labPassed='Пройдено'; labFailed='Ошибок'; labWarnings='Предупреждений'; labElapsed='Время'; labControl='Контроль'; labResult='Результат'; labDpiFreeze='DPI-зависание'; labDns='DNS'; labTls='TLS'; labHttp='HTTP'; labThroughput='Скорость'; labMedia='Медиа';
         firstRun='Диагностика первого запуска'; ipv6='Поддержка IPv6'; attestation='Проверить GitHub attestation'; sha='SHA-256 обновления';
         trayEnable='Включить управление из трея'; trayDisable='Отключить управление из трея'; monitorEnable='Включить мониторинг'; monitorDisable='Отключить мониторинг';
         theme='Тема'; interfaceMode='Режим интерфейса'; language='Язык';
@@ -112,6 +112,7 @@ function Get-NrRoot {
     return [System.IO.Path]::GetFullPath($Candidate).TrimEnd('\','/')
 }
 
+
 function Initialize-NrEnvironment {
     param([string]$RootPath)
     $script:NrRoot = Get-NrRoot -Candidate $RootPath
@@ -124,27 +125,44 @@ function Initialize-NrEnvironment {
     foreach ($path in @($script:NrLogDir,$script:NrHistoryDir,$script:NrConfigDir)) {
         if (-not (Test-Path -LiteralPath $path -PathType Container)) { New-Item -ItemType Directory -Path $path -Force | Out-Null }
     }
+
     $script:NrState = Read-NrState
+    $storedSchema = 0
+    try { $storedSchema = [int]$script:NrState.schemaVersion } catch { }
+    if ($storedSchema -lt 4) {
+        $script:NrState.schemaVersion = 4
+        $script:NrState.theme = 'dark'
+        $script:NrState.accent = 'Red'
+        try { Save-NrState } catch { }
+    }
+
     $script:NrLanguage = [string]$script:NrState.language
     if ($script:NrLanguage -notin @('RU','EN')) { $script:NrLanguage = Get-NrDefaultLanguage }
     $script:NrText = $script:NrTranslations[$script:NrLanguage]
+
     try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false) } catch { }
     try {
-        if ([string]$script:NrState.theme -eq 'light') { [Console]::BackgroundColor=[ConsoleColor]::White; [Console]::ForegroundColor=[ConsoleColor]::Black }
-        else { [Console]::BackgroundColor=[ConsoleColor]::Black; [Console]::ForegroundColor=[ConsoleColor]::Gray }
+        [Console]::BackgroundColor = [ConsoleColor]::Black
+        [Console]::ForegroundColor = [ConsoleColor]::Gray
         Clear-Host
     } catch { }
-    try { [Console]::Title = 'NexRoute 0.5.0' } catch { }
+
+    try {
+        $versionPath = Join-Path $script:NrService 'version.txt'
+        $version = if (Test-Path -LiteralPath $versionPath -PathType Leaf) { (Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8).Trim() } else { '0.6.5' }
+        [Console]::Title = "NexRoute $version"
+    } catch { }
 }
+
 
 function New-NrDefaultState {
     $lang = Get-NrDefaultLanguage
     return [ordered]@{
-        schemaVersion = 3
+        schemaVersion = 4
         language = $lang
         mode = 'beginner'
         theme = 'dark'
-        accent = 'Cyan'
+        accent = 'Red'
         firstRunComplete = $false
         monitorEnabled = $false
         autoSwitchEnabled = $false
@@ -198,13 +216,16 @@ function Write-NrLog {
     Add-Content -LiteralPath (Join-Path $script:NrLogDir 'nexroute.jsonl') -Value $line -Encoding UTF8
 }
 
+
 function Get-NrAccentColor {
     $name = [string]$script:NrState.accent
-    try { return [ConsoleColor]::$name } catch { return [ConsoleColor]::Cyan }
+    if ([string]::IsNullOrWhiteSpace($name) -or $name -eq 'Cyan') { return [ConsoleColor]::Red }
+    try { return [ConsoleColor]::$name } catch { return [ConsoleColor]::Red }
 }
 
+
 function Get-NrWidth {
-    try { return [Math]::Min([Math]::Max([Console]::WindowWidth - 2, 96), 120) } catch { return 110 }
+    try { return [Math]::Min([Math]::Max([Console]::WindowWidth - 2, 100), 124) } catch { return 112 }
 }
 
 function Format-NrText {
@@ -218,63 +239,106 @@ function Format-NrText {
     return $Value.PadRight($Length)
 }
 
+
 function Write-NrRule {
-    param([char]$Fill='-',[ConsoleColor]$Color=[ConsoleColor]::DarkCyan)
+    param([char]$Fill='-',[ConsoleColor]$Color=[ConsoleColor]::DarkRed)
     $width = Get-NrWidth
     Write-Host ('+' + ($Fill.ToString() * ($width-2)) + '+') -ForegroundColor $Color
 }
 
+
 function Write-NrPanel {
     param([string]$Title)
+    if ([string]::IsNullOrWhiteSpace($Title)) { return }
     $width = Get-NrWidth
     $label = '[ ' + $Title + ' ]'
     $remaining = [Math]::Max(0,$width-4-$label.Length)
-    Write-Host ('+--' + $label + ('-' * $remaining) + '+') -ForegroundColor DarkCyan
+    Write-Host ('+--' + $label + ('-' * $remaining) + '+') -ForegroundColor DarkRed
 }
+
 
 function Write-NrHeader {
     param([string]$Title)
     Clear-Host
+
     $versionPath = Join-Path $script:NrService 'version.txt'
-    $version = if (Test-Path -LiteralPath $versionPath) { (Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8).Trim() } else { '0.5.0' }
-    Write-NrRule -Fill '=' -Color (Get-NrAccentColor)
+    $version = if (Test-Path -LiteralPath $versionPath -PathType Leaf) { (Get-Content -LiteralPath $versionPath -Raw -Encoding UTF8).Trim() } else { '0.6.5' }
+    $baseline = '1.10.3'
+    $manifestPath = Join-Path $script:NrService 'upstream-manifest.json'
+    if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+        try { $baseline = [string]((Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json).tag) } catch { }
+    }
+
+    $logo = @(
+        '███╗░░██╗███████╗██╗░░██╗██████╗░░█████╗░██╗░░░██╗████████╗███████╗',
+        '████╗░██║██╔════╝╚██╗██╔╝██╔══██╗██╔══██╗██║░░░██║╚══██╔══╝██╔════╝',
+        '██╔██╗██║█████╗░░░╚███╔╝░██████╔╝██║░░██║██║░░░██║░░░██║░░░█████╗░░',
+        '██║╚████║██╔══╝░░░██╔██╗░██╔══██╗██║░░██║██║░░░██║░░░██║░░░██╔══╝░░',
+        '██║░╚███║███████╗██╔╝╚██╗██║░░██║╚█████╔╝╚██████╔╝░░░██║░░░███████╗',
+        '╚═╝░░╚══╝╚══════╝╚═╝░░╚═╝╚═╝░░╚═╝░╚════╝░░╚═════╝░░░░╚═╝░░░╚══════╝'
+    )
     $width = Get-NrWidth
-    $headline = ' NEXROUTE ' + $version + ' // ' + (T 'appTitle') + ' '
-    $pad = [Math]::Max(0,[int](($width-$headline.Length)/2))
-    Write-Host ((' ' * $pad) + $headline) -ForegroundColor (Get-NrAccentColor)
-    $sub = T 'tagline'
-    $pad2 = [Math]::Max(0,[int](($width-$sub.Length)/2))
-    Write-Host ((' ' * $pad2) + $sub) -ForegroundColor DarkGray
-    Write-NrRule -Fill '=' -Color (Get-NrAccentColor)
-    if ($Title) { Write-NrPanel -Title $Title }
+    foreach ($line in $logo) {
+        $pad = [Math]::Max(0,[int](($width-$line.Length)/2))
+        Write-Host ((' ' * $pad) + $line) -ForegroundColor Red
+    }
+
+    $tagline = T 'tagline'
+    $tagPad = [Math]::Max(0,[int](($width-$tagline.Length)/2))
+    Write-Host ((' ' * $tagPad) + $tagline) -ForegroundColor DarkGray
+
+    Write-NrRule -Fill '=' -Color Red
+    $headline = " NEXROUTE CONTROL NODE  v$version  //  FLOWSEAL $baseline "
+    $headlinePad = [Math]::Max(0,[int](($width-$headline.Length)/2))
+    Write-Host ((' ' * $headlinePad) + $headline) -ForegroundColor White
+    Write-NrRule -Fill '=' -Color Red
+
+    $strategy = 'none'
+    try { $strategy = Get-NrInstalledStrategy } catch { }
+    $engineState = if (Test-NrServiceRunning -Name 'zapret') { T 'running' } else { T 'stopped' }
+    $privilege = if (Test-NrAdministrator) { 'ADMIN' } else { 'USER' }
+    $left = "  PROFILE: $strategy"
+    $right = "ENGINE: $engineState   LANG: $script:NrLanguage   $privilege  "
+    $space = [Math]::Max(1,$width-2-$left.Length-$right.Length)
+    Write-Host '|' -NoNewline -ForegroundColor DarkRed
+    Write-Host $left -NoNewline -ForegroundColor Gray
+    Write-Host (' ' * $space) -NoNewline
+    Write-Host $right -NoNewline -ForegroundColor (Get-NrStatusColor -Status $engineState)
+    Write-Host '|' -ForegroundColor DarkRed
+    Write-NrRule -Color DarkRed
+
+    if (-not [string]::IsNullOrWhiteSpace($Title)) { Write-NrPanel -Title $Title }
 }
+
 
 function Get-NrStatusColor {
     param([string]$Status)
     if ([string]::IsNullOrWhiteSpace($Status)) { return [ConsoleColor]::Gray }
     $value = $Status.ToLowerInvariant()
-    if ($value -match 'enabled|running|ready|ok|current|включ|работ|готов') { return [ConsoleColor]::Green }
-    if ($value -match 'disabled|stopped|error|failed|none|выключ|останов|ошиб|нет') { return [ConsoleColor]::Red }
+    if ($value -match 'enabled|running|ready|ok|current|success|stable|включ|работ|готов|успех|текущ') { return [ConsoleColor]::Green }
+    if ($value -match 'disabled|stopped|error|failed|none|missing|выключ|останов|ошиб|нет|не найден') { return [ConsoleColor]::Red }
     return [ConsoleColor]::Yellow
 }
 
+
 function Write-NrMenuRow {
-    param([object]$Item,[bool]$Selected)
+    param([object]$Item,[int]$Number,[switch]$ExitRow)
     $width = Get-NrWidth
-    $prefix = if ($Selected) { '>[+]' } else { ' [+]' }
+    $numberText = if ($ExitRow) { '[00]' } else { '[{0:00}]' -f $Number }
     $status = ''
     if ($Item.PSObject.Properties['Status'] -and -not [string]::IsNullOrWhiteSpace([string]$Item.Status)) {
         $status = '[' + (([string]$Item.Status -replace '[\[\]]','').ToUpperInvariant()) + ']'
     }
     $label = [string]$Item.Label
     $contentWidth = $width - 4
-    $pad = [Math]::Max(1,$contentWidth-$prefix.Length-1-$label.Length-$status.Length)
-    Write-Host '|' -NoNewline -ForegroundColor DarkCyan
-    Write-Host $prefix -NoNewline -ForegroundColor $(if ($Selected) { Get-NrAccentColor } else { [ConsoleColor]::DarkCyan })
-    Write-Host (' ' + $label) -NoNewline -ForegroundColor $(if ($Selected) { [ConsoleColor]::White } else { [ConsoleColor]::Gray })
+    $pad = [Math]::Max(1,$contentWidth-$numberText.Length-2-$label.Length-$status.Length)
+
+    Write-Host '|' -NoNewline -ForegroundColor DarkRed
+    Write-Host (' ' + $numberText) -NoNewline -ForegroundColor Red
+    Write-Host (' ' + $label) -NoNewline -ForegroundColor $(if ($ExitRow) { [ConsoleColor]::DarkGray } else { [ConsoleColor]::White })
     Write-Host (' ' * $pad) -NoNewline
     if ($status) { Write-Host $status -NoNewline -ForegroundColor (Get-NrStatusColor -Status $status) }
-    Write-Host ' |' -ForegroundColor DarkCyan
+    Write-Host ' |' -ForegroundColor DarkRed
 }
 
 function New-NrMenuItem {
@@ -282,92 +346,141 @@ function New-NrMenuItem {
     return [pscustomobject]@{ Id=$Id; Label=$Label; Section=$Section; Status=$Status; HotKey=$HotKey }
 }
 
+
 function Invoke-NrMenu {
     param([string]$Title,[Parameter(Mandatory)][object[]]$Items,[int]$InitialIndex=0,[switch]$AllowEscape)
     if ($Items.Count -eq 0) { return $null }
-    $index = [Math]::Min([Math]::Max(0,$InitialIndex),$Items.Count-1)
+
+    $regular = @($Items | Where-Object { [string]$_.Id -notin @('exit','back','__back') })
+    $exitItem = @($Items | Where-Object { [string]$_.Id -in @('exit','back','__back') } | Select-Object -First 1)
+
     while ($true) {
         Write-NrHeader -Title $Title
         $lastSection = $null
-        for ($i=0; $i -lt $Items.Count; $i++) {
-            $section = [string]$Items[$i].Section
+        for ($i=0; $i -lt $regular.Count; $i++) {
+            $section = [string]$regular[$i].Section
             if ($section -ne $lastSection) { Write-NrPanel -Title $section; $lastSection=$section }
-            Write-NrMenuRow -Item $Items[$i] -Selected ($i -eq $index)
+            Write-NrMenuRow -Item $regular[$i] -Number ($i+1)
         }
-        Write-NrRule -Fill '=' -Color (Get-NrAccentColor)
-        Write-Host ('  ' + (T 'arrows')) -ForegroundColor DarkGray
-        $key = [Console]::ReadKey($true)
-        switch ($key.Key) {
-            'UpArrow' { $index = if ($index -le 0) { $Items.Count-1 } else { $index-1 } }
-            'DownArrow' { $index = if ($index -ge $Items.Count-1) { 0 } else { $index+1 } }
-            'Home' { $index=0 }
-            'End' { $index=$Items.Count-1 }
-            'Enter' { return [string]$Items[$index].Id }
-            'Escape' { if ($AllowEscape) { return $null } }
-            'F1' { if (@($Items | Where-Object { $_.Id -eq 'status' }).Count -gt 0) { return 'status' } }
-            'F2' { if (@($Items | Where-Object { $_.Id -eq 'lab' }).Count -gt 0) { return 'lab' } }
-            default {
-                $char = [string]$key.KeyChar
-                if (-not [string]::IsNullOrWhiteSpace($char)) {
-                    for ($j=0; $j -lt $Items.Count; $j++) {
-                        if (-not [string]::IsNullOrWhiteSpace([string]$Items[$j].HotKey) -and $char.ToUpperInvariant() -eq ([string]$Items[$j].HotKey).ToUpperInvariant()) {
-                            return [string]$Items[$j].Id
-                        }
-                    }
+        if ($exitItem.Count -gt 0 -or $AllowEscape) {
+            Write-NrRule -Color DarkRed
+            $item = if ($exitItem.Count -gt 0) { $exitItem[0] } else { [pscustomobject]@{ Label=(T 'back'); Status='' } }
+            Write-NrMenuRow -Item $item -Number 0 -ExitRow
+        }
+        Write-NrRule -Fill '=' -Color Red
+        Write-Host ''
+        Write-Host '  > ' -NoNewline -ForegroundColor Red
+        $raw = (Read-Host).Trim()
+
+        if ($raw -eq '0') {
+            if ($exitItem.Count -gt 0) { return [string]$exitItem[0].Id }
+            if ($AllowEscape) { return $null }
+        }
+
+        $number = 0
+        if ([int]::TryParse($raw,[ref]$number) -and $number -ge 1 -and $number -le $regular.Count) {
+            return [string]$regular[$number-1].Id
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($raw)) {
+            foreach ($item in $regular) {
+                if (-not [string]::IsNullOrWhiteSpace([string]$item.HotKey) -and $raw.ToUpperInvariant() -eq ([string]$item.HotKey).ToUpperInvariant()) {
+                    return [string]$item.Id
                 }
             }
         }
+
+        Write-Host ''
+        Write-Host '  [ERROR] Invalid menu number.' -ForegroundColor Red
+        Start-Sleep -Milliseconds 650
     }
 }
+
 
 function Invoke-NrMultiSelect {
     param([string]$Title,[Parameter(Mandatory)][object[]]$Items,[string[]]$SelectedIds=@())
     $selected = New-Object 'System.Collections.Generic.HashSet[string]'
     foreach ($id in $SelectedIds) { [void]$selected.Add($id) }
-    $index = 0
+
     while ($true) {
         Write-NrHeader -Title $Title
         Write-NrPanel -Title (T 'selectItems')
         for ($i=0; $i -lt $Items.Count; $i++) {
             $mark = if ($selected.Contains([string]$Items[$i].Id)) { '[X]' } else { '[ ]' }
             $row = [pscustomobject]@{ Label=($mark + ' ' + [string]$Items[$i].Label); Status=[string]$Items[$i].Status }
-            Write-NrMenuRow -Item $row -Selected ($i -eq $index)
+            Write-NrMenuRow -Item $row -Number ($i+1)
         }
-        Write-NrRule -Fill '=' -Color (Get-NrAccentColor)
-        $key = [Console]::ReadKey($true)
-        switch ($key.Key) {
-            'UpArrow' { $index = if ($index -le 0) { $Items.Count-1 } else { $index-1 } }
-            'DownArrow' { $index = if ($index -ge $Items.Count-1) { 0 } else { $index+1 } }
-            'Spacebar' {
-                $id=[string]$Items[$index].Id
-                if ($selected.Contains($id)) { [void]$selected.Remove($id) } else { [void]$selected.Add($id) }
+        Write-NrRule -Fill '=' -Color Red
+        Write-Host '  A = all   N = none   ENTER = continue   0 = cancel' -ForegroundColor DarkGray
+        Write-Host '  Numbers: 1,3,5-8' -ForegroundColor DarkGray
+        Write-Host ''
+        Write-Host '  > ' -NoNewline -ForegroundColor Red
+        $raw = (Read-Host).Trim()
+
+        if ([string]::IsNullOrWhiteSpace($raw)) { return [string[]]@($selected) }
+        if ($raw -eq '0') { return $null }
+        if ($raw.ToUpperInvariant() -eq 'A') {
+            $selected.Clear()
+            foreach ($item in $Items) { [void]$selected.Add([string]$item.Id) }
+            continue
+        }
+        if ($raw.ToUpperInvariant() -eq 'N') {
+            $selected.Clear()
+            continue
+        }
+
+        $valid = $true
+        $numbers = New-Object 'System.Collections.Generic.HashSet[int]'
+        foreach ($token in @($raw -split '[,\s]+')) {
+            if ([string]::IsNullOrWhiteSpace($token)) { continue }
+            if ($token -match '^(\d+)-(\d+)$') {
+                $from=[int]$Matches[1]; $to=[int]$Matches[2]
+                if ($from -gt $to) { $tmp=$from; $from=$to; $to=$tmp }
+                if ($from -lt 1 -or $to -gt $Items.Count) { $valid=$false; break }
+                for ($n=$from;$n -le $to;$n++) { [void]$numbers.Add($n) }
+            } else {
+                $n=0
+                if (-not [int]::TryParse($token,[ref]$n) -or $n -lt 1 -or $n -gt $Items.Count) { $valid=$false; break }
+                [void]$numbers.Add($n)
             }
-            'Enter' { return [string[]]@($selected) }
-            'Escape' { return $null }
+        }
+        if (-not $valid -or $numbers.Count -eq 0) {
+            Write-Host '  [ERROR] Use numbers, ranges, A, N or 0.' -ForegroundColor Red
+            Start-Sleep -Milliseconds 650
+            continue
+        }
+        foreach ($n in $numbers) {
+            $id=[string]$Items[$n-1].Id
+            if ($selected.Contains($id)) { [void]$selected.Remove($id) } else { [void]$selected.Add($id) }
         }
     }
 }
 
+
 function Confirm-NrY {
     param([string]$Message)
     Write-Host ''
-    Write-Host ('  ' + $Message) -ForegroundColor Yellow
-    $key = [Console]::ReadKey($true)
-    return ($key.KeyChar -eq 'y' -or $key.KeyChar -eq 'Y')
+    Write-Host ('  [!] ' + $Message) -ForegroundColor Yellow
+    Write-Host '  > Y/N: ' -NoNewline -ForegroundColor Red
+    $raw=(Read-Host).Trim()
+    return ($raw -match '^(?i:y|yes|д|да)$')
 }
+
 
 function Wait-NrKey {
     Write-Host ''
     Write-Host ('  ' + (T 'pressKey')) -ForegroundColor DarkGray
-    [void][Console]::ReadKey($true)
+    try { [void][Console]::ReadKey($true) } catch { Read-Host | Out-Null }
 }
+
 
 function Show-NrMessage {
     param([string]$Title,[string]$Message,[ConsoleColor]$Color=[ConsoleColor]::White,[switch]$NoWait)
     Write-NrHeader -Title $Title
     Write-Host ''
+    Write-NrRule -Color DarkRed
     Write-Host ('  ' + $Message) -ForegroundColor $Color
-    Write-NrRule -Color DarkCyan
+    Write-NrRule -Color DarkRed
     if (-not $NoWait) { Wait-NrKey }
 }
 
