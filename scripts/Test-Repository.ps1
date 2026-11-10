@@ -57,8 +57,8 @@ Assert-True ($version -eq $expectedVersion) "Repository version is $expectedVers
 Assert-True ([string]$websitePackage.version -eq $expectedVersion) 'Website package version matches repository version'
 Assert-True ([string]$websiteLock['version'] -eq $expectedVersion) 'Website lockfile version matches repository version'
 Assert-True ([string]$websiteLock['packages']['']['version'] -eq $expectedVersion) 'Website root lock package version matches repository version'
-Assert-True ($releaseNotes -match [regex]::Escape('# NexRoute 0.6.6 — стабилизация')) 'Release notes describe 0.6.5'
-Assert-True ($acceptance -match [regex]::Escape('NexRoute 0.6.6 — критерии готовности релиза')) '0.6.5 acceptance document exists'
+Assert-True ($releaseNotes -match [regex]::Escape('# NexRoute 0.6.6 — стабилизация')) 'Release notes describe 0.6.6'
+Assert-True ($acceptance -match [regex]::Escape('NexRoute 0.6.6 — критерии готовности релиза')) '0.6.6 acceptance document exists'
 foreach ($asset in @('NexRoute-0.6.6-win-x64.zip','NexRoute-0.6.6-win-x64.zip.sha256','NexRoute-0.6.6-validation.json','NexRoute-0.6.6-validation.md')) {
     Assert-True ($releaseNotes -match [regex]::Escape($asset)) "Release notes document $asset"
 }
@@ -164,7 +164,7 @@ foreach ($token in @('upstream-lock.json','patch-report.json','Expected 24 track
 $validate=Read-Text '.github/workflows/validate.yml'
 $release=Read-Text '.github/workflows/release.yml'
 $pages=Read-Text '.github/workflows/pages.yml'
-foreach ($token in @('NexRoute 0.6.5','Test-WindowsLaunchers.ps1','diagnosticCompatibility','updaterFallbackVersion','UpstreamArchive','npm run typecheck','npm run build','actions/checkout v6.1.0','actions/setup-node v6.5.0','actions/upload-artifact v7.0.1')) {
+foreach ($token in @('NexRoute 0.6.6','Test-WindowsLaunchers.ps1','diagnosticCompatibility','updaterFallbackVersion','UpstreamArchive','npm run typecheck','npm run build','actions/checkout v6.1.0','actions/setup-node v6.5.0','actions/upload-artifact v7.0.1')) {
     Assert-True ($validate -match [regex]::Escape($token)) "Validation workflow contains $token"
 }
 foreach ($token in @('id-token: write','attestations: write','artifact-metadata: write','actions/attest v4.2.2','gh attestation verify','actions/checkout v6.1.0','actions/upload-artifact v7.0.1','gh release create')) {
