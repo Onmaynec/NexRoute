@@ -63,7 +63,7 @@ function Read-NrStrategyManifest {
     }
     $manifest = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-NrManifestFields $manifest @('schemaVersion','strategySetVersion','sourceCatalogVersion','upstreamVersion','profiles') 'root'
-    if ($manifest.schemaVersion -isnot [int] -or [int]$manifest.schemaVersion -ne 1) { throw 'Unsupported strategy manifest schemaVersion.' }
+    if (($manifest.schemaVersion -isnot [int] -and $manifest.schemaVersion -isnot [long]) -or [int]$manifest.schemaVersion -ne 1) { throw 'Unsupported strategy manifest schemaVersion.' }
     if ([string]$manifest.strategySetVersion -ne '0.7.0' -or [string]$manifest.sourceCatalogVersion -ne '0.6.3') {
         throw 'Unsupported strategy manifest catalog version.'
     }
