@@ -124,7 +124,105 @@ function Invoke-NexRoute063StrategyRefreshBuild {
     else {
         'unknown'
     }
-    $targetVersion = if ($sourceVersion -match '^\d+\.\d+\.\d+
+    $targetVersion = if ($sourceVersion -match '^[0-9]+[.][0-9]+[.][0-9]+    $report = [ordered]@{
+        schemaVersion = 1
+        nexRouteVersion = $targetVersion
+        sourceVersion = $sourceVersion
+        targetProvider = 'Informatsionnye Kommunikatsii / wired / Sibay, Russia'
+        strategyCount = $strategyReports.Count
+        strategySet = 'NexRoute 0.6.3 RKN refresh'
+        manifest = [ordered]@{
+            schemaVersion = 1
+            path = '.service/strategy-manifest.json'
+            strategySetVersion = [string]$manifest.StrategySetVersion
+            sha256 = [string]$manifest.Sha256
+            profileCount = $catalog.Count
+        }
+        criticalTargets = @(
+            'DiscordGateway',
+            'DiscordCDN',
+            'DiscordUpdates',
+            'YouTubeWeb',
+            'YouTubeShort',
+            'YouTubeImage',
+            'YouTubeVideoRedirect'
+        )
+        lists = @(
+            [ordered]@{
+                file = 'lists/list-nexroute-discord-critical.txt'
+                sha256 = Get-NexRoute063Sha256 -Path $discordListPath
+            },
+            [ordered]@{
+                file = 'lists/list-nexroute-youtube-critical.txt'
+                sha256 = Get-NexRoute063Sha256 -Path $youtubeListPath
+            }
+        )
+        strategies = @($strategyReports.ToArray())
+    }
+
+    $reportPath = Join-Path $rootPath '.service/strategy-refresh-report.json'
+    $reportJson = $report | ConvertTo-Json -Depth 12
+    [System.IO.File]::WriteAllText(
+        $reportPath,
+        ($reportJson + "`r`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+
+    return [pscustomobject]@{
+        StrategyCount = $strategyReports.Count
+        ManifestSha256 = [string]$manifest.Sha256
+        Report = $reportPath
+        DiscordList = $discordListPath
+        YouTubeList = $youtubeListPath
+    }
+}
+) { $sourceVersion } else { '0.6.3-candidate' }
+
+    $report = [ordered]@{
+        schemaVersion = 1
+        nexRouteVersion = $targetVersion
+        sourceVersion = $sourceVersion
+        targetProvider = 'Informatsionnye Kommunikatsii / wired / Sibay, Russia'
+        strategyCount = $strategyReports.Count
+        strategySet = 'NexRoute 0.6.3 RKN refresh'
+        criticalTargets = @(
+            'DiscordGateway',
+            'DiscordCDN',
+            'DiscordUpdates',
+            'YouTubeWeb',
+            'YouTubeShort',
+            'YouTubeImage',
+            'YouTubeVideoRedirect'
+        )
+        lists = @(
+            [ordered]@{
+                file = 'lists/list-nexroute-discord-critical.txt'
+                sha256 = Get-NexRoute063Sha256 -Path $discordListPath
+            },
+            [ordered]@{
+                file = 'lists/list-nexroute-youtube-critical.txt'
+                sha256 = Get-NexRoute063Sha256 -Path $youtubeListPath
+            }
+        )
+        strategies = @($strategyReports.ToArray())
+    }
+
+    $reportPath = Join-Path $rootPath '.service/strategy-refresh-report.json'
+    $reportJson = $report | ConvertTo-Json -Depth 12
+    [System.IO.File]::WriteAllText(
+        $reportPath,
+        ($reportJson + "`r`n"),
+        [System.Text.UTF8Encoding]::new($false)
+    )
+
+    return [pscustomobject]@{
+        StrategyCount = $strategyReports.Count
+        Report = $reportPath
+        DiscordList = $discordListPath
+        YouTubeList = $youtubeListPath
+    }
+}
+) { $sourceVersion } else { '0.6.3-candidate' }
 
     $report = [ordered]@{
         schemaVersion = 1
