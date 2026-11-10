@@ -1,4 +1,4 @@
-# Сборка и публикация NexRoute 0.6.6 📦
+# Сборка и публикация NexRoute 0.7.0 📦
 
 ## Политика
 
@@ -6,7 +6,7 @@
 
 Release собирается заново из `main` и считается готовым только после прохождения automated acceptance gate. Hardware- и ISP-dependent возможности не превращаются в `passed` без реального evidence: они остаются `experimental` или `unsupported` в signed validation report.
 
-Критерии версии: [RELEASE_0.6.6_ACCEPTANCE.md](RELEASE_0.6.6_ACCEPTANCE.md).
+Критерии версии: [RELEASE_0.7.0_ACCEPTANCE.md](RELEASE_0.7.0_ACCEPTANCE.md).
 
 ## Каноническая версия
 
@@ -16,11 +16,11 @@ Release собирается заново из `main` и считается го
 .service/version.txt
 ```
 
-Для 0.6.6 это значение обязано совпадать с:
+Для 0.7.0 это значение обязано совпадать с:
 
 - `website/package.json`;
 - README и CHANGELOG;
-- release notes `v0.6.6.md`;
+- release notes `v0.7.0.md`;
 - smoke artifact names;
 - package `.service/version.txt`;
 - validation report `version`.
@@ -54,7 +54,7 @@ Release builder использует предварительно провере
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.6 `
+  -Version 0.7.0 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 
@@ -81,7 +81,7 @@ Package build компилирует системным .NET Framework compiler:
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.6 `
+  -Version 0.7.0 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip
 
@@ -95,6 +95,12 @@ pwsh ./scripts/Test-V06Desktop.ps1 `
 ```
 
 Offline rebuild выполняет те же package, native desktop, notification и Validation Viewer fixtures. Online/offline upstream digest, patch target count, strategy count и service count обязаны совпадать.
+
+## Strategy Manifest provenance
+
+Сборка копирует `overlay/.service/strategy-manifest.json` в пакет без преобразования. После проверки 21 профиля записываются `.service/strategy-refresh-report.json`, digest manifest и per-profile digests в `.service/patch-report.json`. `Test-Release.ps1` пересчитывает SHA-256 и отклоняет рассинхронизацию.
+
+Только контролируемый build может изменить BAT. Runtime `Apply` не вызывает генератор стратегий. Подробности: [STRATEGY_MANIFEST.md](STRATEGY_MANIFEST.md).
 
 ## Patch provenance
 
@@ -136,8 +142,8 @@ Patch report содержит ровно 24 target-а:
 После package verification workflow создаёт:
 
 ```text
-NexRoute-0.6.6-validation.json
-NexRoute-0.6.6-validation.md
+NexRoute-0.7.0-validation.json
+NexRoute-0.7.0-validation.md
 ```
 
 JSON schema v1 содержит:
@@ -156,10 +162,10 @@ Failed required check блокирует publication.
 Финальный Release содержит четыре связанных файла:
 
 ```text
-NexRoute-0.6.6-win-x64.zip
-NexRoute-0.6.6-win-x64.zip.sha256
-NexRoute-0.6.6-validation.json
-NexRoute-0.6.6-validation.md
+NexRoute-0.7.0-win-x64.zip
+NexRoute-0.7.0-win-x64.zip.sha256
+NexRoute-0.7.0-validation.json
+NexRoute-0.7.0-validation.md
 ```
 
 Все четыре subjects входят в одну GitHub artifact attestation. Workflow проверяет каждую attestation до `gh release create`.
@@ -200,7 +206,7 @@ Release workflow из `main` дополнительно:
 
 ## Release checklist ✅
 
-- [ ] repository version равен 0.6.6 во всех canonical surfaces
+- [ ] repository version равен 0.7.0 во всех canonical surfaces
 - [ ] PowerShell AST parsing проходит
 - [ ] все Pester acceptance tests проходят
 - [ ] website typecheck и build проходят

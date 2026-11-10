@@ -1,4 +1,4 @@
-# Совместимость NexRoute 0.6.6 🖥️
+# Совместимость NexRoute 0.7.0 🖥️
 
 ## Поддерживаемые платформы
 
@@ -122,6 +122,8 @@ Updater содержит automated migration fixtures:
 Detached transaction сохраняет user state и выполняет rollback при failed verification, replacement, launch или health policy.
 
 Переход `0.6.5 → 0.6.6` дополнительно проверяется на сохранение пользовательских файлов, idempotent install и rollback после failed health check.
+
+Обновление `0.6.6 → 0.7.0` сохраняет настройки пользователя и профили Service Matrix. Новый декларативный каталог относится только к поставляемым стратегиям, не исполняет внешний код и не перезаписывает пользовательские BAT при обычном `Apply`.
 
 Для ручной чистой миграции:
 

@@ -130,6 +130,8 @@ try {
         '.service/next/nexroute-notifications.ps1','.service/next/nexroute-network-profiles-v2.ps1','.service/next/nexroute-network-profiles-v2-fixes.ps1',
         '.service/next/nexroute-repair-v2.ps1','.service/next/nexroute-repair-v2-fixes.ps1',
         '.service/next/nexroute-strategy-builder-v2.ps1','.service/next/nexroute-strategy-builder-v2-fixes.ps1',
+        '.service/next/nexroute-strategy-manifest.ps1','.service/strategy-manifest.json',
+        '.service/strategy-refresh-report.json',
         '.service/next/nexroute-ipv6-runtime-v2.ps1','.service/next/nexroute-ipv6-runtime-v2-fixes.ps1','.service/next/nexroute-family-probe.ps1',
         '.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1','.service/next/nexroute-strategy-lab-classic.ps1',
         '.service/next/nexroute-update-transaction.ps1','.service/next/nexroute-diagnostics-fixes.ps1','utils/test zapret.ps1'

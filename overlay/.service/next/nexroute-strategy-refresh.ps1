@@ -6,30 +6,17 @@ function Get-NexRoute063Sha256 {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
+$manifestReader = Join-Path $PSScriptRoot 'nexroute-strategy-manifest.ps1'
+if (-not (Test-Path -LiteralPath $manifestReader -PathType Leaf)) {
+    throw "NexRoute strategy manifest reader is missing: $manifestReader"
+}
+. $manifestReader
+
 function Get-NexRoute063StrategyCatalog {
-    return @(
-        [pscustomobject]@{ File='general.bat'; Profile='nr063-01-auto-sniext-ts'; Family='auto-multisplit-sniext-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=679; Repeats=8; QuicRepeats=11; DiscordRepeats=6; Cutoff=4 },
-        [pscustomobject]@{ File='general (ALT).bat'; Profile='nr063-02-static-fakedsplit-ts'; Family='static-fakedsplit-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=8; QuicRepeats=11; DiscordRepeats=6; Cutoff=4 },
-        [pscustomobject]@{ File='general (ALT2).bat'; Profile='nr063-03-auto-multidisorder-ts'; Family='auto-multidisorder-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=11; QuicRepeats=11; DiscordRepeats=5; Cutoff=4 },
-        [pscustomobject]@{ File='general (ALT3).bat'; Profile='nr063-04-auto-hostfakesplit-ts'; Family='auto-hostfakesplit-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=8; QuicRepeats=11; DiscordRepeats=5; Cutoff=4 },
-        [pscustomobject]@{ File='general (ALT4).bat'; Profile='nr063-05-static-multisplit-badseq'; Family='static-multisplit-badseq'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=681; Repeats=8; QuicRepeats=10; DiscordRepeats=6; Cutoff=3 },
-        [pscustomobject]@{ File='general (ALT5).bat'; Profile='nr063-06-syndata-multidisorder'; Family='syndata-multidisorder'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=0; QuicRepeats=11; DiscordRepeats=6; Cutoff=4 },
-        [pscustomobject]@{ File='general (ALT6).bat'; Profile='nr063-07-static-multisplit-ts-681'; Family='static-multisplit-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=681; Repeats=8; QuicRepeats=11; DiscordRepeats=4; Cutoff=4 },
-        [pscustomobject]@{ File='general (ALT7).bat'; Profile='nr063-08-auto-sniext-ts-ya'; Family='auto-multisplit-sniext-ts'; SniPrimary='ya.ru'; SniSecondary='www.google.com'; SeqOvl=679; Repeats=8; QuicRepeats=10; DiscordRepeats=4; Cutoff=4 },
-        [pscustomobject]@{ File='general (ALT8).bat'; Profile='nr063-09-auto-fake-badseq'; Family='auto-fake-badseq'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=8; QuicRepeats=9; DiscordRepeats=5; Cutoff=3 },
-        [pscustomobject]@{ File='general (ALT9).bat'; Profile='nr063-10-auto-fakedsplit-badseq'; Family='auto-fakedsplit-badseq'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=8; QuicRepeats=11; DiscordRepeats=4; Cutoff=4 },
-        [pscustomobject]@{ File='general (ALT10).bat'; Profile='nr063-11-auto-multisplit-ts-652'; Family='auto-multisplit-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=652; Repeats=8; QuicRepeats=11; DiscordRepeats=4; Cutoff=3 },
-        [pscustomobject]@{ File='general (ALT11).bat'; Profile='nr063-12-hostfakesplit-only-ts'; Family='hostfakesplit-only-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=0; QuicRepeats=10; DiscordRepeats=5; Cutoff=4 },
-        [pscustomobject]@{ File='general (ALT12).bat'; Profile='nr063-13-static-stun2-hybrid'; Family='static-stun2-hybrid'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=664; Repeats=8; QuicRepeats=11; DiscordRepeats=4; Cutoff=4 },
-        [pscustomobject]@{ File='general (EXP).bat'; Profile='nr063-14-exp-auto-stun2'; Family='exp-auto-stun2'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=480; Repeats=8; QuicRepeats=12; DiscordRepeats=4; Cutoff=4 },
-        [pscustomobject]@{ File='general (FAKE TLS AUTO).bat'; Profile='nr063-15-auto-multidisorder-badseq'; Family='auto-multidisorder-badseq'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=11; QuicRepeats=11; DiscordRepeats=6; Cutoff=4 },
-        [pscustomobject]@{ File='general (FAKE TLS AUTO ALT).bat'; Profile='nr063-16-auto-fakedsplit-ts'; Family='auto-fakedsplit-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=8; QuicRepeats=11; DiscordRepeats=6; Cutoff=4 },
-        [pscustomobject]@{ File='general (FAKE TLS AUTO ALT2).bat'; Profile='nr063-17-auto-hostfakesplit-altorder'; Family='auto-hostfakesplit-altorder'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=8; QuicRepeats=11; DiscordRepeats=5; Cutoff=4 },
-        [pscustomobject]@{ File='general (FAKE TLS AUTO ALT3).bat'; Profile='nr063-18-auto-multisplit-ts-681'; Family='auto-multisplit-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=681; Repeats=8; QuicRepeats=12; DiscordRepeats=4; Cutoff=3 },
-        [pscustomobject]@{ File='general (SIMPLE FAKE).bat'; Profile='nr063-19-simple-static-fake-ts'; Family='static-fake-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=8; QuicRepeats=10; DiscordRepeats=6; Cutoff=3 },
-        [pscustomobject]@{ File='general (SIMPLE FAKE ALT).bat'; Profile='nr063-20-simple-auto-fake-ts'; Family='auto-fake-ts'; SniPrimary='www.google.com'; SniSecondary='ya.ru'; SeqOvl=0; Repeats=8; QuicRepeats=10; DiscordRepeats=5; Cutoff=3 },
-        [pscustomobject]@{ File='general (SIMPLE FAKE ALT2).bat'; Profile='nr063-21-auto-multisplit-badseq'; Family='auto-multisplit-badseq'; SniPrimary='ya.ru'; SniSecondary='www.google.com'; SeqOvl=568; Repeats=8; QuicRepeats=11; DiscordRepeats=4; Cutoff=4 }
-    )
+    [CmdletBinding()]
+    param([string]$ManifestPath = $script:NrStrategyManifestPath)
+    $manifest = Read-NrStrategyManifest -Path $ManifestPath
+    return @($manifest.Catalog)
 }
 
 function Get-NexRoute063TcpArguments {

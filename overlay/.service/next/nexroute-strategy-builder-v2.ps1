@@ -543,6 +543,25 @@ function Show-NrStrategyBuilder {
     [CmdletBinding()]
     param([string]$Root)
     $rootPath=Get-NrStrategyBuilderRoot -Root $Root
+    if (Get-Command 'Get-NrStrategyManifestProjection' -ErrorAction SilentlyContinue) {
+        $mode=Select-NrBuilderSingleValue -Title 'Strategy Builder' -Values @('Create custom strategy','Inspect built-in profile','Cancel')
+        if ($mode -eq 'Cancel' -or -not $mode) { return $null }
+        if ($mode -eq 'Inspect built-in profile') {
+            $profiles=@(Get-NrStrategyManifestProjection)
+            $selected=Select-NrBuilderSingleValue -Title 'Built-in strategy profiles' -Values @($profiles | ForEach-Object { $_.id })
+            if (-not $selected) { return $null }
+            $profile=Get-NrManifestStrategyByName -Name $selected
+            if (-not $profile) { throw "Unknown built-in strategy profile: $selected" }
+            Write-Host ('Profile : ' + $profile.id) -ForegroundColor Cyan
+            Write-Host ('File    : ' + $profile.file)
+            Write-Host ('Family  : ' + $profile.family)
+            Write-Host ('TCP     : ' + ($profile.modes -join ','))
+            Write-Host ('Fooling : ' + ($profile.fooling -join ','))
+            Write-Host 'Built-in definitions are read-only. Custom strategies use the separate validated builder.' -ForegroundColor Yellow
+            if (Get-Command Wait-NrKey -ErrorAction SilentlyContinue) { Wait-NrKey }
+            return $null
+        }
+    }
     $name=Read-Host 'Strategy name'
     $sections=New-Object 'System.Collections.Generic.List[object]'
     while ($true) {

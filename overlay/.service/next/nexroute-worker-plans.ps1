@@ -40,6 +40,12 @@ function Get-NrWorkerStrategyCandidates {
         $lookup[$strategy.BaseName.ToLowerInvariant()]=$strategy
     }
     $selectedKey=$SelectedName.ToLowerInvariant()
+    # Accept the stable manifest profile ID as well as the generated BAT file.
+    if (-not $lookup.ContainsKey($selectedKey) -and
+        (Get-Command 'Get-NrManifestStrategyByName' -ErrorAction SilentlyContinue)) {
+        $profile = Get-NrManifestStrategyByName -Name $SelectedName
+        if ($profile) { $selectedKey = ([string]$profile.file).ToLowerInvariant() }
+    }
     if (-not $lookup.ContainsKey($selectedKey)) { throw "Selected per-service strategy does not exist: $SelectedName" }
     $ordered=New-Object 'System.Collections.Generic.List[System.IO.FileInfo]'
     $seen=@{}

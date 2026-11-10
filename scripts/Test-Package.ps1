@@ -29,6 +29,8 @@ $required = @(
     '.service/nexroute-ui.ps1','.service/nexroute-services.ps1','.service/services.json',
     '.service/legacy-service.bat','.service/nexroute-console.ps1','.service/nexroute-monitor.ps1','.service/nexroute-tray.ps1','.service/nexroute-worker-host.ps1',
     '.service/next/nexroute-common.ps1','.service/next/nexroute-strategies.ps1','.service/next/nexroute-network.ps1',
+    '.service/strategy-manifest.json','.service/strategy-refresh-report.json',
+    '.service/next/nexroute-strategy-manifest.ps1',
     '.service/next/nexroute-diagnostics.ps1','.service/next/nexroute-management.ps1','.service/next/nexroute-update.ps1',
     '.service/next/nexroute-workers.ps1','.service/next/nexroute-worker-plans.ps1','.service/next/nexroute-runtime-extensions.ps1',
     '.service/next/nexroute-portable-verifier.ps1','.service/next/nexroute-attestation-v2.ps1',
