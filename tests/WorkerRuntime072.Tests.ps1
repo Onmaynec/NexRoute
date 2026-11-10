@@ -101,11 +101,11 @@ while ($true) { Start-Sleep -Milliseconds 200 }
     }
 
     It 'shows partial coverage rather than claiming complete isolation' {
-        $host=Join-Path $script:fixture 'lists/host.txt'
+        $hostPath=Join-Path $script:fixture 'lists/host.txt'
         $ip=Join-Path $script:fixture 'lists/ip.txt'
-        'one.example','two.example','three.example' | Set-Content -LiteralPath $host -Encoding UTF8
+        'one.example','two.example','three.example' | Set-Content -LiteralPath $hostPath -Encoding UTF8
         '192.0.2.1/32' | Set-Content -LiteralPath $ip -Encoding UTF8
-        $config=[pscustomobject]@{services=@([pscustomobject]@{id='youtube';enabled=$true;filterFiles=[pscustomobject]@{hostlist=$host;ipset=$ip}})}
+        $config=[pscustomobject]@{services=@([pscustomobject]@{id='youtube';enabled=$true;filterFiles=[pscustomobject]@{hostlist=$hostPath;ipset=$ip}})}
         $report=Get-NrWorkerScopeReport072 -Configuration $config -MaxEntriesPerService 2
         $report.coverage | Should -Be 'partial'
         $report.incompleteServices | Should -Contain 'youtube'
