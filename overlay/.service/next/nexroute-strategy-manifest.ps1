@@ -130,7 +130,302 @@ function Read-NrStrategyManifest {
         }
         $ids[[string]$profile.id] = $true
         $files[[string]$profile.file] = $true
-        if ([string]$profile.family -cnotmatch '^[a-z0-9-]{1,64}
+        if ([string]$profile.family -cnotmatch '^[a-z0-9-]{1,64}        Assert-NrManifestFields $profile.tcp @('scopes','modes','fooling','splitPositions') 'profile.tcp'
+        Assert-NrManifestFields $profile.udp @('scopes','modes') 'profile.udp'
+        Assert-NrManifestFields $profile.tcp.scopes @('discord','youtube','general','fallback','game') 'profile.tcp.scopes'
+        Assert-NrManifestFields $profile.udp.scopes @('quic','discord','fallback','game') 'profile.udp.scopes'
+        foreach ($name in $tcpScopes.Keys) {
+            if ([string]$profile.tcp.scopes.$name -cne $tcpScopes[$name]) { throw "Unsafe TCP capture scope: $($profile.id) / $name" }
+        }
+        foreach ($name in $udpScopes.Keys) {
+            if ([string]$profile.udp.scopes.$name -cne $udpScopes[$name]) { throw "Unsafe UDP capture scope: $($profile.id) / $name" }
+        }
+        foreach ($key in @('modes','fooling','splitPositions')) {
+            Assert-NrManifestStringList $profile.tcp.$key "profile.tcp.$key"
+        }
+        Assert-NrManifestStringList $profile.udp.modes 'profile.udp.modes'
+        Assert-NrManifestSameList @($profile.udp.modes) @('fake') 'profile.udp.modes'
+        foreach ($mode in @($profile.tcp.modes)) {
+            if ($mode -notin @('fake','multisplit','multidisorder','fakedsplit','hostfakesplit','syndata')) {
+                throw "Unsupported TCP desync mode: $mode"
+            }
+        }
+        foreach ($mode in @($profile.tcp.fooling)) {
+            if ($mode -notin @('ts','badseq')) { throw "Unsupported TCP fooling mode: $mode" }
+        }
+        foreach ($position in @($profile.tcp.splitPositions)) {
+            if ($position -cnotmatch '^(?:[0-9]{1,5}|sniext\+[0-9]{1,4}|midsld)$') {
+                throw "Unsupported TCP split position: $position"
+            }
+        }
+
+        Assert-NrManifestFields $profile.sni @('primary','secondary') 'profile.sni'
+        foreach ($name in @('primary','secondary')) {
+            if ([string]$profile.sni.$name -cnotmatch '^(?:[a-z0-9-]{1,63}\.)+[a-z0-9-]{2,63}$') {
+                throw "Unsafe SNI in strategy manifest: $($profile.id) / $name"
+            }
+        }
+        Assert-NrManifestFields $profile.parameters @(
+            'seqOvl','repeats','quicRepeats','discordRepeats','cutoff'
+        ) 'profile.parameters'
+        $limits = @{
+            seqOvl=@(0,4096); repeats=@(0,20); quicRepeats=@(1,20)
+            discordRepeats=@(1,20); cutoff=@(1,32)
+        }
+        foreach ($name in $limits.Keys) {
+            $number = $profile.parameters.$name
+            if (($number -isnot [int] -and $number -isnot [long]) -or
+                [long]$number -lt $limits[$name][0] -or [long]$number -gt $limits[$name][1]) {
+                throw "Invalid strategy numeric parameter: $($profile.id) / $name"
+            }
+        }
+
+        Assert-NrManifestStringList $profile.fakePayloads 'profile.fakePayloads'
+        Assert-NrManifestStringList $profile.requiredLists 'profile.requiredLists'
+        foreach ($pathRef in @($profile.fakePayloads)) {
+            if ($pathRef -cnotmatch '^bin/[A-Za-z0-9_]+\.bin$') { throw "Unsafe fake payload path: $pathRef" }
+        }
+        foreach ($pathRef in @($profile.requiredLists)) {
+            if ($pathRef -cnotmatch '^lists/[A-Za-z0-9._-]+\.txt$') { throw "Unsafe list path: $pathRef" }
+        }
+        Assert-NrManifestSameList @($profile.fakePayloads) $expectedPayloads 'profile.fakePayloads'
+        Assert-NrManifestSameList @($profile.requiredLists) $expectedLists 'profile.requiredLists'
+        if ($PayloadRoot) {
+            foreach ($pathRef in @($profile.fakePayloads)) {
+                $full = Join-Path $PayloadRoot ($pathRef.Replace('/',[IO.Path]::DirectorySeparatorChar))
+                if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
+                    throw "Strategy manifest references missing payload: $pathRef"
+                }
+            }
+        }
+
+        Assert-NrManifestFields $profile.compatibility @('flowseal','windows','addressFamily') 'profile.compatibility'
+        if ([string]$profile.compatibility.flowseal -cne '1.10.3' -or
+            [string]$profile.compatibility.windows -cne '10/11-x64' -or
+            [string]$profile.compatibility.addressFamily -cne $(if ($profile.family -eq 'syndata-multidisorder') {'ipv4'} else {'upstream-dependent'})) {
+            throw "Inconsistent strategy compatibility metadata: $($profile.id)"
+        }
+        Assert-NrManifestFields $profile.provenance @('sourceVersion','source') 'profile.provenance'
+        if ([string]$profile.provenance.sourceVersion -cne '0.6.3' -or
+            [string]$profile.provenance.source -cne 'Get-NexRoute063StrategyCatalog') {
+            throw "Invalid strategy provenance: $($profile.id)"
+        }
+
+        # Keep the old generator as a byte-compatible renderer, but only feed it
+        # objects validated by the single canonical manifest parser.
+        $spec = [pscustomobject][ordered]@{
+            File=[string]$profile.file; Profile=[string]$profile.id; Family=[string]$profile.family
+            SniPrimary=[string]$profile.sni.primary; SniSecondary=[string]$profile.sni.secondary
+            SeqOvl=[int]$profile.parameters.seqOvl; Repeats=[int]$profile.parameters.repeats
+            QuicRepeats=[int]$profile.parameters.quicRepeats
+            DiscordRepeats=[int]$profile.parameters.discordRepeats
+            Cutoff=[int]$profile.parameters.cutoff
+        }
+        # The same normalized model is used in CLI/worker projections.
+        # During a build, also assert exact parity with the winws family renderer.
+        if (Get-Command 'Get-NexRoute063TcpArguments' -ErrorAction SilentlyContinue) {
+            $tcp = Get-NexRoute063TcpArguments -Spec $spec -Scope Discord
+            $modes = @()
+            $fooling = @()
+            $splitPositions = @()
+            if ($tcp -match '--dpi-desync=([a-z,]+)') { $modes = @($Matches[1].Split(',')) }
+            if ($tcp -match '--dpi-desync-fooling=([a-z,]+)') { $fooling = @($Matches[1].Split(',')) }
+            if ($tcp -match '--dpi-desync-split-pos=([a-z0-9+,]+)') { $splitPositions = @($Matches[1].Split(',')) }
+            Assert-NrManifestSameList @($profile.tcp.modes) $modes 'profile.tcp.modes'
+            Assert-NrManifestSameList @($profile.tcp.fooling) $fooling 'profile.tcp.fooling'
+            Assert-NrManifestSameList @($profile.tcp.splitPositions) $splitPositions 'profile.tcp.splitPositions'
+        }
+        $result.Add($spec)
+    }
+    return [pscustomobject][ordered]@{
+        SchemaVersion=1
+        StrategySetVersion=[string]$manifest.strategySetVersion
+        SourceCatalogVersion=[string]$manifest.sourceCatalogVersion
+        UpstreamVersion=[string]$manifest.upstreamVersion
+        Path=[IO.Path]::GetFullPath($Path)
+        Sha256=(Get-NrManifestSha256 -Path $Path)
+        Profiles=@($manifest.profiles)
+        Catalog=@($result.ToArray())
+    }
+}
+
+function Get-NrStrategyManifestProjection {
+    [CmdletBinding()]
+    param([string]$Path = $script:NrStrategyManifestPath)
+    $manifest = Read-NrStrategyManifest -Path $Path
+    # A read-only projection for the UI, Strategy Builder and worker selection.
+    return @($manifest.Profiles | ForEach-Object {
+        [pscustomobject][ordered]@{
+            id=[string]$_.id
+            displayName=[string]$_.displayName
+            file=[string]$_.file
+            family=[string]$_.family
+            modes=@($_.tcp.modes)
+            fooling=@($_.tcp.fooling)
+            splitPositions=@($_.tcp.splitPositions)
+            tcpScopes=$_.tcp.scopes
+            udpScopes=$_.udp.scopes
+            compatibleFlowseal=[string]$_.compatibility.flowseal
+        }
+    })
+}
+ -or
+            [string]$profile.family -notin $knownFamilies) {
+            throw "Unsupported strategy family: $($profile.family)"
+        }
+
+        Assert-NrManifestFields $profile.tcp @('scopes','modes','fooling','splitPositions') 'profile.tcp'
+        Assert-NrManifestFields $profile.udp @('scopes','modes') 'profile.udp'
+        Assert-NrManifestFields $profile.tcp.scopes @('discord','youtube','general','fallback','game') 'profile.tcp.scopes'
+        Assert-NrManifestFields $profile.udp.scopes @('quic','discord','fallback','game') 'profile.udp.scopes'
+        foreach ($name in $tcpScopes.Keys) {
+            if ([string]$profile.tcp.scopes.$name -cne $tcpScopes[$name]) { throw "Unsafe TCP capture scope: $($profile.id) / $name" }
+        }
+        foreach ($name in $udpScopes.Keys) {
+            if ([string]$profile.udp.scopes.$name -cne $udpScopes[$name]) { throw "Unsafe UDP capture scope: $($profile.id) / $name" }
+        }
+        foreach ($key in @('modes','fooling','splitPositions')) {
+            Assert-NrManifestStringList $profile.tcp.$key "profile.tcp.$key"
+        }
+        Assert-NrManifestStringList $profile.udp.modes 'profile.udp.modes'
+        Assert-NrManifestSameList @($profile.udp.modes) @('fake') 'profile.udp.modes'
+        foreach ($mode in @($profile.tcp.modes)) {
+            if ($mode -notin @('fake','multisplit','multidisorder','fakedsplit','hostfakesplit','syndata')) {
+                throw "Unsupported TCP desync mode: $mode"
+            }
+        }
+        foreach ($mode in @($profile.tcp.fooling)) {
+            if ($mode -notin @('ts','badseq')) { throw "Unsupported TCP fooling mode: $mode" }
+        }
+        foreach ($position in @($profile.tcp.splitPositions)) {
+            if ($position -cnotmatch '^(?:[0-9]{1,5}|sniext\+[0-9]{1,4}|midsld)$') {
+                throw "Unsupported TCP split position: $position"
+            }
+        }
+
+        Assert-NrManifestFields $profile.sni @('primary','secondary') 'profile.sni'
+        foreach ($name in @('primary','secondary')) {
+            if ([string]$profile.sni.$name -cnotmatch '^(?:[a-z0-9-]{1,63}\.)+[a-z0-9-]{2,63}$') {
+                throw "Unsafe SNI in strategy manifest: $($profile.id) / $name"
+            }
+        }
+        Assert-NrManifestFields $profile.parameters @(
+            'seqOvl','repeats','quicRepeats','discordRepeats','cutoff'
+        ) 'profile.parameters'
+        $limits = @{
+            seqOvl=@(0,4096); repeats=@(0,20); quicRepeats=@(1,20)
+            discordRepeats=@(1,20); cutoff=@(1,32)
+        }
+        foreach ($name in $limits.Keys) {
+            $number = $profile.parameters.$name
+            if (($number -isnot [int] -and $number -isnot [long]) -or
+                [long]$number -lt $limits[$name][0] -or [long]$number -gt $limits[$name][1]) {
+                throw "Invalid strategy numeric parameter: $($profile.id) / $name"
+            }
+        }
+
+        Assert-NrManifestStringList $profile.fakePayloads 'profile.fakePayloads'
+        Assert-NrManifestStringList $profile.requiredLists 'profile.requiredLists'
+        foreach ($pathRef in @($profile.fakePayloads)) {
+            if ($pathRef -cnotmatch '^bin/[A-Za-z0-9_]+\.bin$') { throw "Unsafe fake payload path: $pathRef" }
+        }
+        foreach ($pathRef in @($profile.requiredLists)) {
+            if ($pathRef -cnotmatch '^lists/[A-Za-z0-9._-]+\.txt$') { throw "Unsafe list path: $pathRef" }
+        }
+        Assert-NrManifestSameList @($profile.fakePayloads) $expectedPayloads 'profile.fakePayloads'
+        Assert-NrManifestSameList @($profile.requiredLists) $expectedLists 'profile.requiredLists'
+        if ($PayloadRoot) {
+            foreach ($pathRef in @($profile.fakePayloads)) {
+                $full = Join-Path $PayloadRoot ($pathRef.Replace('/',[IO.Path]::DirectorySeparatorChar))
+                if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
+                    throw "Strategy manifest references missing payload: $pathRef"
+                }
+            }
+        }
+
+        Assert-NrManifestFields $profile.compatibility @('flowseal','windows','addressFamily') 'profile.compatibility'
+        if ([string]$profile.compatibility.flowseal -cne '1.10.3' -or
+            [string]$profile.compatibility.windows -cne '10/11-x64' -or
+            [string]$profile.compatibility.addressFamily -cne $(if ($profile.family -eq 'syndata-multidisorder') {'ipv4'} else {'upstream-dependent'})) {
+            throw "Inconsistent strategy compatibility metadata: $($profile.id)"
+        }
+        Assert-NrManifestFields $profile.provenance @('sourceVersion','source') 'profile.provenance'
+        if ([string]$profile.provenance.sourceVersion -cne '0.6.3' -or
+            [string]$profile.provenance.source -cne 'Get-NexRoute063StrategyCatalog') {
+            throw "Invalid strategy provenance: $($profile.id)"
+        }
+
+        # Keep the old generator as a byte-compatible renderer, but only feed it
+        # objects validated by the single canonical manifest parser.
+        $spec = [pscustomobject][ordered]@{
+            File=[string]$profile.file; Profile=[string]$profile.id; Family=[string]$profile.family
+            SniPrimary=[string]$profile.sni.primary; SniSecondary=[string]$profile.sni.secondary
+            SeqOvl=[int]$profile.parameters.seqOvl; Repeats=[int]$profile.parameters.repeats
+            QuicRepeats=[int]$profile.parameters.quicRepeats
+            DiscordRepeats=[int]$profile.parameters.discordRepeats
+            Cutoff=[int]$profile.parameters.cutoff
+        }
+        $tcp = Get-NexRoute063TcpArguments -Spec $spec -Scope Discord
+        $modes = @()
+        $fooling = @()
+        $splitPositions = @()
+        if ($tcp -match '--dpi-desync=([a-z,]+)') { $modes = @($Matches[1].Split(',')) }
+        if ($tcp -match '--dpi-desync-fooling=([a-z,]+)') { $fooling = @($Matches[1].Split(',')) }
+        if ($tcp -match '--dpi-desync-split-pos=([a-z0-9+,]+)') { $splitPositions = @($Matches[1].Split(',')) }
+        Assert-NrManifestSameList @($profile.tcp.modes) $modes 'profile.tcp.modes'
+        Assert-NrManifestSameList @($profile.tcp.fooling) $fooling 'profile.tcp.fooling'
+        Assert-NrManifestSameList @($profile.tcp.splitPositions) $splitPositions 'profile.tcp.splitPositions'
+        $result.Add($spec)
+    }
+    return [pscustomobject][ordered]@{
+        SchemaVersion=1
+        StrategySetVersion=[string]$manifest.strategySetVersion
+        SourceCatalogVersion=[string]$manifest.sourceCatalogVersion
+        UpstreamVersion=[string]$manifest.upstreamVersion
+        Path=[IO.Path]::GetFullPath($Path)
+        Sha256=(Get-NrManifestSha256 -Path $Path)
+        Profiles=@($manifest.profiles)
+        Catalog=@($result.ToArray())
+    }
+}
+
+function Get-NrStrategyManifestProjection {
+    [CmdletBinding()]
+    param([string]$Path = $script:NrStrategyManifestPath)
+    $manifest = Read-NrStrategyManifest -Path $Path
+    # A read-only projection for the UI, Strategy Builder and worker selection.
+    return @($manifest.Profiles | ForEach-Object {
+        [pscustomobject][ordered]@{
+            id=[string]$_.id
+            displayName=[string]$_.displayName
+            file=[string]$_.file
+            family=[string]$_.family
+            modes=@($_.tcp.modes)
+            fooling=@($_.tcp.fooling)
+            splitPositions=@($_.tcp.splitPositions)
+            tcpScopes=$_.tcp.scopes
+            udpScopes=$_.udp.scopes
+            compatibleFlowseal=[string]$_.compatibility.flowseal
+        }
+    })
+}
+
+function Get-NrManifestStrategyByName {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$Name,[string]$Path = $script:NrStrategyManifestPath)
+    $key = $Name.Trim()
+    foreach ($profile in @(Get-NrStrategyManifestProjection -Path $Path)) {
+        if ($profile.id -ieq $key -or $profile.file -ieq $key -or
+            [IO.Path]::GetFileNameWithoutExtension([string]$profile.file) -ieq $key) {
+            return $profile
+        }
+    }
+    return $null
+}
+ -or
+            [string]$profile.family -notin $knownFamilies) {
+            throw "Unsupported strategy family: $($profile.family)"
+        }
 
         Assert-NrManifestFields $profile.tcp @('scopes','modes','fooling','splitPositions') 'profile.tcp'
         Assert-NrManifestFields $profile.udp @('scopes','modes') 'profile.udp'
