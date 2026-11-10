@@ -321,6 +321,7 @@ function Show-NrDiagnosticsMenu {
     while ($true) {
         $items=@(
             New-NrMenuItem -Id 'health' -Label (T 'diagnosticHealth') -Section (T 'diagnosticCore')
+            New-NrMenuItem -Id 'workers' -Label (T 'workerManager') -Section (T 'diagnosticCore')
             New-NrMenuItem -Id 'status' -Label (T 'systemStatus') -Section (T 'diagnosticCore')
             New-NrMenuItem -Id 'availability' -Label (T 'availability') -Section (T 'diagnosticCore')
             New-NrMenuItem -Id 'conflicts' -Label (T 'conflicts') -Section (T 'diagnosticCore')
@@ -334,6 +335,7 @@ function Show-NrDiagnosticsMenu {
         if (-not $choice -or $choice -eq 'back') { return }
         switch ($choice) {
             'health' { Show-NrDiagnosticHealth071 }
+            'workers' { Show-NrWorkerManager072 }
             'status' { Show-NrSystemStatus }
             'availability' { Show-NrAvailabilityPanel }
             'conflicts' { Show-NrConflicts }

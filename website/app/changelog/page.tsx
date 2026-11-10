@@ -13,6 +13,11 @@ export const metadata = createMetadata(
 
 const fallback = [
   {
+    version: "0.7.2",
+    date: "2026-11-10",
+    summary: "Service Matrix: безопасное управление PID, защита от второго supervisor, cooldown, диагностика пересечений фильтров и адресное управление workers.",
+  },
+  {
     version: "0.7.1",
     date: "2026-11-10",
     summary: "Strategy Lab: HTTPS-рейтинг, проверка TLS, диагностика DNS A/AAAA, безопасный ZIP и объяснимые результаты.",

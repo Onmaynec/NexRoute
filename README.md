@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.3-6f42c1)](docs/UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.7.1-24e1d6)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.7.2-24e1d6)](.service/version.txt)
 
 **Локальная Windows-система управления стратегиями обхода DPI с изолированными сервисными workers, проверяемыми обновлениями и честным release validation.**
 
@@ -15,6 +15,16 @@
 
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранные стратегии только к трафику включённых сервисов.
+
+## NexRoute 0.7.2 — Service Matrix и управление процессами
+
+В этой версии переработал жизненный цикл отдельных процессов winws. Перед остановкой worker проверяется не только PID, но и время запуска и путь executable. Появилась защита от второго supervisor, cooldown для повторных переключений и адресные команды для одного сервиса.
+
+Service Matrix показывает возможные пересечения доменных фильтров и IPv4/IPv6 подсетей, включая ситуацию неполного анализа. В диагностическом центре можно увидеть статус workers, PID, поколение запуска, число неудач и вручную запустить, остановить или перезапустить отдельный сервис.
+
+Проверенные стратегии используются в failover; варианты INCONCLUSIVE не становятся автоматическими fallback. Flowseal 1.10.3, 22 upstream-стратегии, 24 patch-targets и пользовательские BAT не менялись.
+
+Документы: [Worker Runtime 0.7.2](docs/WORKER_RUNTIME_072.md), [release notes](.github/release-notes/v0.7.2.md), [acceptance](docs/RELEASE_0.7.2_ACCEPTANCE.md).
 
 ## NexRoute 0.7.1 — Strategy Lab и диагностика
 
@@ -176,13 +186,13 @@ Flowseal 1.10.3, 22 стратегии, 24 patch-targets и 15 Service Matrix pr
 
 ## Проверяемый релиз 🔏
 
-Для версии 0.7.1 публикуются четыре связанных asset:
+Для версии 0.7.2 публикуются четыре связанных asset:
 
 ```text
-NexRoute-0.7.1-win-x64.zip
-NexRoute-0.7.1-win-x64.zip.sha256
-NexRoute-0.7.1-validation.json
-NexRoute-0.7.1-validation.md
+NexRoute-0.7.2-win-x64.zip
+NexRoute-0.7.2-win-x64.zip.sha256
+NexRoute-0.7.2-validation.json
+NexRoute-0.7.2-validation.md
 ```
 
 Все четыре файла входят в одну GitHub artifact attestation. Portable verifier проверяет immutable release URLs, SHA-256 package и attestation каждого subject. После успешной проверки validation report и digest-matched receipt атомарно устанавливаются в `.service`.
@@ -190,10 +200,10 @@ NexRoute-0.7.1-validation.md
 Дополнительная ручная проверка:
 
 ```powershell
-gh attestation verify .\NexRoute-0.7.1-win-x64.zip --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.7.1-win-x64.zip.sha256 --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.7.1-validation.json --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.7.1-validation.md --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.2-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.2-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.2-validation.json --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.2-validation.md --repo Onmaynec/NexRoute
 ```
 
 Validation Viewer не доверяет импортированному JSON автоматически. До появления matching local receipt документ отображается как `attestation-not-verified`. Wrong product/version, duplicate check IDs, неизвестные статусы и несогласованный `overallStatus` отклоняются.
@@ -264,7 +274,7 @@ NEXROUTE_BUILD_INFO.txt
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.7.1 `
+  -Version 0.7.2 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 ```
@@ -273,7 +283,7 @@ pwsh ./scripts/Build-Release.ps1 `
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.7.1 `
+  -Version 0.7.2 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip
 ```
@@ -357,4 +367,4 @@ Release workflow дополнительно создаёт JSON/Markdown validat
 
 ---
 
-**NexRoute 0.7.1** · Baseline: **Flowseal 1.10.3** · Windows 10/11 x64
+**NexRoute 0.7.2** · Baseline: **Flowseal 1.10.3** · Windows 10/11 x64

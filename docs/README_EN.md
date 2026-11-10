@@ -3,13 +3,21 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.3-6f42c1)](UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.7.1-24e1d6)](../.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.7.2-24e1d6)](../.service/version.txt)
 
 NexRoute is a local Windows route-control toolkit for DPI desynchronization strategies. It manages `winws` and WinDivert, service-specific filter scopes, release verification, and rollback on Windows 10 and Windows 11 x64.
 
 > NexRoute is not a VPN, proxy, or anonymity service. It does not change the public IP address.
 
-## Version 0.7.1 — Strategy Lab and diagnostics
+## Version 0.7.2 — Service Matrix and worker management
+
+Worker process ownership now verifies PID, process start time and executable path before termination. The supervisor is installation-scoped, failover uses cooldown and only measured alternatives, and shared domain/IP capture scopes are reported rather than silently ignored.
+
+The classic Diagnostic Core includes local worker status, per-service restart/stop/start and scope overlap counts. Privacy-minimised exports include only aggregate worker counts, without PIDs, network identifiers or user paths.
+
+See [Worker runtime 0.7.2](WORKER_RUNTIME_072.md) for operational details.
+
+## Previous: Strategy Lab and diagnostics
 
 Strategy ranking is now based on repeated HTTPS measurements; DNS/TLS/ICMP/HLS/stream and DPI-range probes provide separate evidence. TLS validates server certificates and hostname. A privacy-minimised diagnostic report excludes raw logs, user paths, DNS addresses and network identities.
 
@@ -23,7 +31,7 @@ See [Strategy Manifest](STRATEGY_MANIFEST.md) for the schema and compatibility c
 
 ## Previous production hardening
 
-Version 0.7.1 aligns docs, website, build examples and release metadata with Flowseal 1.10.3. Regression tests cover documentation and the 0.6.5 → 0.7.1 updater migration.
+Version 0.7.2 aligns docs, website, build examples and release metadata with Flowseal 1.10.3. Regression tests cover documentation and the 0.6.5 → 0.7.2 updater migration.
 
 Existing runtime and release-verification capabilities are retained:
 
@@ -39,17 +47,17 @@ Existing runtime and release-verification capabilities are retained:
 - portable GitHub artifact-attestation verification without a preinstalled GitHub CLI;
 - detached update transactions and migration fixtures from 0.4.1 and 0.5.0.
 
-See [RELEASE_0.7.1_ACCEPTANCE.md](RELEASE_0.7.1_ACCEPTANCE.md).
+See [RELEASE_0.7.2_ACCEPTANCE.md](RELEASE_0.7.2_ACCEPTANCE.md).
 
 ## Release assets and verification
 
-A complete 0.7.1 release contains four related assets:
+A complete 0.7.2 release contains four related assets:
 
 ```text
-NexRoute-0.7.1-win-x64.zip
-NexRoute-0.7.1-win-x64.zip.sha256
-NexRoute-0.7.1-validation.json
-NexRoute-0.7.1-validation.md
+NexRoute-0.7.2-win-x64.zip
+NexRoute-0.7.2-win-x64.zip.sha256
+NexRoute-0.7.2-validation.json
+NexRoute-0.7.2-validation.md
 ```
 
 All four subjects are covered by one GitHub artifact attestation. The portable verifier checks immutable release URLs, the package checksum, and every attested subject before installing the validation report and matching local verification receipt.
@@ -57,10 +65,10 @@ All four subjects are covered by one GitHub artifact attestation. The portable v
 Manual verification:
 
 ```powershell
-gh attestation verify .\NexRoute-0.7.1-win-x64.zip --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.7.1-win-x64.zip.sha256 --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.7.1-validation.json --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.7.1-validation.md --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.2-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.2-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.2-validation.json --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.2-validation.md --repo Onmaynec/NexRoute
 ```
 
 The Validation Viewer does not automatically trust imported JSON. A document remains `attestation-not-verified` until a digest-matched local receipt exists. Wrong product/version documents, duplicate check IDs, unknown statuses, and inconsistent overall status are rejected.

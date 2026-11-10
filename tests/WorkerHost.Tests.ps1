@@ -61,4 +61,31 @@ while ($true) { Start-Sleep -Milliseconds 100 }
         $stopped.status | Should -Be 'stopped'
         Test-NrWorkerProcess -State $stopped | Should -BeFalse
     }
+    It 'can inspect and restart, stop and start only one service worker' {
+        & $hostScript -Mode Start -Root $root -ConfigPath $config | Out-Null
+        $initial=Read-NrWorkerState -Root $root -ServiceId discord
+        $inspect=(& $hostScript -Mode Inspect -Root $root -ConfigPath $config -Json | ConvertFrom-Json)
+        $inspect.running | Should -Be 1
+        $inspect.workers[0].processState | Should -Be 'verified'
+        $inspect.scopes.coverage | Should -Be 'partial'
+
+        $restarted=(& $hostScript -Mode RestartService -Root $root -ConfigPath $config -ServiceId discord -Json | ConvertFrom-Json)
+        $restarted.action | Should -Be 'restarted'
+        $restarted.pid | Should -Not -Be $initial.pid
+        (Read-NrWorkerState -Root $root -ServiceId discord).generation | Should -Be 2
+
+        $stopped=(& $hostScript -Mode StopService -Root $root -ConfigPath $config -ServiceId discord -Json | ConvertFrom-Json)
+        $stopped.action | Should -Be 'stopped'
+        (Read-NrWorkerState -Root $root -ServiceId discord).status | Should -Be 'stopped'
+
+        $started=(& $hostScript -Mode StartService -Root $root -ConfigPath $config -ServiceId discord -Json | ConvertFrom-Json)
+        $started.action | Should -Be 'started'
+        $started.generation | Should -Be 3
+        (Get-NrWorkerProcessIdentity -State (Read-NrWorkerState -Root $root -ServiceId discord)).status | Should -Be 'verified'
+    }
+
+    It 'requires a configured service id for targeted process management' {
+        { & $hostScript -Mode StartService -Root $root -ConfigPath $config -Json } | Should -Throw '*requires -ServiceId*'
+    }
+
 }

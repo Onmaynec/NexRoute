@@ -39,7 +39,7 @@ $script:NrTranslations = @{
         repairService='Repair damaged service'; integrity='User-list integrity'; diagnosticHealth='Health summary'; diagnosticZip='Create privacy-safe diagnostic ZIP';
         copyReport='Copy diagnostic report'; logViewer='View logs'; logSearch='Search logs';
         labRun='Run Strategy Lab'; labCompare='Compare previous Strategy Lab runs'; labRecommend='Show recommendation';
-        bestInstall='Install best measured strategy'; autoSwitch='Automatic strategy failover'; perService='Per-service strategy mapping';
+        bestInstall='Install best measured strategy'; autoSwitch='Automatic strategy failover'; perService='Per-service strategy mapping'; workerManager='Service workers'; workerRestart='Restart one worker'; workerStop='Stop one worker'; workerStart='Start one worker';
         customProfiles='Custom service profiles'; customStrategy='Custom strategy builder'; previewCommand='Preview winws command';
         validateConfig='Validate configuration'; favoriteToggle='Toggle favorite'; lastWorking='Return to last working strategy';
         speed='Download speed'; jitter='Jitter'; packetLoss='Packet loss'; youtube='YouTube video readiness';
@@ -86,7 +86,7 @@ $script:NrTranslations = @{
         repairService='Восстановление повреждённой службы'; integrity='Целостность пользовательских списков'; diagnosticHealth='Диагностика и рекомендации'; diagnosticZip='Создать безопасный диагностический ZIP';
         copyReport='Копировать диагностический отчёт'; logViewer='Просмотр логов'; logSearch='Поиск по логам';
         labRun='Запустить лабораторию стратегий'; labCompare='Сравнить предыдущие запуски'; labRecommend='Показать рекомендацию';
-        bestInstall='Установить лучшую измеренную стратегию'; autoSwitch='Автопереключение стратегии'; perService='Стратегии по отдельным сервисам';
+        bestInstall='Установить лучшую измеренную стратегию'; autoSwitch='Автопереключение стратегии'; perService='Стратегии по отдельным сервисам'; workerManager='Управление процессами сервисов'; workerRestart='Перезапустить процесс сервиса'; workerStop='Остановить процесс сервиса'; workerStart='Запустить процесс сервиса';
         customProfiles='Пользовательские профили сервисов'; customStrategy='Конструктор пользовательских стратегий'; previewCommand='Предпросмотр команды winws';
         validateConfig='Проверить конфигурацию'; favoriteToggle='Добавить или убрать из избранного'; lastWorking='Вернуться к последней рабочей стратегии';
         speed='Скорость загрузки'; jitter='Джиттер'; packetLoss='Потеря пакетов'; youtube='Готовность видеопотока YouTube';

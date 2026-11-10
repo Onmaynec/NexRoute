@@ -62,6 +62,13 @@ function Get-NrWorkerStrategyCandidates {
     $run=Get-NrLatestLabRun
     if ($run -and $run.results) {
         foreach ($result in @($run.results | Sort-Object score -Descending)) {
+            # New rankings with INCONCLUSIVE cannot authorize failover.
+            # Legacy results are accepted only if they contain a positive numeric score.
+            $stateProperty=$result.PSObject.Properties['rankingState']
+            $scoreProperty=$result.PSObject.Properties['score']
+            if ($stateProperty) {
+                if ([string]$stateProperty.Value -ne 'eligible' -or -not $scoreProperty -or $null -eq $scoreProperty.Value) { continue }
+            } elseif (-not $scoreProperty -or $null -eq $scoreProperty.Value -or [double]$scoreProperty.Value -le 0) { continue }
             $name=[string]$result.strategy
             if (-not $name) { continue }
             $key=$name.ToLowerInvariant()
@@ -70,10 +77,8 @@ function Get-NrWorkerStrategyCandidates {
             if ($ordered.Count -ge $Maximum) { break }
         }
     }
-    foreach ($strategy in $Strategies) {
-        if ($ordered.Count -ge $Maximum) { break }
-        & $addCandidate $strategy
-    }
+    # No arbitrarily chosen fallbacks. With no eligible/legacy evidence,
+    # only the explicitly selected strategy is started.
     return @($ordered.ToArray() | Select-Object -First ([Math]::Max(1,$Maximum)))
 }
 
@@ -164,7 +169,7 @@ function New-NrServiceWorkerConfiguration {
     $configuration=[ordered]@{
         schemaVersion=1
         generatedUtc=[DateTime]::UtcNow.ToString('o')
-        generator='NexRoute 0.6.0'
+        generator='NexRoute 0.7.2'
         services=$services.ToArray()
     }
     $plans=New-Object 'System.Collections.Generic.List[object]'
@@ -190,13 +195,36 @@ function Get-NrWorkerSupervisorPidPath {
 function Stop-NrPerServiceWorkerRuntime {
     $pidPath=Get-NrWorkerSupervisorPidPath
     if (Test-Path -LiteralPath $pidPath -PathType Leaf) {
-        try {
-            $supervisorPid=[int](Get-Content -LiteralPath $pidPath -Raw).Trim()
-            if ($supervisorPid -gt 0) { Stop-Process -Id $supervisorPid -Force -ErrorAction SilentlyContinue }
-        } catch { }
-        Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
+        $raw=(Get-Content -LiteralPath $pidPath -Raw -Encoding UTF8).Trim()
+        $supervisorPid=0
+        $verified=$false
+        if ($raw -match '^[0-9]{1,10}$') {
+            # Backward-compatible 0.7.1 PID file: confirm the full command line
+            # refers to our worker host + root before stopping anything.
+            $supervisorPid=[int]$raw
+            $process=Get-CimInstance Win32_Process -Filter ("ProcessId={0}" -f $supervisorPid) -ErrorAction SilentlyContinue
+            if (-not $process) { $verified=$true }
+            elseif ([string]$process.CommandLine -like ('*nexroute-worker-host.ps1*') -and
+                [string]$process.CommandLine -like ('*'+$script:NrRoot+'*') -and
+                [string]$process.CommandLine -match '(?i)-Mode\s+Supervise') {
+                $verified=$true
+            }
+        } else {
+            try { $record=$raw | ConvertFrom-Json -ErrorAction Stop }
+            catch { throw 'Supervisor PID record is corrupt; refusing to stop an unidentified process.' }
+            $supervisorPid=[int]$record.pid
+            $identity=Get-NrWorkerProcessIdentity -State $record
+            if ($identity.status -in @('verified','exited')) { $verified=$true }
+        }
+        if (-not $verified) { throw 'Cannot verify NexRoute supervisor identity; refusing to stop this PID.' }
+        if ($supervisorPid -gt 0) { Stop-Process -Id $supervisorPid -Force -ErrorAction SilentlyContinue }
+        Remove-Item -LiteralPath $pidPath -Force -ErrorAction Stop
     }
     Stop-NrWorkerSet -Root $script:NrRoot
+    if ($env:OS -eq 'Windows_NT') {
+        $task=Get-ScheduledTask -TaskName 'NexRoute Worker Runtime' -ErrorAction SilentlyContinue
+        if ($task) { Unregister-ScheduledTask -TaskName 'NexRoute Worker Runtime' -Confirm:$false -ErrorAction Stop }
+    }
 }
 
 function Register-NrWorkerRuntimeTask {
@@ -217,11 +245,26 @@ function Start-NrPerServiceWorkerRuntime {
     $hostPath=Join-Path $script:NrService 'nexroute-worker-host.ps1'
     & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $hostPath -Mode Start -Root $script:NrRoot -ConfigPath $ConfigurationPath | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Worker host Start returned exit code $LASTEXITCODE." }
-    $arguments=@('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',$hostPath,'-Mode','Supervise','-Root',$script:NrRoot,'-ConfigPath',$ConfigurationPath,'-IntervalSeconds','20','-FailureThreshold','3')
-    $process=Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -WorkingDirectory $script:NrRoot -WindowStyle Hidden -PassThru
-    [IO.File]::WriteAllText((Get-NrWorkerSupervisorPidPath),[string]$process.Id,[Text.Encoding]::ASCII)
-    Register-NrWorkerRuntimeTask -ConfigurationPath $ConfigurationPath | Out-Null
-    return $process.Id
+
+    $arguments=@('-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',$hostPath,'-Mode','Supervise',
+        '-Root',$script:NrRoot,'-ConfigPath',$ConfigurationPath,'-IntervalSeconds','20','-FailureThreshold','3','-CooldownSeconds','30')
+    $process=$null
+    try {
+        $process=Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -WorkingDirectory $script:NrRoot -WindowStyle Hidden -PassThru
+        $record=[ordered]@{
+            schemaVersion=2
+            pid=[int]$process.Id
+            executable=[string]$process.Path
+            processStartedUtc=$process.StartTime.ToUniversalTime().ToString('o')
+        }
+        [IO.File]::WriteAllText((Get-NrWorkerSupervisorPidPath),(ConvertTo-Json -InputObject $record -Compress),[Text.UTF8Encoding]::new($false))
+        Register-NrWorkerRuntimeTask -ConfigurationPath $ConfigurationPath | Out-Null
+        return $process.Id
+    } catch {
+        if ($process) { try { $process.Kill() } catch { } }
+        try { Stop-NrWorkerSet -Root $script:NrRoot } catch { }
+        throw
+    } finally { if ($process) { $process.Dispose() } }
 }
 
 function Apply-NrPerServiceStrategies {

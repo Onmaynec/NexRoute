@@ -1,4 +1,4 @@
-# Service Matrix v2 — NexRoute 0.7.1
+# Service Matrix v2 — NexRoute 0.7.2
 
 Матрица задаёт фильтры 15 сервисных профилей. Flowseal `1.10.3` поставляет 22 upstream-стратегии, 21 из которых использует специализированные параметры strategy-refresh NexRoute.
 
@@ -19,6 +19,12 @@
 ## Strategy Manifest 0.7.0
 
 21 специализированная стратегия определена в `.service/strategy-manifest.json`. Сервисные фильтры остаются отдельной конфигурацией `services.json`. Manifest не подменяет пользовательские service lists и не запускает произвольные команды. При сборке валидируются profile IDs, transport scopes, ресурсы и совместимость Flowseal 1.10.3.
+
+## Process management и пересечения 0.7.2
+
+Новый supervisor проверяет PID, время запуска и executable перед завершением процесса. При падении отдельного worker остальные сервисы продолжают работу. Cooldown ограничивает повторные failover, а варианты Strategy Lab INCONCLUSIVE не считаются подтверждёнными fallback.
+
+Диагностика сравнивает общие домены и IPv4/IPv6 CIDR области; при большом списке сообщает partial вместо ложного отсутствия пересечений. Команды Inspect, StartService, StopService и RestartService позволяют работать с одним сервисом. Полный контракт — [WORKER_RUNTIME_072.md](WORKER_RUNTIME_072.md).
 
 ## Правило общих доменов
 

@@ -1,4 +1,4 @@
-# 🔄 Безопасные обновления NexRoute 0.7.1
+# 🔄 Безопасные обновления NexRoute 0.7.2
 
 NexRoute использует stable-only updater с checksum, portable artifact-attestation verification, detached replacement transaction, post-update health policy и automatic rollback.
 
@@ -95,11 +95,16 @@ Rollback восстанавливает точный backup и запускае�
 0.6.5 -> 0.6.6
 0.6.6 -> 0.7.0
 0.7.0 -> 0.7.1
+0.7.1 -> 0.7.2
 ```
 
 ## Переход 0.7.0 → 0.7.1
 
 Обновляются Strategy Lab, TLS validation и privacy-safe diagnostic export. Локальные BAT, пользовательские списки и сохранённая история не переписываются. Если установка нового пакета не проходит health check, действует прежний transactional rollback.
+
+## Переход 0.7.1 → 0.7.2
+
+Новые worker state files включают process identity. Если активный процесс запущен старым кодом и содержит только PID, NexRoute не завершает его без проверки. После ручной остановки старого supervisor и workers можно применить текущую конфигурацию и получить новые identity fields. Обновление сохраняет Service Matrix state, пользовательские списки и историю, а при сбое установки действует transactional rollback.
 
 ## Автоматический режим
 

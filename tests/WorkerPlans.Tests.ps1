@@ -119,4 +119,17 @@ start "zapret" /min "%BIN%winws.exe" --wf-tcp=80,443 --wf-udp=443 ^
             Set-Content -LiteralPath (Join-Path $script:fixture 'lists/ipset-service-youtube.txt') -Value '2001:db8:1::/48' -Encoding UTF8
         }
     }
+    It 'does not choose unmeasured or INCONCLUSIVE strategies as automatic fallbacks' {
+        Mock Get-NrLatestLabRun {
+            [pscustomobject]@{ results=@(
+                [pscustomobject]@{strategy='strategy-c.bat';rankingState='inconclusive';score=$null},
+                [pscustomobject]@{strategy='strategy-b.bat';rankingState='inconclusive';score=$null}
+            ) }
+        }
+        $strategies=@(Get-ChildItem -LiteralPath $script:fixture -Filter 'strategy-*.bat' -File | Sort-Object Name)
+        $candidates=@(Get-NrWorkerStrategyCandidates -SelectedName 'strategy-a.bat' -Strategies $strategies)
+        $candidates.Count | Should -Be 1
+        $candidates[0].Name | Should -Be 'strategy-a.bat'
+    }
+
 }
