@@ -59,7 +59,7 @@ Describe 'NexRoute active documentation coherence' {
 
     It 'uses the current archive and version for all build examples' {
         foreach ($document in @($script:readme,$script:releases,$script:siteDocs)) {
-            $document | Should -Match '\-Version 0\.6\.6'
+            $document | Should -Match '\-Version 0\.7\.0'
             $document | Should -Match 'zapret-discord-youtube-1\.10\.3\.zip'
             $document | Should -Not -Match '\-Version 0\.6\.0'
         }
@@ -72,8 +72,8 @@ Describe 'NexRoute active documentation coherence' {
             $script:releaseNotes | Should -Match ([regex]::Escape($asset))
             $script:releases | Should -Match ([regex]::Escape($asset))
         }
-        $script:acceptance | Should -Match 'NexRoute 0\.6\.6'
-        $script:updates | Should -Match '0\.6\.6 -> 0\.7\.0'
+        $script:acceptance | Should -Match 'NexRoute 0\.7\.0'
+        $script:updates | Should -Match '0\.7\.0 -> 0\.7\.0'
     }
 
     It 'retains historical 0.6.5 release evidence without silently closing manual checks' {
