@@ -36,7 +36,7 @@ $script:NrTranslations = @{
         dnsDiagnostics='DNS diagnostics'; dnsProvider='Choose DNS provider'; doh='DNS-over-HTTPS'; dot='DNS-over-TLS';
         adapters='Network adapters'; networkProfiles='Network profiles'; provider='Internet provider';
         conflicts='VPN / antivirus / firewall conflicts'; resetNetwork='Reset Windows network stack';
-        repairService='Repair damaged service'; integrity='User-list integrity'; diagnosticZip='Create diagnostic ZIP';
+        repairService='Repair damaged service'; integrity='User-list integrity'; diagnosticHealth='Health summary'; diagnosticZip='Create privacy-safe diagnostic ZIP';
         copyReport='Copy diagnostic report'; logViewer='View logs'; logSearch='Search logs';
         labRun='Run Strategy Lab'; labCompare='Compare previous Strategy Lab runs'; labRecommend='Show recommendation';
         bestInstall='Install best measured strategy'; autoSwitch='Automatic strategy failover'; perService='Per-service strategy mapping';
@@ -83,7 +83,7 @@ $script:NrTranslations = @{
         dnsDiagnostics='Диагностика DNS'; dnsProvider='Выбрать DNS-провайдера'; doh='DNS-over-HTTPS'; dot='DNS-over-TLS';
         adapters='Сетевые адаптеры'; networkProfiles='Сетевые профили'; provider='Интернет-провайдер';
         conflicts='Конфликты VPN / антивируса / файрвола'; resetNetwork='Сброс сетевого стека Windows';
-        repairService='Восстановление повреждённой службы'; integrity='Целостность пользовательских списков'; diagnosticZip='Создать диагностический ZIP';
+        repairService='Восстановление повреждённой службы'; integrity='Целостность пользовательских списков'; diagnosticHealth='Диагностика и рекомендации'; diagnosticZip='Создать безопасный диагностический ZIP';
         copyReport='Копировать диагностический отчёт'; logViewer='Просмотр логов'; logSearch='Поиск по логам';
         labRun='Запустить лабораторию стратегий'; labCompare='Сравнить предыдущие запуски'; labRecommend='Показать рекомендацию';
         bestInstall='Установить лучшую измеренную стратегию'; autoSwitch='Автопереключение стратегии'; perService='Стратегии по отдельным сервисам';

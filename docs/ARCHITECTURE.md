@@ -1,4 +1,4 @@
-# Архитектура NexRoute 0.7.0 🏗️
+# Архитектура NexRoute 0.7.1 🏗️
 
 ## Принцип
 
@@ -40,6 +40,10 @@ Flowseal 1.10.3 содержит 22 upstream-стратегии, включая 
 Во время сборки manifest проверяется до изменения файлов. Сгенерированные результаты связаны SHA-256 в `.service/strategy-refresh-report.json` и `.service/patch-report.json`; финальная проверка пакета повторно вычисляет manifest digest и per-profile hashes. Release validation публикует те же provenance данные.
 
 В runtime приложение читает только установленные локальные JSON/BAT-файлы: Strategy Builder показывает read-only projection, preview и worker selection используют те же ID и имена файлов. Сеть не используется для загрузки произвольных стратегий. Подробнее: [STRATEGY_MANIFEST.md](STRATEGY_MANIFEST.md).
+
+## Strategy Lab и диагностика 0.7.1
+
+Для рейтинга учитываются HTTP/HTTPS-результаты. DNS/TLS/ICMP/HLS/DPI наблюдения не меняют score. Certificate validation работает через стандартный .NET TLS trust path. Новый модуль nexroute-diagnostics-071.ps1 экспортирует только allowlisted статусы и findings; внутренний schema 3 сохранён, экспорт имеет отдельный schema 4. Подробный контракт — [STRATEGY_LAB_DIAGNOSTICS.md](STRATEGY_LAB_DIAGNOSTICS.md).
 
 ## Control layer
 

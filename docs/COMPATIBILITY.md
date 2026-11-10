@@ -1,4 +1,4 @@
-# Совместимость NexRoute 0.7.0 🖥️
+# Совместимость NexRoute 0.7.1 🖥️
 
 ## Поддерживаемые платформы
 
@@ -134,6 +134,10 @@ Detached transaction сохраняет user state и выполняет rollbac
 5. переносите только user-managed lists/state, а не old binaries или generated `.service/native`;
 6. запустите package от администратора;
 7. проверьте Service Matrix, Strategy Lab, tray и Validation Viewer.
+
+## Strategy Lab и диагностика 0.7.1
+
+Рейтинг использует HTTPS, а ICMP/TLS/DNS — самостоятельные диагностические данные. TLS использует Windows trust store и проверяет hostname; диагностический ZIP исключает raw network data. Если TLS-прокси подменяет сертификат без доверенной цепочки, TLS check корректно завершается ошибкой.
 
 ## Честные ограничения
 

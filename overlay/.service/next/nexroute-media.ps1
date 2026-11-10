@@ -141,7 +141,9 @@ function Test-NrTlsTransportReadiness {
     try {
         $connect=$client.ConnectAsync($HostName,$Port)
         if (-not $connect.Wait($TimeoutSeconds*1000)) { throw 'TCP connection timed out.' }
-        $ssl=[Net.Security.SslStream]::new($client.GetStream(),$false,({ $true }))
+        # No permissive RemoteCertificateValidationCallback:
+        # certificate chain, expiry and SNI hostname must validate.
+        $ssl=[Net.Security.SslStream]::new($client.GetStream(),$false)
         try {
             $auth=$ssl.AuthenticateAsClientAsync($HostName)
             if (-not $auth.Wait($TimeoutSeconds*1000)) { throw 'TLS handshake timed out.' }

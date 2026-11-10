@@ -222,12 +222,16 @@ function Export-NrDiagnosticZip {
     $temp=Join-Path ([IO.Path]::GetTempPath()) ('nexroute-diagnostics-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $temp -Force | Out-Null
     try {
-        $report=Get-NrDiagnosticReport
-        [IO.File]::WriteAllText((Join-Path $temp 'diagnostics.json'),($report | ConvertTo-Json -Depth 20)+[Environment]::NewLine,(New-Object Text.UTF8Encoding($false)))
-        $log=Join-Path $script:NrLogDir 'nexroute.jsonl'
-        if (Test-Path -LiteralPath $log) { Copy-Item -LiteralPath $log -Destination (Join-Path $temp 'nexroute.jsonl') -Force }
-        $monitor=Join-Path $script:NrService 'monitor-state.json'
-        if (Test-Path -LiteralPath $monitor) { Copy-Item -LiteralPath $monitor -Destination (Join-Path $temp 'monitor-state.json') -Force }
+        $report=ConvertTo-NrSafeDiagnosticReport071 -Report (Get-NrDiagnosticReport)
+        [IO.File]::WriteAllText((Join-Path $temp 'diagnostics.json'),(($report | ConvertTo-Json -Depth 20)+[Environment]::NewLine),[Text.UTF8Encoding]::new($false))
+        $readme=@(
+            'NexRoute 0.7.1 - privacy-minimised diagnostic export',
+            'This archive contains only the allowlisted diagnostic summary.',
+            'Raw log messages, monitor state, IP addresses, DNS servers,',
+            'network identifiers, usernames, file contents and URLs are excluded.',
+            'Findings are diagnostic hints, not proof of a particular DPI failure.'
+        ) -join [Environment]::NewLine
+        [IO.File]::WriteAllText((Join-Path $temp 'README.txt'),($readme+[Environment]::NewLine),[Text.UTF8Encoding]::new($false))
         $destination=Join-Path ([Environment]::GetFolderPath('Desktop')) ('NexRoute-diagnostics-' + $stamp + '.zip')
         if (Test-Path -LiteralPath $destination) { Remove-Item -LiteralPath $destination -Force }
         Compress-Archive -Path (Join-Path $temp '*') -DestinationPath $destination -CompressionLevel Optimal
@@ -236,7 +240,7 @@ function Export-NrDiagnosticZip {
 }
 
 function Copy-NrDiagnosticReport {
-    $json=(Get-NrDiagnosticReport | ConvertTo-Json -Depth 20)
+    $json=ConvertTo-NrSafeDiagnosticReport071 -Report (Get-NrDiagnosticReport) | ConvertTo-Json -Depth 20
     try { Set-Clipboard -Value $json -ErrorAction Stop; Show-NrMessage -Title (T 'copyReport') -Message (T 'operationComplete') -Color Green }
     catch { Show-NrMessage -Title (T 'copyReport') -Message $_.Exception.Message -Color Red }
 }
@@ -316,6 +320,7 @@ function Show-NrErrorCatalog {
 function Show-NrDiagnosticsMenu {
     while ($true) {
         $items=@(
+            New-NrMenuItem -Id 'health' -Label (T 'diagnosticHealth') -Section (T 'diagnosticCore')
             New-NrMenuItem -Id 'status' -Label (T 'systemStatus') -Section (T 'diagnosticCore')
             New-NrMenuItem -Id 'availability' -Label (T 'availability') -Section (T 'diagnosticCore')
             New-NrMenuItem -Id 'conflicts' -Label (T 'conflicts') -Section (T 'diagnosticCore')
@@ -328,6 +333,7 @@ function Show-NrDiagnosticsMenu {
         $choice=Invoke-NrMenu -Title (T 'diagnosticCore') -Items $items -AllowEscape
         if (-not $choice -or $choice -eq 'back') { return }
         switch ($choice) {
+            'health' { Show-NrDiagnosticHealth071 }
             'status' { Show-NrSystemStatus }
             'availability' { Show-NrAvailabilityPanel }
             'conflicts' { Show-NrConflicts }

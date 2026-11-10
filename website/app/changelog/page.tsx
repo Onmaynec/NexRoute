@@ -13,6 +13,11 @@ export const metadata = createMetadata(
 
 const fallback = [
   {
+    version: "0.7.1",
+    date: "2026-11-10",
+    summary: "Strategy Lab: HTTPS-рейтинг, проверка TLS, диагностика DNS A/AAAA, безопасный ZIP и объяснимые результаты.",
+  },
+  {
     version: "0.7.0",
     date: "2026-11-10",
     summary: "Strategy Manifest: декларативные 21 профиль, проверяемый генератор, golden regression и SHA-256 provenance.",

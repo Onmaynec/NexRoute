@@ -44,6 +44,13 @@ function Get-NrPassRate064 {
     return [math]::Round(($passed / [double]$known.Count) * 100, 3)
 }
 
+function Test-NrScoredObservation071 {
+    param($Observation)
+    if ($null -eq (Get-NrObservationProperty064 -Observation $Observation -Name 'success')) { return $false }
+    $diagnosticOnly = Get-NrObservationProperty064 -Observation $Observation -Name 'diagnosticOnly'
+    return (-not [bool]$diagnosticOnly)
+}
+
 function Get-NrStrategyRanking064 {
     [CmdletBinding()]
     param(
@@ -61,7 +68,19 @@ function Get-NrStrategyRanking064 {
         $startedValue = Get-NrObservationProperty064 -Observation $candidate -Name 'started'
         $started = if ($null -eq $startedValue) { $true } else { [bool]$startedValue }
         $observations = @(Expand-NrObservations064 -Value (Get-NrObservationProperty064 -Observation $candidate -Name 'observations'))
-        $known = @($observations | Where-Object { $null -ne (Get-NrObservationProperty064 -Observation $_ -Name 'success') })
+        # From 0.7.1 the score uses HTTPS evidence; DNS, TLS, ICMP,
+        # HLS and range/throughput diagnostics cannot mask a failed HTTP check.
+        # Historical fixtures without diagnosticOnly retain their original behavior.
+        $known = @($observations | Where-Object { Test-NrScoredObservation071 -Observation $_ })
+        $diagnosticMeasured = @($observations | Where-Object {
+            [bool](Get-NrObservationProperty064 -Observation $_ -Name 'diagnosticOnly') -and
+            $null -ne (Get-NrObservationProperty064 -Observation $_ -Name 'success')
+        })
+        $unknownCount = @($observations | Where-Object { $null -eq (Get-NrObservationProperty064 -Observation $_ -Name 'success') }).Count
+        $unknownScoredCount = @($observations | Where-Object {
+            $null -eq (Get-NrObservationProperty064 -Observation $_ -Name 'success') -and
+            -not [bool](Get-NrObservationProperty064 -Observation $_ -Name 'diagnosticOnly')
+        }).Count
         $controls = @($known | Where-Object { [bool](Get-NrObservationProperty064 -Observation $_ -Name 'control') })
         $critical = @($known | Where-Object { [bool](Get-NrObservationProperty064 -Observation $_ -Name 'critical') -and -not [bool](Get-NrObservationProperty064 -Observation $_ -Name 'control') })
         $secondary = @($known | Where-Object { -not [bool](Get-NrObservationProperty064 -Observation $_ -Name 'critical') -and -not [bool](Get-NrObservationProperty064 -Observation $_ -Name 'control') })
@@ -121,6 +140,7 @@ function Get-NrStrategyRanking064 {
 
         $inconclusiveReasons = New-Object 'System.Collections.Generic.List[string]'
         if (-not $started) { $inconclusiveReasons.Add('strategy did not start') }
+        if ($unknownScoredCount -gt 0) { $inconclusiveReasons.Add("$unknownScoredCount HTTP probes returned no measurement") }
         if ($scoredObservations.Count -lt $MinimumObservations) { $inconclusiveReasons.Add("only $($scoredObservations.Count) measured non-control observations; need $MinimumObservations") }
         if ($criticalTargets.Count -eq 0) { $inconclusiveReasons.Add('no critical-service observations') }
         elseif (-not $criticalCoverageOk) { $inconclusiveReasons.Add("at least one critical target has fewer than $MinimumObservationsPerCriticalTarget measured observations") }
@@ -139,12 +159,18 @@ function Get-NrStrategyRanking064 {
             if ($weight -gt 0) { $score=[math]::Round($weighted/$weight,3) }
         }
 
-        $youtube=@($known|Where-Object { [string](Get-NrObservationProperty064 -Observation $_ -Name 'target') -eq 'YouTube' })
-        $discord=@($known|Where-Object { [string](Get-NrObservationProperty064 -Observation $_ -Name 'target') -eq 'Discord' })
-        $telegram=@($known|Where-Object { [string](Get-NrObservationProperty064 -Observation $_ -Name 'target') -eq 'Telegram' })
-        $youtubeReady=$youtube.Count -ge 2 -and (@($youtube|Where-Object { [bool](Get-NrObservationProperty064 -Observation $_ -Name 'success') }).Count/[double]$youtube.Count) -ge (2.0/3.0)
-        $discordReady=$discord.Count -ge 2 -and (@($discord|Where-Object { [bool](Get-NrObservationProperty064 -Observation $_ -Name 'success') }).Count/[double]$discord.Count) -ge (2.0/3.0)
-        $telegramReady=$telegram.Count -ge 2 -and (@($telegram|Where-Object { [bool](Get-NrObservationProperty064 -Observation $_ -Name 'success') }).Count/[double]$telegram.Count) -ge (2.0/3.0)
+        # HTTPS/TLS reachability does not prove YouTube media playback or
+        # Discord/Telegram voice transport. Only a real segment proves HLS
+        # readiness. A UDP media test is not available in this release.
+        $hls = @($diagnosticMeasured | Where-Object {
+            [string](Get-NrObservationProperty064 -Observation $_ -Name 'protocol') -eq 'HLS' -and
+            [string](Get-NrObservationProperty064 -Observation $_ -Name 'target') -eq 'YouTubeMedia'
+        })
+        $youtubeReady = $hls.Count -gt 0 -and @($hls | Where-Object {
+            [bool](Get-NrObservationProperty064 -Observation $_ -Name 'success')
+        }).Count -eq $hls.Count
+        $discordReady = $false
+        $telegramReady = $false
 
         $evaluated.Add([pscustomobject]@{
             strategy=$strategy; started=$started; rankingSchemaVersion=1; rankingState=$(if($eligible){'eligible'}else{'inconclusive'}); score=$score
@@ -153,9 +179,13 @@ function Get-NrStrategyRanking064 {
             minimumObservationCount=$MinimumObservations; criticalTargetCount=$criticalTargets.Count; controlTargetCount=$controlTargets.Count
             averageHttpLatencyMs=$latency; averagePacketLossPercent=$loss; averageJitterMs=$jitter; peakDownloadMbps=$download
             youtubeVideoReady=[bool]$youtubeReady; discordVoiceReady=[bool]$discordReady; telegramVoiceReady=[bool]$telegramReady
+            mediaEvidence=$(if($hls.Count -gt 0){'hls-segment'}else{'not-measured'})
+            voiceEvidence='not-measured'
+            measurementModel='https-primary-071'
+            diagnosticObservationCount=$diagnosticMeasured.Count; unknownObservationCount=$unknownCount; unknownScoredObservationCount=$unknownScoredCount
             targetPassRates=@($targetPassRates.ToArray()); protocolPassRates=@($protocolPassRates.ToArray())
             inconclusiveReason=$(if($eligible){$null}else{$inconclusiveReasons -join '; '}); recommendationReason=$null; observations=@($observations)
-            probeError=Get-NrObservationProperty064 -Observation $candidate -Name 'probeError'
+            probeError=$(if (Get-NrObservationProperty064 -Observation $candidate -Name 'probeError') { 'probe-failed' } else { $null })
         })
     }
 

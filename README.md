@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.3-6f42c1)](docs/UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.7.0-24e1d6)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.7.1-24e1d6)](.service/version.txt)
 
 **Локальная Windows-система управления стратегиями обхода DPI с изолированными сервисными workers, проверяемыми обновлениями и честным release validation.**
 
@@ -15,6 +15,16 @@
 
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранные стратегии только к трафику включённых сервисов.
+
+## NexRoute 0.7.1 — Strategy Lab и диагностика
+
+В 0.7.1 разделил HTTPS-рейтинг и вспомогательную диагностику, чтобы успешный DNS/TLS больше не скрывал неработающий HTTP. Добавил корректную проверку TLS-сертификатов, A/AAAA DNS, DPI-range и осторожные признаки готовности мультимедиа. Без достаточных измерений вывод остаётся **INCONCLUSIVE**, а не выдуманной рекомендацией.
+
+В диагностическом центре появилась сводка состояния и рекомендации. ZIP и отчёт для буфера обмена теперь содержат только разрешённые статусы и счётчики: без сырых логов, IP, DNS, SSID, локальных путей и URI с токенами.
+
+Flowseal 1.10.3, 22 стратегии, 24 patch-targets и 15 Service Matrix profiles сохранены. Старые BAT и история не переписываются.
+
+Подробнее: [Strategy Lab и диагностика](docs/STRATEGY_LAB_DIAGNOSTICS.md), [release notes](.github/release-notes/v0.7.1.md), [acceptance](docs/RELEASE_0.7.1_ACCEPTANCE.md).
 
 ## NexRoute 0.7.0 — Strategy Manifest
 
@@ -166,13 +176,13 @@
 
 ## Проверяемый релиз 🔏
 
-Для версии 0.7.0 публикуются четыре связанных asset:
+Для версии 0.7.1 публикуются четыре связанных asset:
 
 ```text
-NexRoute-0.7.0-win-x64.zip
-NexRoute-0.7.0-win-x64.zip.sha256
-NexRoute-0.7.0-validation.json
-NexRoute-0.7.0-validation.md
+NexRoute-0.7.1-win-x64.zip
+NexRoute-0.7.1-win-x64.zip.sha256
+NexRoute-0.7.1-validation.json
+NexRoute-0.7.1-validation.md
 ```
 
 Все четыре файла входят в одну GitHub artifact attestation. Portable verifier проверяет immutable release URLs, SHA-256 package и attestation каждого subject. После успешной проверки validation report и digest-matched receipt атомарно устанавливаются в `.service`.
@@ -180,10 +190,10 @@ NexRoute-0.7.0-validation.md
 Дополнительная ручная проверка:
 
 ```powershell
-gh attestation verify .\NexRoute-0.7.0-win-x64.zip --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.7.0-win-x64.zip.sha256 --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.7.0-validation.json --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.7.0-validation.md --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.1-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.1-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.1-validation.json --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.7.1-validation.md --repo Onmaynec/NexRoute
 ```
 
 Validation Viewer не доверяет импортированному JSON автоматически. До появления matching local receipt документ отображается как `attestation-not-verified`. Wrong product/version, duplicate check IDs, неизвестные статусы и несогласованный `overallStatus` отклоняются.
@@ -254,7 +264,7 @@ NEXROUTE_BUILD_INFO.txt
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.7.0 `
+  -Version 0.7.1 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 ```
@@ -263,7 +273,7 @@ pwsh ./scripts/Build-Release.ps1 `
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.7.0 `
+  -Version 0.7.1 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip
 ```
@@ -347,4 +357,4 @@ Release workflow дополнительно создаёт JSON/Markdown validat
 
 ---
 
-**NexRoute 0.7.0** · Baseline: **Flowseal 1.10.3** · Windows 10/11 x64
+**NexRoute 0.7.1** · Baseline: **Flowseal 1.10.3** · Windows 10/11 x64
