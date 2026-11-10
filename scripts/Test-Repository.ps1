@@ -5,7 +5,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $errors=New-Object 'System.Collections.Generic.List[string]'
-$expectedVersion='0.7.1'
+$expectedVersion='0.7.2'
 
 function Assert-True {
     param([bool]$Condition,[string]$Message)
@@ -27,7 +27,7 @@ $required=@(
     'overlay/.service/nexroute-services.ps1','overlay/.service/nexroute-services-entry.ps1','overlay/.service/services.json','overlay/.service/strategy-manifest.json',
     'overlay/.service/next/nexroute-common.ps1','overlay/.service/next/nexroute-diagnostics.ps1',
     'overlay/.service/next/nexroute-diagnostics-fixes.ps1','overlay/.service/next/nexroute-diagnostics-071.ps1','overlay/.service/next/nexroute-runtime-extensions.ps1',
-    'overlay/.service/next/nexroute-hotfix-062.ps1','overlay/.service/next/nexroute-strategy-ranking.ps1','overlay/.service/next/nexroute-strategy-lab-classic.ps1','overlay/.service/next/nexroute-update.ps1',
+    'overlay/.service/next/nexroute-hotfix-062.ps1','overlay/.service/next/nexroute-worker-scopes-072.ps1','overlay/.service/next/nexroute-worker-ui-072.ps1','overlay/.service/next/nexroute-strategy-ranking.ps1','overlay/.service/next/nexroute-strategy-lab-classic.ps1','overlay/.service/next/nexroute-update.ps1',
     'overlay/.service/next/nexroute-notifications.ps1','overlay/.service/next/nexroute-attestation-v2.ps1',
     'overlay/.service/next/nexroute-strategy-refresh.ps1','overlay/.service/next/nexroute-strategy-refresh-build.ps1','overlay/.service/next/nexroute-strategy-manifest.ps1',
     'native/NexRoute.Tray/Program.cs','native/NexRoute.Notifier/Program.cs','native/NexRoute.Dashboard/Program.cs','native/NexRoute.Validation/Program.cs',
@@ -38,10 +38,10 @@ $required=@(
     'tests/ServiceMatrix.Tests.ps1','tests/UpstreamContract.Tests.ps1','tests/Updater.Tests.ps1','tests/UpdaterMigration.Tests.ps1',
     'tests/ReleaseAttestation.Tests.ps1','tests/ReleaseCoherence.Tests.ps1','tests/LauncherHotfix.Tests.ps1','tests/Hotfix062.Tests.ps1',
     'tests/StrategyRefresh063.Tests.ps1','tests/StrategyManifest070.Tests.ps1','tests/fixtures/Strategy063.Catalog.json','tests/fixtures/Strategy063.Renderer.ps1','tests/StrategyLab063Evidence.Tests.ps1','tests/StrategyLabFieldEvidence064.Tests.ps1',
-    'tests/StrategyRanking064.Tests.ps1','tests/StrategyLab065.Tests.ps1','tests/StrategyLabDiagnostics071.Tests.ps1','tests/Updater065.Tests.ps1','tests/Updater066.Tests.ps1','tests/Updater070.Tests.ps1','tests/Updater071.Tests.ps1','tests/DocumentationSync.Tests.ps1','tests/UpdaterHealthRollback064.Tests.ps1','tests/GitHubActionsPinning064.Tests.ps1',
+    'tests/StrategyRanking064.Tests.ps1','tests/StrategyLab065.Tests.ps1','tests/StrategyLabDiagnostics071.Tests.ps1','tests/WorkerRuntime072.Tests.ps1','tests/Updater065.Tests.ps1','tests/Updater066.Tests.ps1','tests/Updater070.Tests.ps1','tests/Updater071.Tests.ps1','tests/Updater072.Tests.ps1','tests/DocumentationSync.Tests.ps1','tests/UpdaterHealthRollback064.Tests.ps1','tests/GitHubActionsPinning064.Tests.ps1',
     '.github/workflows/validate.yml','.github/workflows/release.yml','.github/workflows/pages.yml',
-    '.github/release-notes/v0.6.0.md','.github/release-notes/v0.6.1.md','.github/release-notes/v0.6.2.md','.github/release-notes/v0.6.3.md','.github/release-notes/v0.6.4.md','.github/release-notes/v0.6.5.md','.github/release-notes/v0.7.1.md',
-    'docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/RELEASE_0.6.3_ACCEPTANCE.md','docs/RELEASE_0.6.4_ACCEPTANCE.md','docs/RELEASE_0.6.5_ACCEPTANCE.md','docs/RELEASE_0.7.1_ACCEPTANCE.md','docs/STRATEGY_MANIFEST.md','docs/STRATEGY_LAB_DIAGNOSTICS.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/RELEASES.md','docs/FIELD_EVIDENCE.md','docs/STRATEGY_LAB_RANKING.md','docs/GITHUB_ACTIONS_PINNING.md',
+    '.github/release-notes/v0.6.0.md','.github/release-notes/v0.6.1.md','.github/release-notes/v0.6.2.md','.github/release-notes/v0.6.3.md','.github/release-notes/v0.6.4.md','.github/release-notes/v0.6.5.md','.github/release-notes/v0.7.2.md',
+    'docs/RELEASE_0.6.0_ACCEPTANCE.md','docs/RELEASE_0.6.3_ACCEPTANCE.md','docs/RELEASE_0.6.4_ACCEPTANCE.md','docs/RELEASE_0.6.5_ACCEPTANCE.md','docs/RELEASE_0.7.2_ACCEPTANCE.md','docs/WORKER_RUNTIME_072.md','docs/STRATEGY_MANIFEST.md','docs/STRATEGY_LAB_DIAGNOSTICS.md','docs/UPDATES.md','docs/ATTESTATIONS.md','docs/RELEASES.md','docs/FIELD_EVIDENCE.md','docs/STRATEGY_LAB_RANKING.md','docs/GITHUB_ACTIONS_PINNING.md',
     'website/package.json','website/package-lock.json','website/tsconfig.json','website/next.config.ts','website/postcss.config.mjs',
     'website/app/layout.tsx','website/app/page.tsx','website/app/download/page.tsx','website/app/docs/[slug]/page.tsx',
     'website/components/layout/site-header.tsx','website/components/product/demos.tsx','website/content/docs.ts','website/lib/github.ts'
@@ -49,17 +49,17 @@ $required=@(
 foreach ($relative in $required) { Assert-True (Test-Path -LiteralPath (Join-Path $root $relative) -PathType Leaf) "Required file exists: $relative" }
 
 $version=(Read-Text '.service/version.txt').Trim()
-$releaseNotes=Read-Text '.github/release-notes/v0.7.1.md'
-$acceptance=Read-Text 'docs/RELEASE_0.7.1_ACCEPTANCE.md'
+$releaseNotes=Read-Text '.github/release-notes/v0.7.2.md'
+$acceptance=Read-Text 'docs/RELEASE_0.7.2_ACCEPTANCE.md'
 $websitePackage=Read-Text 'website/package.json' | ConvertFrom-Json
 $websiteLock=Read-Text 'website/package-lock.json' | ConvertFrom-Json -AsHashtable
 Assert-True ($version -eq $expectedVersion) "Repository version is $expectedVersion"
 Assert-True ([string]$websitePackage.version -eq $expectedVersion) 'Website package version matches repository version'
 Assert-True ([string]$websiteLock['version'] -eq $expectedVersion) 'Website lockfile version matches repository version'
 Assert-True ([string]$websiteLock['packages']['']['version'] -eq $expectedVersion) 'Website root lock package version matches repository version'
-Assert-True ($releaseNotes -match [regex]::Escape('# NexRoute 0.7.1 — Strategy Lab и диагностика')) 'Release notes describe 0.7.1'
-Assert-True ($acceptance -match [regex]::Escape('NexRoute 0.7.1 — критерии готовности релиза')) '0.7.1 acceptance document exists'
-foreach ($asset in @('NexRoute-0.7.1-win-x64.zip','NexRoute-0.7.1-win-x64.zip.sha256','NexRoute-0.7.1-validation.json','NexRoute-0.7.1-validation.md')) {
+Assert-True ($releaseNotes -match [regex]::Escape('# NexRoute v0.7.2 — Service Matrix и управление процессами')) 'Release notes describe 0.7.2'
+Assert-True ($acceptance -match [regex]::Escape('NexRoute 0.7.2 — критерии готовности релиза')) '0.7.2 acceptance document exists'
+foreach ($asset in @('NexRoute-0.7.2-win-x64.zip','NexRoute-0.7.2-win-x64.zip.sha256','NexRoute-0.7.2-validation.json','NexRoute-0.7.2-validation.md')) {
     Assert-True ($releaseNotes -match [regex]::Escape($asset)) "Release notes document $asset"
 }
 
@@ -171,7 +171,7 @@ foreach ($token in @('upstream-lock.json','patch-report.json','Expected 24 track
 $validate=Read-Text '.github/workflows/validate.yml'
 $release=Read-Text '.github/workflows/release.yml'
 $pages=Read-Text '.github/workflows/pages.yml'
-foreach ($token in @('NexRoute 0.7.1','Test-WindowsLaunchers.ps1','diagnosticCompatibility','updaterFallbackVersion','UpstreamArchive','npm run typecheck','npm run build','actions/checkout v6.1.0','actions/setup-node v6.5.0','actions/upload-artifact v7.0.1')) {
+foreach ($token in @('NexRoute 0.7.2','Test-WindowsLaunchers.ps1','diagnosticCompatibility','updaterFallbackVersion','UpstreamArchive','npm run typecheck','npm run build','actions/checkout v6.1.0','actions/setup-node v6.5.0','actions/upload-artifact v7.0.1')) {
     Assert-True ($validate -match [regex]::Escape($token)) "Validation workflow contains $token"
 }
 foreach ($token in @('id-token: write','attestations: write','artifact-metadata: write','actions/attest v4.2.2','gh attestation verify','actions/checkout v6.1.0','actions/upload-artifact v7.0.1','gh release create')) {

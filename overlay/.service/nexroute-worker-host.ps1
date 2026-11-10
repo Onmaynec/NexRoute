@@ -1,10 +1,12 @@
 [CmdletBinding()]
 param(
-    [ValidateSet('Start','Stop','Status','Once','Supervise')][string]$Mode='Status',
+    [ValidateSet('Start','Stop','Status','Inspect','StartService','StopService','RestartService','Once','Supervise')][string]$Mode='Status',
     [string]$Root,
     [string]$ConfigPath,
+    [string]$ServiceId,
     [int]$IntervalSeconds=20,
     [int]$FailureThreshold=3,
+    [ValidateRange(0,3600)][int]$CooldownSeconds=30,
     [switch]$Json
 )
 
@@ -13,6 +15,7 @@ $ErrorActionPreference='Stop'
 if (-not $Root) { $Root=Split-Path -Parent $PSScriptRoot }
 $Root=[IO.Path]::GetFullPath($Root)
 . (Join-Path $PSScriptRoot 'next/nexroute-workers.ps1')
+. (Join-Path $PSScriptRoot 'next/nexroute-worker-scopes-072.ps1')
 . (Join-Path $PSScriptRoot 'next/nexroute-family-probe.ps1')
 if (-not $ConfigPath) { $ConfigPath=Join-Path $PSScriptRoot 'service-workers.json' }
 
@@ -38,6 +41,7 @@ function Read-NrWorkerConfiguration {
         $ids[$id]=$true
         if (-not $service.strategies -or @($service.strategies).Count -eq 0) { throw "Service '$id' has no strategies." }
         if (-not $service.probe -or [string]::IsNullOrWhiteSpace([string]$service.probe.uri)) { throw "Service '$id' has no probe URI." }
+        if (@($service.filterTokens).Count -eq 0) { throw "Worker '$id' has no scoped filter tokens." }
         $probeFamily=[string](Get-NrHostPropertyValue -Object $service.probe -Name 'addressFamily' -Default '')
         if ($probeFamily -and $probeFamily -notin @('ipv4','ipv6')) { throw "Service '$id' has an unsupported probe address family: $probeFamily" }
         foreach ($strategy in @($service.strategies)) {
@@ -48,8 +52,29 @@ function Read-NrWorkerConfiguration {
             if ($probeFamily -and $strategyFamily -and $probeFamily -ne $strategyFamily) {
                 throw "Service '$id' probe family '$probeFamily' differs from strategy family '$strategyFamily'."
             }
+            # Only strictly scoped winws plans may run: accepting a broad
+            # user-edited worker config would silently intercept other services.
+            if ([IO.Path]::GetFileName([string]$strategy.executable) -ieq 'winws.exe') {
+                if (-not $service.filterFiles) { throw "Worker '$id' has no scoped filter file metadata." }
+                $hostPath=[string]$service.filterFiles.hostlist
+                $ipsetPath=[string]$service.filterFiles.ipset
+                if (-not (Test-Path -LiteralPath $hostPath -PathType Leaf) -or -not (Test-Path -LiteralPath $ipsetPath -PathType Leaf)) {
+                    throw "Worker '$id' has missing filter file(s)."
+                }
+                $arguments=@([string[]]$strategy.arguments)
+                if ($arguments -notcontains ('--hostlist='+$hostPath) -or $arguments -notcontains ('--ipset='+$ipsetPath)) {
+                    throw "Worker '$id' command is missing its service-scoped include filters."
+                }
+                foreach ($argument in $arguments) {
+                    if ($argument -match '^--(hostlist|ipset)=' -and $argument -notin @('--hostlist='+$hostPath,'--ipset='+$ipsetPath)) {
+                        throw "Worker '$id' contains a non-service-scoped include list."
+                    }
+                }
+            }
         }
     }
+    $initial=@(Get-NrInitialWorkerPlans -Configuration $document)
+    Assert-NrWorkerFilterIsolation -Plans $initial | Out-Null
     return $document
 }
 
@@ -96,7 +121,7 @@ function Test-NrServiceProbe {
         }
         if ($uri.Scheme -in @('http','https')) {
             $response=Invoke-WebRequest -Uri $uri.AbsoluteUri -UseBasicParsing -TimeoutSec $timeout -Headers @{ 'User-Agent'='NexRoute-WorkerHost/0.6.0'; 'Cache-Control'='no-cache' }
-            return [int]$response.StatusCode -ge 200 -and [int]$response.StatusCode -lt 500
+            return [int]$response.StatusCode -ge 200 -and [int]$response.StatusCode -lt 400
         }
         if ($uri.Scheme -eq 'tcp') {
             $client=[Net.Sockets.TcpClient]::new()
@@ -133,32 +158,148 @@ function Invoke-NrHostCycle {
         return [bool](& $probeFunction -Service $service[0])
     }.GetNewClosure()
     $replacement={ param($state) & $replacementFunction -State $state -Configuration $Configuration }.GetNewClosure()
-    return @(Invoke-NrWorkerSupervisorCycle -Root $Root -Probe $probe -ResolveReplacement $replacement -FailureThreshold $FailureThreshold)
+    return @(Invoke-NrWorkerSupervisorCycle -Root $Root -Probe $probe -ResolveReplacement $replacement -FailureThreshold $FailureThreshold -CooldownSeconds $CooldownSeconds)
 }
 
-$configuration=Read-NrWorkerConfiguration
+function Invoke-NrHostOperationLock072 {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][scriptblock]$Action)
+    $sha=[Security.Cryptography.SHA256]::Create()
+    try { $hash=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($Root.ToLowerInvariant()))).Replace('-','') }
+    finally { $sha.Dispose() }
+    $mutex=[Threading.Mutex]::new($false,('Global\NexRoute.WorkerOperation.'+$hash.Substring(0,24)))
+    $owns=$false
+    try {
+        try { $owns=$mutex.WaitOne(10000) }
+        catch [Threading.AbandonedMutexException] { $owns=$true }
+        if (-not $owns) { throw 'Worker management is already busy; retry after the active operation finishes.' }
+        return & $Action
+    } finally {
+        if ($owns) { $mutex.ReleaseMutex() }
+        $mutex.Dispose()
+    }
+}
+
+function Get-NrHostService072 {
+    param([Parameter(Mandatory)]$Configuration,[Parameter(Mandatory)][string]$Id)
+    $wanted=ConvertTo-NrWorkerId $Id
+    $matches=@($Configuration.services | Where-Object {
+        (ConvertTo-NrWorkerId ([string]$_.id)) -eq $wanted -and ($null -eq $_.enabled -or [bool]$_.enabled)
+    })
+    if ($matches.Count -ne 1) { throw "Enabled service '$wanted' was not found in the worker configuration." }
+    return $matches[0]
+}
+
+function Invoke-NrSingleWorkerOperation072 {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Configuration,[Parameter(Mandatory)][string]$Action,[Parameter(Mandatory)][string]$Id)
+    $service=Get-NrHostService072 -Configuration $Configuration -Id $Id
+    $name=ConvertTo-NrWorkerId $Id
+    $previous=Read-NrWorkerState -Root $Root -ServiceId $name
+    if ($Action -eq 'StopService') {
+        $stopped=Stop-NrServiceWorker -Root $Root -ServiceId $name
+        if (-not $stopped) { throw "Worker '$name' could not be stopped: its process identity is unverified or state is missing." }
+        return [pscustomobject]@{serviceId=$name;action='stopped';processState='not-running'}
+    }
+
+    $index=0
+    if ($previous) {
+        for($i=0;$i -lt @($service.strategies).Count;$i++) {
+            if ([string]$service.strategies[$i].name -eq [string]$previous.strategy) { $index=$i; break }
+        }
+    }
+    $plan=New-NrWorkerPlanFromService -Service $service -StrategyIndex $index
+    $otherPlans=@(Get-NrWorkerStates -Root $Root | Where-Object { $_.serviceId -ne $name -and $_.status -eq 'running' } |
+        ForEach-Object { [pscustomobject]@{serviceId=$_.serviceId;filterTokens=@($_.filterTokens)} })
+    Assert-NrWorkerFilterIsolation -Plans @($otherPlans + @([pscustomobject]@{serviceId=$name;filterTokens=$plan.filterTokens})) | Out-Null
+
+    if ($Action -eq 'RestartService' -and $previous -and [string]$previous.status -ne 'stopped') {
+        if (-not (Stop-NrServiceWorker -Root $Root -ServiceId $name)) {
+            throw "Worker '$name' cannot be restarted: process identity is unverified."
+        }
+    }
+    $generation=if($previous){[int]$previous.generation+1}else{1}
+    $next=Start-NrServiceWorker -Root $Root -ServiceId $name -Strategy $plan.strategy -Executable $plan.executable -Arguments ([string[]]$plan.arguments) -FilterTokens ([string[]]$plan.filterTokens) -Generation $generation
+    return [pscustomobject]@{serviceId=$name;action=$(if($Action -eq 'RestartService'){'restarted'}else{'started'});pid=$next.pid;generation=$next.generation;strategy=$next.strategy}
+}
+
+$configuration=$null
+if ($Mode -in @('Start','StartService','StopService','RestartService','Once','Supervise')) {
+    $configuration=Read-NrWorkerConfiguration
+} elseif ($Mode -eq 'Inspect' -and (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) {
+    $configuration=Read-NrWorkerConfiguration
+}
+
 switch ($Mode) {
     'Start' {
+        $scope=Get-NrWorkerScopeReport072 -Configuration $configuration
+        if (-not $Json -and $scope.overlapPairs -gt 0) {
+            Write-Warning ("Service Matrix: {0} overlapping filter pairs detected. Inspect scopes before interpreting probes." -f $scope.overlapPairs)
+        }
+        if (-not $Json -and $scope.coverage -eq 'partial') {
+            Write-Warning 'Service Matrix scope inspection is partial; do not assume full filter isolation.'
+        }
         $plans=Get-NrInitialWorkerPlans -Configuration $configuration
-        $result=@(Start-NrWorkerSet -Root $Root -Plans $plans)
+        $result=@(Invoke-NrHostOperationLock072 -Action { Start-NrWorkerSet -Root $Root -Plans $plans })
     }
     'Stop' {
-        Stop-NrWorkerSet -Root $Root
+        Invoke-NrHostOperationLock072 -Action { Stop-NrWorkerSet -Root $Root } | Out-Null
         $result=@()
     }
+    'StartService' {
+        if (-not $ServiceId) { throw 'StartService requires -ServiceId.' }
+        $result=Invoke-NrHostOperationLock072 -Action { Invoke-NrSingleWorkerOperation072 -Configuration $configuration -Action 'StartService' -Id $ServiceId }
+    }
+    'StopService' {
+        if (-not $ServiceId) { throw 'StopService requires -ServiceId.' }
+        $result=Invoke-NrHostOperationLock072 -Action { Invoke-NrSingleWorkerOperation072 -Configuration $configuration -Action 'StopService' -Id $ServiceId }
+    }
+    'RestartService' {
+        if (-not $ServiceId) { throw 'RestartService requires -ServiceId.' }
+        $result=Invoke-NrHostOperationLock072 -Action { Invoke-NrSingleWorkerOperation072 -Configuration $configuration -Action 'RestartService' -Id $ServiceId }
+    }
     'Status' { $result=@(Get-NrWorkerStates -Root $Root) }
-    'Once' { $result=@(Invoke-NrHostCycle -Configuration $configuration) }
+    'Inspect' { $result=Get-NrWorkerRuntimeReport072 -Root $Root -Configuration $configuration }
+    'Once' { $result=@(Invoke-NrHostOperationLock072 -Action { Invoke-NrHostCycle -Configuration $configuration }) }
     'Supervise' {
-        while ($true) {
-            $events=@(Invoke-NrHostCycle -Configuration $configuration)
-            foreach ($event in $events) {
-                if ($event.action -eq 'failover') { Write-Host ("Failover {0}: {1} -> {2} (PID {3})" -f $event.serviceId,$event.oldStrategy,$event.newStrategy,$event.newPid) -ForegroundColor Yellow }
+        # One supervisor per installation, including a second AtLogOn task
+        # or an accidentally started extra terminal.
+        $sha=[Security.Cryptography.SHA256]::Create()
+        try {
+            $hash=[BitConverter]::ToString($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($Root.ToLowerInvariant()))).Replace('-','')
+        } finally { $sha.Dispose() }
+        $mutexName='Global\NexRoute.WorkerHost.'+$hash.Substring(0,24)
+        $mutex=[Threading.Mutex]::new($false,$mutexName)
+        $owns=$false
+        try {
+            try { $owns=$mutex.WaitOne(0) }
+            catch [Threading.AbandonedMutexException] { $owns=$true }
+            if (-not $owns) { Write-Warning 'NexRoute worker supervisor is already active for this installation.'; return }
+            while ($true) {
+                $events=@(Invoke-NrHostOperationLock072 -Action { Invoke-NrHostCycle -Configuration $configuration })
+                foreach ($event in $events) {
+                    if ($event.action -eq 'failover') {
+                        Write-Host ("Failover {0}: {1} -> {2} (PID {3}; cooldown {4}s)" -f $event.serviceId,$event.oldStrategy,$event.newStrategy,$event.newPid,$event.cooldownSeconds) -ForegroundColor Yellow
+                    } elseif ($event.action -in @('identity-unverified','restart-failed','stopped-no-replacement')) {
+                        Write-Warning ("Worker {0}: {1} (requires review)" -f $event.serviceId,$event.action)
+                    }
+                }
+                Start-Sleep -Seconds ([Math]::Min([Math]::Max($IntervalSeconds,5),3600))
             }
-            Start-Sleep -Seconds ([Math]::Min([Math]::Max($IntervalSeconds,5),3600))
+        } finally {
+            if ($owns) { $mutex.ReleaseMutex() }
+            $mutex.Dispose()
         }
     }
 }
 if ($Mode -ne 'Supervise') {
-    if ($Json) { $result | ConvertTo-Json -Depth 12 }
-    else { $result | Format-Table serviceId,strategy,pid,generation,status,addressFamily -AutoSize }
+    if ($Json) { ConvertTo-Json -InputObject $result -Depth 12 }
+    elseif ($Mode -eq 'Inspect') {
+        Write-Host ("Workers: {0} total, {1} verified running, {2} unhealthy" -f $result.total,$result.running,$result.unhealthy)
+        $result.workers | Format-Table serviceId,strategy,pid,generation,status,processState,consecutiveFailures,cooldownActive -AutoSize
+        if ($result.scopes) {
+            Write-Host ("Filter overlaps: {0}; inspection coverage: {1}" -f $result.scopes.overlapPairs,$result.scopes.coverage)
+            $result.scopes.warnings | Format-Table serviceA,serviceB,overlappingDomains,overlappingCidrs -AutoSize
+        }
+    } else { $result | Format-Table serviceId,strategy,pid,generation,status,addressFamily -AutoSize }
 }

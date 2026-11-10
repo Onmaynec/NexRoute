@@ -76,6 +76,27 @@ function Get-NrDiagnosticFindings071 {
     return @($findings.ToArray())
 }
 
+function Get-NrWorkerHealthSummary072 {
+    $empty=[ordered]@{status='not-configured';total=0;running=0;unhealthy=0;overlapPairs=0;scopeCoverage='unavailable'}
+    if (-not (Get-Command Get-NrWorkerRuntimeReport072 -ErrorAction SilentlyContinue)) { return $empty }
+    $rootVariable=Get-Variable -Name NrRoot -Scope Script -ErrorAction SilentlyContinue
+    $serviceVariable=Get-Variable -Name NrService -Scope Script -ErrorAction SilentlyContinue
+    if (-not $rootVariable -or -not $serviceVariable) { return $empty }
+    $path=Join-Path ([string]$serviceVariable.Value) 'service-workers.json'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $empty }
+    try {
+        $config=Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        $runtime=Get-NrWorkerRuntimeReport072 -Root ([string]$rootVariable.Value) -Configuration $config
+        return [ordered]@{
+            status='available';total=[int]$runtime.total;running=[int]$runtime.running;unhealthy=[int]$runtime.unhealthy
+            overlapPairs=$(if($runtime.scopes){[int]$runtime.scopes.overlapPairs}else{0})
+            scopeCoverage=$(if($runtime.scopes){[string]$runtime.scopes.coverage}else{'unavailable'})
+        }
+    } catch {
+        return [ordered]@{status='unreadable';total=0;running=0;unhealthy=0;overlapPairs=0;scopeCoverage='unavailable'}
+    }
+}
+
 function ConvertTo-NrSafeDiagnosticReport071 {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Report,$LabHealth)
@@ -88,6 +109,7 @@ function ConvertTo-NrSafeDiagnosticReport071 {
     $dns=@(Get-NrDiagnosticField071 $Report 'dns' | Where-Object { $null -ne $_ })
     $warnings=@($conflicts | Where-Object { (Get-NrDiagnosticField071 $_ 'severity') -eq 'warning' })
     $status=if (@(Get-NrDiagnosticFindings071 -Report $Report | Where-Object { $_.severity -eq 'warning' }).Count -gt 0) { 'attention' } else { 'informational' }
+    $workerHealth=Get-NrWorkerHealthSummary072
     $version=[string](Get-NrDiagnosticField071 $nx 'version')
     if ($version -notmatch '^[0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}$') { $version='unknown' }
 
@@ -129,7 +151,8 @@ function ConvertTo-NrSafeDiagnosticReport071 {
             inconclusive=[int](Get-NrDiagnosticField071 $LabHealth 'inconclusive')
             scoringModel=[string](Get-NrDiagnosticField071 $LabHealth 'scoringModel')
         }
-        overallStatus=$status
+        workerRuntime=$workerHealth
+        overallStatus=$(if($workerHealth.status -eq 'unreadable' -or $workerHealth.unhealthy -gt 0){'attention'}else{$status})
         findings=@(Get-NrDiagnosticFindings071 -Report $Report)
     }
 }
@@ -141,6 +164,10 @@ function Show-NrDiagnosticHealth071 {
     Write-Host ('  Status: ' + $report.overallStatus) -ForegroundColor $(if($report.overallStatus -eq 'attention'){'Yellow'}else{'Green'})
     Write-Host ('  Strategy Lab: {0} / eligible={1} / inconclusive={2}' -f $report.strategyLab.status,$report.strategyLab.eligible,$report.strategyLab.inconclusive) -ForegroundColor Gray
     Write-Host ('  Network inventory: {0} adapters / {1} DNS configurations' -f $report.networkCounts.adapters,$report.networkCounts.dnsConfigs) -ForegroundColor DarkGray
+    Write-Host ('  Service workers: {0} verified / {1} unhealthy / {2} scope overlaps ({3})' -f $report.workerRuntime.running,$report.workerRuntime.unhealthy,$report.workerRuntime.overlapPairs,$report.workerRuntime.scopeCoverage) -ForegroundColor $(if($report.workerRuntime.unhealthy -gt 0 -or $report.workerRuntime.scopeCoverage -eq 'partial'){'Yellow'}else{'Gray'})
+    if ($report.workerRuntime.unhealthy -gt 0) {
+        Write-Host '  [NR-WORKER-006] Inspect the worker manager; a service may have stopped or entered cooldown.' -ForegroundColor Yellow
+    }
     Write-Host ''
     foreach ($finding in @($report.findings)) {
         Write-Host ('  [{0}] {1}' -f $finding.code,$finding.message) -ForegroundColor $(if($finding.severity -eq 'warning'){'Yellow'}else{'Gray'})

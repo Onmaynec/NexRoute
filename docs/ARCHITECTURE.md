@@ -1,4 +1,4 @@
-# Архитектура NexRoute 0.7.1 🏗️
+# Архитектура NexRoute 0.7.2 🏗️
 
 ## Принцип
 
@@ -40,6 +40,10 @@ Flowseal 1.10.3 содержит 22 upstream-стратегии, включая 
 Во время сборки manifest проверяется до изменения файлов. Сгенерированные результаты связаны SHA-256 в `.service/strategy-refresh-report.json` и `.service/patch-report.json`; финальная проверка пакета повторно вычисляет manifest digest и per-profile hashes. Release validation публикует те же provenance данные.
 
 В runtime приложение читает только установленные локальные JSON/BAT-файлы: Strategy Builder показывает read-only projection, preview и worker selection используют те же ID и имена файлов. Сеть не используется для загрузки произвольных стратегий. Подробнее: [STRATEGY_MANIFEST.md](STRATEGY_MANIFEST.md).
+
+## Service Matrix worker runtime 0.7.2
+
+Отдельные winws-workers управляются локальным process supervisor. Владение PID проверяется по времени старта и исполняемому файлу; лишний supervisor не стартует благодаря installation-scoped mutex. Failover происходит per-service с cooldown, затем делает запись состояния. Общие host/IP scopes выводятся как предупреждения с partial-coverage marker. Нативный диагностический ZIP не содержит PID и списков. См. [WORKER_RUNTIME_072.md](WORKER_RUNTIME_072.md).
 
 ## Strategy Lab и диагностика 0.7.1
 

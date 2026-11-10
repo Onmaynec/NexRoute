@@ -102,7 +102,7 @@ export const detailedFeatures = [
     eyebrow: "SERVICE MATRIX",
     title: "Профили сервисов и отдельные capture scopes",
     description:
-      "Выбирайте нужные платформы, а NexRoute подготовит отдельные доменные и IP-списки, TCP/UDP groups и non-overlapping worker scopes. Встроенные DPI-профили читаются из проверяемого Strategy Manifest 0.7.0. Strategy Lab 0.7.1 считает HTTPS отдельно от DNS/TLS, а диагностический экспорт исключает приватные данные.",
+      "Выбирайте нужные платформы, а NexRoute подготовит отдельные доменные и IP-списки, TCP/UDP groups и non-overlapping worker scopes. Встроенные DPI-профили читаются из проверяемого Strategy Manifest 0.7.0. Strategy Lab считает HTTPS отдельно от DNS/TLS, а диагностический экспорт исключает приватные данные. Service Matrix 0.7.2 показывает здоровье отдельных workers, cooldown и возможные пересечения доменных/IP-фильтров.",
     bullets: ["15 готовых профилей", "Изолированные workers", "Restart-safe state"],
     href: "/docs/service-matrix",
     icon: SlidersHorizontal,

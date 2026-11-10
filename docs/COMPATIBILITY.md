@@ -1,4 +1,4 @@
-# Совместимость NexRoute 0.7.1 🖥️
+# Совместимость NexRoute 0.7.2 🖥️
 
 ## Поддерживаемые платформы
 
@@ -138,6 +138,10 @@ Detached transaction сохраняет user state и выполняет rollbac
 ## Strategy Lab и диагностика 0.7.1
 
 Рейтинг использует HTTPS, а ICMP/TLS/DNS — самостоятельные диагностические данные. TLS использует Windows trust store и проверяет hostname; диагностический ZIP исключает raw network data. Если TLS-прокси подменяет сертификат без доверенной цепочки, TLS check корректно завершается ошибкой.
+
+## Worker process management 0.7.2
+
+Для отдельного worker нужен проверяемый PID/start-time/executable. Устаревший PID-only state не разрешает автоматическое завершение живого процесса. Ограниченный overlap scan подсетей и доменов может вывести partial, а не полную уверенность. Windows PowerShell 5.1 использует deterministic quoting для запуска процессов вместо .NET ArgumentList.
 
 ## Честные ограничения
 
