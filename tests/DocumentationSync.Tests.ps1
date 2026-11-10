@@ -73,7 +73,7 @@ Describe 'NexRoute active documentation coherence' {
             $script:releases | Should -Match ([regex]::Escape($asset))
         }
         $script:acceptance | Should -Match 'NexRoute 0\.7\.0'
-        $script:updates | Should -Match '0\.7\.0 -> 0\.7\.0'
+        $script:updates | Should -Match '0\.6\.6 -> 0\.7\.0'
     }
 
     It 'retains historical 0.6.5 release evidence without silently closing manual checks' {
