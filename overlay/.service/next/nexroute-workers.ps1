@@ -67,7 +67,7 @@ function Get-NrWorkerProcessIdentity {
     }
     try {
         if ($process.HasExited) { return [pscustomobject]@{status='exited';pid=$pidValue;reason='exited'} }
-        $storedStart=$null
+        $storedStart=[datetime]::MinValue
         $storedText=''
         if ($State.PSObject.Properties['processStartedUtc']) { $storedText=[string]$State.processStartedUtc }
         if ([string]::IsNullOrWhiteSpace($storedText) -or
@@ -81,6 +81,9 @@ function Get-NrWorkerProcessIdentity {
         }
         $expected=[IO.Path]::GetFullPath([string]$State.executable)
         $actual=$process.Path
+        if ([string]::IsNullOrWhiteSpace($actual)) {
+            try { $actual=[string]$process.MainModule.FileName } catch { }
+        }
         if ([string]::IsNullOrWhiteSpace($actual)) {
             return [pscustomobject]@{status='unverified';pid=$pidValue;reason='executable-unavailable'}
         }
@@ -129,9 +132,14 @@ function New-NrWorkerStartInfo {
     $info.CreateNoWindow = $true
     $info.RedirectStandardOutput = $false
     $info.RedirectStandardError = $false
-    # ArgumentList is unavailable on Windows PowerShell 5.1 / .NET Framework.
-    # Use one quoting algorithm on both hosts for deterministic launch behavior.
-    $info.Arguments=(@($Arguments | ForEach-Object { ConvertTo-NrWorkerArgument072 -Value ([string]$_) }) -join ' ')
+    # Native ArgumentList avoids platform-specific parsing on PowerShell 7.
+    # Windows PowerShell 5.1 / .NET Framework lacks this property, so it
+    # uses the Windows command-line quoting fallback.
+    if ($info.PSObject.Properties['ArgumentList']) {
+        foreach ($argument in $Arguments) { [void]$info.ArgumentList.Add([string]$argument) }
+    } else {
+        $info.Arguments=(@($Arguments | ForEach-Object { ConvertTo-NrWorkerArgument072 -Value ([string]$_) }) -join ' ')
+    }
     return $info
 }
 
