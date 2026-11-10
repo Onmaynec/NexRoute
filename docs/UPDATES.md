@@ -1,4 +1,4 @@
-# 🔄 Безопасные обновления NexRoute 0.6.0
+# 🔄 Безопасные обновления NexRoute 0.6.6
 
 NexRoute использует stable-only updater с checksum, portable artifact-attestation verification, detached replacement transaction, post-update health policy и automatic rollback.
 
@@ -28,7 +28,7 @@ Release отклоняется, если отсутствует хотя бы о
 7. validation JSON schema check;
 8. product/version/status/check IDs consistency check;
 9. package extraction и structural verification;
-10. проверку 21 strategy, 15 service profiles и 23 patch records.
+10. проверку 22 upstream-стратегий, 15 service profiles и 24 patch records.
 
 Tampered checksum, missing asset, mutable URL, failed attestation или invalid signed JSON завершают flow до установки.
 
@@ -91,6 +91,8 @@ Rollback восстанавливает точный backup и запускае�
 ```text
 0.4.1 -> 0.6.0
 0.5.0 -> 0.6.0
+0.6.4 -> 0.6.5
+0.6.5 -> 0.6.6
 ```
 
 ## Автоматический режим

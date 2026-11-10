@@ -52,7 +52,7 @@ export const footerColumns = [
 ];
 
 export const summaryStats = [
-  { value: "21", label: "стратегия" },
+  { value: "22", label: "upstream-стратегии" },
   { value: "15", label: "сервисных профилей" },
   { value: "4", label: "attested release assets" },
   { value: "Windows", label: "10 и 11 x64" },
@@ -113,7 +113,7 @@ export const detailedFeatures = [
     title: "Проверка throughput, media и transport readiness",
     description:
       "Лаборатория передаёт многомегабайтный payload, проверяет HLS manifest и segment и не выдаёт HTTP latency за качество звонка.",
-    bullets: ["21 реальная стратегия", "Bytes · elapsed · Mbps", "TCP/TLS и UDP отдельно"],
+    bullets: ["22 upstream-стратегии", "Bytes · elapsed · Mbps", "TCP/TLS и UDP отдельно"],
     href: "/docs/strategy-lab",
     icon: FlaskConical,
   },
@@ -173,7 +173,7 @@ export const detailedFeatures = [
     title: "Воспроизводимый online и offline build",
     description:
       "Код, workflows, immutable upstream identity, patch report и package self-tests доступны в репозитории.",
-    bullets: ["MIT License", "23 tracked patch targets", "Native binaries compiled without NuGet"],
+    bullets: ["MIT License", "24 tracked patch targets", "Native binaries compiled without NuGet"],
     href: "/docs/architecture",
     icon: Blocks,
   },

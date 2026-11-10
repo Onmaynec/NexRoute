@@ -1,4 +1,4 @@
-# Совместимость NexRoute 0.6.0 🖥️
+# Совместимость NexRoute 0.6.6 🖥️
 
 ## Поддерживаемые платформы
 
@@ -121,12 +121,14 @@ Updater содержит automated migration fixtures:
 
 Detached transaction сохраняет user state и выполняет rollback при failed verification, replacement, launch или health policy.
 
+Переход `0.6.5 → 0.6.6` дополнительно проверяется на сохранение пользовательских файлов, idempotent install и rollback после failed health check.
+
 Для ручной чистой миграции:
 
 1. удалите старую service через её launcher;
 2. перезагрузите Windows при stuck WinDivert state;
 3. скачайте четыре verified release assets;
-4. распакуйте 0.6.0 в новую директорию;
+4. распакуйте последнюю стабильную версию в новую директорию;
 5. переносите только user-managed lists/state, а не old binaries или generated `.service/native`;
 6. запустите package от администратора;
 7. проверьте Service Matrix, Strategy Lab, tray и Validation Viewer.

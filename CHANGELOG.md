@@ -6,6 +6,21 @@
 
 Пока нет изменений.
 
+## [0.6.6] - 2026-11-10
+
+### Стабилизация
+
+- синхронизированы актуальные README, RU/EN docs, website и release metadata;
+- исправлены инструкции online/offline сборки и проверки release assets;
+- в текущих материалах отражены Flowseal 1.10.3, 22 upstream-стратегии, 24 patch targets и 15 сервисных профилей;
+- добавлены regression checks документации и updater 0.6.5 → 0.6.6;
+- параметры DPI-стратегий, Service Matrix и pinned upstream сохранены.
+
+### Совместимость
+
+- classic Control Node 0.6.5, Strategy Lab, desktop tools, checksum, attestations и rollback сохранены;
+- реальные ISP-сценарии не объявляются прошедшими по результатам synthetic CI.
+
 ## [0.6.5] - 2026-09-20
 
 ### Changed

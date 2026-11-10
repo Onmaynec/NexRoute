@@ -13,6 +13,16 @@ export const metadata = createMetadata(
 
 const fallback = [
   {
+    version: "0.6.5",
+    date: "2026-09-21",
+    summary: "Возвращено числовое меню, переработан Strategy Lab с повторными проверками и live-прогрессом.",
+  },
+  {
+    version: "0.6.4",
+    date: "2026-09-20",
+    summary: "Flowseal 1.10.3, 22 upstream-стратегии, 24 patch targets и hardening.",
+  },
+  {
     version: "0.6.1",
     date: "2026-08-04",
     summary:
