@@ -1,4 +1,4 @@
-# Сборка и публикация NexRoute 0.7.0 📦
+# Сборка и публикация NexRoute 0.7.1 📦
 
 ## Политика
 
@@ -6,7 +6,7 @@
 
 Release собирается заново из `main` и считается готовым только после прохождения automated acceptance gate. Hardware- и ISP-dependent возможности не превращаются в `passed` без реального evidence: они остаются `experimental` или `unsupported` в signed validation report.
 
-Критерии версии: [RELEASE_0.7.0_ACCEPTANCE.md](RELEASE_0.7.0_ACCEPTANCE.md).
+Критерии версии: [RELEASE_0.7.1_ACCEPTANCE.md](RELEASE_0.7.1_ACCEPTANCE.md).
 
 ## Каноническая версия
 
@@ -16,11 +16,11 @@ Release собирается заново из `main` и считается го
 .service/version.txt
 ```
 
-Для 0.7.0 это значение обязано совпадать с:
+Для 0.7.1 это значение обязано совпадать с:
 
 - `website/package.json`;
 - README и CHANGELOG;
-- release notes `v0.7.0.md`;
+- release notes `v0.7.1.md`;
 - smoke artifact names;
 - package `.service/version.txt`;
 - validation report `version`.
@@ -54,7 +54,7 @@ Release builder использует предварительно провере
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.7.0 `
+  -Version 0.7.1 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 
@@ -81,7 +81,7 @@ Package build компилирует системным .NET Framework compiler:
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.7.0 `
+  -Version 0.7.1 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip
 
@@ -95,6 +95,12 @@ pwsh ./scripts/Test-V06Desktop.ps1 `
 ```
 
 Offline rebuild выполняет те же package, native desktop, notification и Validation Viewer fixtures. Online/offline upstream digest, patch target count, strategy count и service count обязаны совпадать.
+
+## Strategy Lab and privacy-safe diagnostic checks
+
+Source-level tests cover HTTPS-only strategy ranking, TLS certificate validation, A/AAAA DNS, DPI-range responses and privacy-minimised diagnostic schema 4. Package validation requires the new diagnostic module. Raw logs and network identities are not included in exported diagnostics. The internal first-run diagnostic schema 3 remains unchanged.
+
+See [STRATEGY_LAB_DIAGNOSTICS.md](STRATEGY_LAB_DIAGNOSTICS.md).
 
 ## Strategy Manifest provenance
 
@@ -142,8 +148,8 @@ Patch report содержит ровно 24 target-а:
 После package verification workflow создаёт:
 
 ```text
-NexRoute-0.7.0-validation.json
-NexRoute-0.7.0-validation.md
+NexRoute-0.7.1-validation.json
+NexRoute-0.7.1-validation.md
 ```
 
 JSON schema v1 содержит:
@@ -162,10 +168,10 @@ Failed required check блокирует publication.
 Финальный Release содержит четыре связанных файла:
 
 ```text
-NexRoute-0.7.0-win-x64.zip
-NexRoute-0.7.0-win-x64.zip.sha256
-NexRoute-0.7.0-validation.json
-NexRoute-0.7.0-validation.md
+NexRoute-0.7.1-win-x64.zip
+NexRoute-0.7.1-win-x64.zip.sha256
+NexRoute-0.7.1-validation.json
+NexRoute-0.7.1-validation.md
 ```
 
 Все четыре subjects входят в одну GitHub artifact attestation. Workflow проверяет каждую attestation до `gh release create`.
@@ -206,7 +212,7 @@ Release workflow из `main` дополнительно:
 
 ## Release checklist ✅
 
-- [ ] repository version равен 0.7.0 во всех canonical surfaces
+- [ ] repository version равен 0.7.1 во всех canonical surfaces
 - [ ] PowerShell AST parsing проходит
 - [ ] все Pester acceptance tests проходят
 - [ ] website typecheck и build проходят

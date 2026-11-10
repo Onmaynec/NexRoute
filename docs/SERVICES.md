@@ -1,4 +1,4 @@
-# Service Matrix v2 — NexRoute 0.7.0
+# Service Matrix v2 — NexRoute 0.7.1
 
 Матрица задаёт фильтры 15 сервисных профилей. Flowseal `1.10.3` поставляет 22 upstream-стратегии, 21 из которых использует специализированные параметры strategy-refresh NexRoute.
 
@@ -68,6 +68,10 @@ lists/ipset-services-user.txt
 - `fresh` — источник успешно обновлён;
 - `cache` — использована свежая кэшированная копия;
 - `failed` — обновление не удалось и допустимого кэша нет.
+
+## Diagnostics 0.7.1
+
+Strategy Lab не повышает HTTPS availability из-за успешного DNS/TLS. В Diagnostic Core доступен privacy-safe health report с агрегированными counts и кодами; экспорт не включает пользовательские списки, адреса и сырые журналы.
 
 ## Diagnostics
 

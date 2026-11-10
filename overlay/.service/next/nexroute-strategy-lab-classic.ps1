@@ -50,59 +50,76 @@ function Get-NrLabControlTargets065 {
 function Test-NrLabDns065 {
     param([Parameter(Mandatory)][string]$HostName)
     $watch=[Diagnostics.Stopwatch]::StartNew()
-    try {
-        $records=@(Resolve-DnsName -Name $HostName -Type A -DnsOnly -ErrorAction Stop | Where-Object { $_.IPAddress })
-        $watch.Stop()
-        return [pscustomobject]@{
-            ok=($records.Count -gt 0)
-            host=$HostName
-            elapsedMs=[math]::Round($watch.Elapsed.TotalMilliseconds,2)
-            addresses=@($records | ForEach-Object { [string]$_.IPAddress } | Select-Object -Unique)
-            error=$null
+    $records=New-Object 'System.Collections.Generic.List[string]'
+    $families=New-Object 'System.Collections.Generic.List[string]'
+    foreach ($family in @('A','AAAA')) {
+        try {
+            foreach ($record in @(Resolve-DnsName -Name $HostName -Type $family -DnsOnly -ErrorAction Stop)) {
+                if ($record.IPAddress) {
+                    $address=$null
+                    if ([Net.IPAddress]::TryParse([string]$record.IPAddress,[ref]$address)) {
+                        $records.Add($address.ToString())
+                        if (-not $families.Contains($family)) { $families.Add($family) }
+                    }
+                }
+            }
+        } catch {
+            # A-only and IPv6-only networks must both remain supported.
+            # Avoid persisting resolver text, which may include local network details.
         }
-    } catch {
-        $watch.Stop()
-        return [pscustomobject]@{
-            ok=$false
-            host=$HostName
-            elapsedMs=[math]::Round($watch.Elapsed.TotalMilliseconds,2)
-            addresses=@()
-            error=$_.Exception.Message
-        }
+    }
+    $watch.Stop()
+    return [pscustomobject]@{
+        ok=($records.Count -gt 0)
+        host=$HostName
+        elapsedMs=[math]::Round($watch.Elapsed.TotalMilliseconds,2)
+        addresses=@($records.ToArray() | Select-Object -Unique)
+        families=@($families.ToArray())
+        error=$(if ($records.Count -eq 0) { 'DNS returned no usable A/AAAA addresses.' } else { $null })
     }
 }
 
+function ConvertTo-NrDpiProbe071 {
+    [CmdletBinding()]
+    param([string]$Output,[int]$ExitCode=0)
+    $match=[regex]::Match([string]$Output,'NR\|(?<code>\d{3})\|(?<bytes>\d+)\|(?<time>[0-9.]+)')
+    if (-not $match.Success) {
+        return [pscustomobject]@{ supported=$true; ok=$false; status='probe-error'; bytes=0L; seconds=0.0; httpCode=0; likelyFreeze=$false; exitCode=$ExitCode }
+    }
+    $bytes=[long]$match.Groups['bytes'].Value
+    $seconds=0.0
+    if (-not [double]::TryParse($match.Groups['time'].Value,[Globalization.NumberStyles]::Float,[Globalization.CultureInfo]::InvariantCulture,[ref]$seconds)) {
+        return [pscustomobject]@{ supported=$true; ok=$false; status='invalid-metrics'; bytes=0L; seconds=0.0; httpCode=0; likelyFreeze=$false; exitCode=$ExitCode }
+    }
+    $code=[int]$match.Groups['code'].Value
+    $freeze=($ExitCode -ne 0 -and $bytes -ge 16384 -and $bytes -le 20480)
+    # A 4xx response or an incomplete transfer is never an OK range test.
+    $ok=($ExitCode -eq 0 -and $code -in @(200,206) -and $bytes -ge 32768 -and
+        $seconds -ge 0 -and (-not [double]::IsNaN($seconds)) -and (-not [double]::IsInfinity($seconds)))
+    $status=if ($freeze) { 'possible-16-20kb-stall' } elseif ($ok) {
+        if ($code -eq 206) { 'range-completed' } else { 'full-response-completed' }
+    } else { 'inconclusive' }
+    return [pscustomobject]@{ supported=$true; ok=$ok; status=$status; bytes=$bytes; seconds=$seconds; httpCode=$code; likelyFreeze=$freeze; exitCode=$ExitCode }
+}
+
 function Test-NrLabDpiFreeze065 {
-    param([int]$TimeoutSeconds=15)
+    param([ValidateRange(1,60)][int]$TimeoutSeconds=15)
     $curl=Get-Command curl.exe -ErrorAction SilentlyContinue
     if (-not $curl) {
         return [pscustomobject]@{ supported=$false; ok=$null; status='curl-missing'; bytes=0L; seconds=0.0; httpCode=0; likelyFreeze=$false }
     }
-
     $format='NR|%{http_code}|%{size_download}|%{time_total}'
     $uri='https://speed.cloudflare.com/__down?bytes=65536'
     $output=''
     $exitCode=0
     try {
-        $output = & $curl.Source -L -sS --range '0-32767' --max-time $TimeoutSeconds -o NUL -w $format $uri 2>&1 | Out-String
+        $output=& $curl.Source -L -sS --range '0-32767' --max-time $TimeoutSeconds -o NUL -w $format $uri 2>&1 | Out-String
         $exitCode=$LASTEXITCODE
     } catch {
-        $output=$_.Exception.Message
+        # Raw curl stderr can contain connection and proxy details.
         $exitCode=1
     }
-
-    $match=[regex]::Match($output,'NR\|(?<code>\d{3})\|(?<bytes>\d+)\|(?<time>[0-9.]+)')
-    if (-not $match.Success) {
-        return [pscustomobject]@{ supported=$true; ok=$false; status='probe-error'; bytes=0L; seconds=0.0; httpCode=0; likelyFreeze=$false; error=$output.Trim() }
-    }
-
-    $bytes=[long]$match.Groups['bytes'].Value
-    $seconds=[double]$match.Groups['time'].Value
-    $code=[int]$match.Groups['code'].Value
-    $likelyFreeze=($exitCode -ne 0 -and $bytes -ge 16384 -and $bytes -le 20480)
-    $ok=($exitCode -eq 0 -and $code -ge 200 -and $code -lt 500 -and $bytes -ge 24576)
-    $status=if ($likelyFreeze) { 'likely-16-20kb-freeze' } elseif ($ok) { 'clear' } else { 'failed' }
-    return [pscustomobject]@{ supported=$true; ok=$ok; status=$status; bytes=$bytes; seconds=$seconds; httpCode=$code; likelyFreeze=$likelyFreeze; exitCode=$exitCode }
+    return ConvertTo-NrDpiProbe071 -Output $output -ExitCode $exitCode
 }
 
 function Get-NrLabPreflight065 {
@@ -114,13 +131,18 @@ function Get-NrLabPreflight065 {
     $strategyCount=@(Get-NrStrategies).Count
     $checks.Add([pscustomobject]@{ id='strategies'; required=$true; ok=($strategyCount -gt 0); details=($strategyCount.ToString() + ' strategy files') })
 
-    $control=$null
-    try { $control=Measure-NrHttpEndpoint -Name 'Control' -Uri 'https://api.github.com' -TimeoutSec 8 } catch { }
+    $healthyControl=$null
+    foreach ($target in @(Get-NrLabControlTargets065 | Where-Object { $_.kind -eq 'control' })) {
+        try {
+            $probe=Measure-NrHttpEndpoint -Name ([string]$target.name) -Uri ([string]$target.uri) -TimeoutSec 8
+            if ($probe -and $probe.ok) { $healthyControl=[string]$target.name; break }
+        } catch { }
+    }
     $checks.Add([pscustomobject]@{
         id='network'
         required=$true
-        ok=($null -ne $control -and [bool]$control.ok)
-        details=$(if ($control -and $control.ok) { ('GitHub control / ' + [math]::Round([double]$control.latencyMs,0) + ' ms') } else { 'GitHub control failed' })
+        ok=(-not [string]::IsNullOrWhiteSpace($healthyControl))
+        details=$(if ($healthyControl) { 'HTTP control ready: ' + $healthyControl } else { 'No HTTP control reachable (GitHub/Cloudflare).' })
     })
     return $checks.ToArray()
 }
@@ -158,7 +180,8 @@ function New-NrLabObservation065 {
         $PacketLossPercent,
         $JitterMs,
         $ThroughputMbps,
-        [string]$Details=''
+        [string]$Details='',
+        [bool]$DiagnosticOnly=$false
     )
     return [pscustomobject]@{
         round=$Round
@@ -172,6 +195,7 @@ function New-NrLabObservation065 {
         jitterMs=$JitterMs
         throughputMbps=$ThroughputMbps
         details=$Details
+        diagnosticOnly=$DiagnosticOnly
     }
 }
 
@@ -227,8 +251,8 @@ function Invoke-NrStrategyProbe065 {
             }
             $loss=Get-NrOptionalAverage064 -Values @($pings | ForEach-Object { Get-NrObservationProperty064 -Observation $_ -Name 'packetLossPercent' })
             $jitter=Get-NrOptionalAverage064 -Values @($pings | ForEach-Object { Get-NrObservationProperty064 -Observation $_ -Name 'jitterMs' })
-            $pingOk=($null -ne $loss -and [double]$loss -lt 50)
-            $observations.Add((New-NrLabObservation065 -Round $round -Target 'NetworkPing' -Protocol 'ICMP' -Critical $false -Control $false -Success $pingOk -LatencyMs $null -PacketLossPercent $loss -JitterMs $jitter -ThroughputMbps $null -Details '1.1.1.1 / 8.8.8.8 / Discord / Telegram'))
+            $pingOk=$(if($null -ne $loss){[bool]([double]$loss -lt 50)}else{$null})
+            $observations.Add((New-NrLabObservation065 -Round $round -Target 'NetworkPing' -Protocol 'ICMP' -Critical $false -Control $false -Success $pingOk -LatencyMs $null -PacketLossPercent $loss -JitterMs $jitter -ThroughputMbps $null -Details 'ICMP telemetry only' -DiagnosticOnly $true))
             if ($pingOk) { $pass++; Write-NrLabCheck065 -State 'OK' -Label 'PING' -Details ('loss={0:N1}% jitter={1:N1}ms' -f $loss,$jitter) }
             else { $warn++; Write-NrLabCheck065 -State 'WARN' -Label 'PING' -Details ('loss={0} jitter={1}' -f $loss,$jitter) }
 
@@ -241,24 +265,24 @@ function Invoke-NrStrategyProbe065 {
                 $control=([string]$target.kind -eq 'control')
 
                 $dns=Test-NrLabDns065 -HostName $host
-                $observations.Add((New-NrLabObservation065 -Round $round -Target $name -Protocol 'DNS' -Critical $false -Control $false -Success ([bool]$dns.ok) -LatencyMs $dns.elapsedMs -PacketLossPercent $loss -JitterMs $jitter -ThroughputMbps $null -Details ($dns.addresses -join ',')))
-                if ($dns.ok) { $pass++; Write-NrLabCheck065 -State 'OK' -Label ('DNS ' + $name) -Details ('{0:N0} ms / {1}' -f $dns.elapsedMs,(@($dns.addresses) -join ', ')) }
+                $observations.Add((New-NrLabObservation065 -Round $round -Target $name -Protocol 'DNS' -Critical $false -Control $false -Success ([bool]$dns.ok) -LatencyMs $dns.elapsedMs -PacketLossPercent $null -JitterMs $null -ThroughputMbps $null -Details ('families=' + ($dns.families -join ',') + '; records=' + @($dns.addresses).Count) -DiagnosticOnly $true))
+                if ($dns.ok) { $pass++; Write-NrLabCheck065 -State 'OK' -Label ('DNS ' + $name) -Details ('{0:N0} ms / {1} records' -f $dns.elapsedMs,@($dns.addresses).Count) }
                 else { $fail++; Write-NrLabCheck065 -State 'FAIL' -Label ('DNS ' + $name) -Details ([string]$dns.error) }
 
                 $tls=$null
                 try { $tls=Test-NrTlsTransportReadiness -HostName $host -Port 443 -TimeoutSeconds 8 } catch { }
                 $tlsOk=($null -ne $tls -and [bool]$tls.ok)
                 $tlsLatency=if ($tls -and $tls.PSObject.Properties['elapsedMs']) { [double]$tls.elapsedMs } else { $null }
-                $observations.Add((New-NrLabObservation065 -Round $round -Target $name -Protocol 'TLS' -Critical $critical -Control $false -Success $tlsOk -LatencyMs $tlsLatency -PacketLossPercent $loss -JitterMs $jitter -ThroughputMbps $null -Details $(if($tls){[string]$tls.protocol}else{''})))
+                $observations.Add((New-NrLabObservation065 -Round $round -Target $name -Protocol 'TLS' -Critical $critical -Control $false -Success $(if ($tls) { [bool]$tls.ok } else { $null }) -LatencyMs $tlsLatency -PacketLossPercent $null -JitterMs $null -ThroughputMbps $null -Details $(if($tls){[string]$tls.protocol}else{'unavailable'}) -DiagnosticOnly $true))
                 if ($tlsOk) { $pass++; Write-NrLabCheck065 -State 'OK' -Label ('TLS ' + $name) -Details ('{0:N0} ms / {1}' -f $tlsLatency,[string]$tls.protocol) }
                 else { $fail++; Write-NrLabCheck065 -State 'FAIL' -Label ('TLS ' + $name) -Details 'Handshake failed.' }
 
                 $http=$null
                 try { $http=Measure-NrHttpEndpoint -Name $name -Uri ([string]$target.uri) -TimeoutSec 12 } catch { }
                 $httpOk=($null -ne $http -and [bool]$http.ok)
-                $httpLatency=if ($http) { [double]$http.latencyMs } else { $null }
+                $httpLatency=if ($http -and $http.PSObject.Properties['latencyMs'] -and $null -ne $http.latencyMs) { [double]$http.latencyMs } else { $null }
                 $throughput=if ($http -and [double]$http.megabitsPerSecond -gt 0) { [double]$http.megabitsPerSecond } else { $null }
-                $observations.Add((New-NrLabObservation065 -Round $round -Target $name -Protocol 'HTTPS' -Critical $critical -Control $control -Success $httpOk -LatencyMs $httpLatency -PacketLossPercent $loss -JitterMs $jitter -ThroughputMbps $throughput -Details $(if($http){'HTTP '+[string]$http.statusCode}else{'no response'})))
+                $observations.Add((New-NrLabObservation065 -Round $round -Target $name -Protocol 'HTTPS' -Critical $critical -Control $control -Success $(if($http){[bool]$http.ok}else{$null}) -LatencyMs $httpLatency -PacketLossPercent $null -JitterMs $null -ThroughputMbps $throughput -Details $(if($http){'HTTP '+[string]$http.statusCode}else{'probe exception'})))
                 if ($httpOk) { $pass++; Write-NrLabCheck065 -State 'OK' -Label ('HTTP ' + $name) -Details ('code={0}  {1:N0} ms' -f $http.statusCode,$httpLatency) }
                 else { $fail++; Write-NrLabCheck065 -State 'FAIL' -Label ('HTTP ' + $name) -Details $(if($http){[string]$http.error}else{'No response'}) }
 
@@ -274,7 +298,7 @@ function Invoke-NrStrategyProbe065 {
         if ($stream -and $stream.ok) {
             $pass++
             Write-NrLabCheck065 -State 'OK' -Label (T 'labThroughput') -Details ('{0:N2} Mbps / {1:N0} KB' -f $stream.megabitsPerSecond,([double]$stream.receivedBytes/1KB))
-            $observations.Add((New-NrLabObservation065 -Round 0 -Target 'CloudflareSpeed' -Protocol 'STREAM' -Critical $false -Control $false -Success $true -LatencyMs $stream.elapsedMs -PacketLossPercent $null -JitterMs $null -ThroughputMbps $stream.megabitsPerSecond -Details ([string]$stream.uri)))
+            $observations.Add((New-NrLabObservation065 -Round 0 -Target 'CloudflareSpeed' -Protocol 'STREAM' -Critical $false -Control $false -Success $true -LatencyMs $stream.elapsedMs -PacketLossPercent $null -JitterMs $null -ThroughputMbps $stream.megabitsPerSecond -Details ('receivedBytes=' + [long]$stream.receivedBytes) -DiagnosticOnly $true))
         } else {
             $warn++
             Write-NrLabCheck065 -State 'WARN' -Label (T 'labThroughput') -Details 'Streaming measurement unavailable.'
@@ -288,11 +312,11 @@ function Invoke-NrStrategyProbe065 {
         } elseif ($media -and $media.ok) {
             $pass++
             Write-NrLabCheck065 -State 'OK' -Label (T 'labMedia') -Details ('segment={0:N0} KB' -f ([double]$media.segmentBytes/1KB))
-            $observations.Add((New-NrLabObservation065 -Round 0 -Target 'YouTubeMedia' -Protocol 'HLS' -Critical $true -Control $false -Success $true -LatencyMs $media.elapsedMs -PacketLossPercent $null -JitterMs $null -ThroughputMbps $null -Details 'media segment ready'))
+            $observations.Add((New-NrLabObservation065 -Round 0 -Target 'YouTubeMedia' -Protocol 'HLS' -Critical $true -Control $false -Success $true -LatencyMs $media.elapsedMs -PacketLossPercent $null -JitterMs $null -ThroughputMbps $null -Details 'media segment ready' -DiagnosticOnly $true))
         } else {
             $warn++
             Write-NrLabCheck065 -State 'WARN' -Label (T 'labMedia') -Details 'Media probe did not confirm playback readiness.'
-            if ($media) { $observations.Add((New-NrLabObservation065 -Round 0 -Target 'YouTubeMedia' -Protocol 'HLS' -Critical $true -Control $false -Success $false -LatencyMs $null -PacketLossPercent $null -JitterMs $null -ThroughputMbps $null -Details ([string]$media.status))) }
+            if ($media) { $observations.Add((New-NrLabObservation065 -Round 0 -Target 'YouTubeMedia' -Protocol 'HLS' -Critical $true -Control $false -Success $false -LatencyMs $null -PacketLossPercent $null -JitterMs $null -ThroughputMbps $null -Details ([string]$media.status) -DiagnosticOnly $true)) }
         }
 
         $dpi=Test-NrLabDpiFreeze065
@@ -302,7 +326,7 @@ function Invoke-NrStrategyProbe065 {
         } elseif ($dpi.likelyFreeze) {
             $fail++
             Write-NrLabCheck065 -State 'FAIL' -Label (T 'labDpiFreeze') -Details ('possible 16-20 KB freeze / {0} bytes' -f $dpi.bytes)
-            $observations.Add((New-NrLabObservation065 -Round 0 -Target 'DpiRange' -Protocol 'DPI' -Critical $false -Control $false -Success $false -LatencyMs ($dpi.seconds*1000) -PacketLossPercent $null -JitterMs $null -ThroughputMbps $null -Details $dpi.status))
+            $observations.Add((New-NrLabObservation065 -Round 0 -Target 'DpiRange' -Protocol 'DPI' -Critical $false -Control $false -Success $false -LatencyMs ($dpi.seconds*1000) -PacketLossPercent $null -JitterMs $null -ThroughputMbps $null -Details $dpi.status -DiagnosticOnly $true))
         } elseif ($dpi.ok) {
             $pass++
             Write-NrLabCheck065 -State 'OK' -Label (T 'labDpiFreeze') -Details ('range completed / {0} bytes / {1:N2}s' -f $dpi.bytes,$dpi.seconds)
@@ -312,7 +336,25 @@ function Invoke-NrStrategyProbe065 {
             Write-NrLabCheck065 -State 'WARN' -Label (T 'labDpiFreeze') -Details ('probe failed without 16-20 KB signature / bytes=' + $dpi.bytes)
         }
 
-        $details.Add([pscustomobject]@{ throughput=$stream; media=$media; dpi=$dpi })
+        # Keep only allowlisted metrics in history. Env-configured URIs may
+        # contain signed query tokens and must not be persisted.
+        $details.Add([pscustomobject]@{
+            throughput=[pscustomobject]@{
+                ok=[bool]($stream -and $stream.ok)
+                receivedBytes=$(if($stream){[long]$stream.receivedBytes}else{0L})
+                megabitsPerSecond=$(if($stream -and $stream.ok){[double]$stream.megabitsPerSecond}else{$null})
+            }
+            media=[pscustomobject]@{
+                status=$(if($media){[string]$media.status}else{'unavailable'})
+                segmentBytes=$(if($media){[long]$media.segmentBytes}else{0L})
+            }
+            dpi=[pscustomobject]@{
+                status=[string]$dpi.status
+                bytes=[long]$dpi.bytes
+                httpCode=[int]$dpi.httpCode
+                likelyFreeze=[bool]$dpi.likelyFreeze
+            }
+        })
     } finally {
         Stop-NrStrategyRuntime
     }
@@ -345,13 +387,15 @@ function Save-NrStrategyLabRun065 {
         interface='classic-0.2.2'
         rankingModel='critical-services-stability-v1'
         createdUtc=[DateTime]::UtcNow.ToString('o')
-        network=Get-NrActiveNetworkKey
+        network='redacted'
         repeatCount=$RepeatCount
         minimumObservations=6
         probes=@('runtime','dns','tls','https','icmp','stream','hls','dpi-range')
-        controlPolicy='HTTP control targets must pass repeated measurements; extra probes remain visible in diagnostics'
+        controlPolicy='Repeated HTTP controls must pass; DNS/TLS/ICMP/HLS/stream/DPI are diagnostic-only'
+        measurementModel='https-primary-071'
         scoringWeights=[ordered]@{criticalAvailability=0.60;secondaryAvailability=0.10;stability=0.20;optionalTelemetry=0.10}
         missingMetricPolicy='exclude-and-renormalize'
+        privacyPolicy='no-network-key-or-raw-probe-urls'
         results=$Ranked
     }
     $jsonPath=Join-Path $dir ($stamp+'.json')
@@ -386,6 +430,7 @@ function Show-NrStrategyLabResults065 {
         if (-not [string]::IsNullOrWhiteSpace([string]$winner[0].recommendationReason)) {
             Write-Host ('  WHY: ' + $winner[0].recommendationReason) -ForegroundColor Yellow
         }
+        Write-NrLabCheck065 -State 'INFO' -Label 'EVIDENCE' -Details 'HTTPS reachability only; voice/streaming performance requires separate measurements.'
         $script:NrState.lastWorkingStrategy=[string]$winner[0].strategy
         Save-NrState
         Send-NrNotification -Title 'NexRoute Strategy Lab' -Message ('Best: '+$winner[0].strategy+' / '+$winner[0].score) -Level Info
@@ -432,7 +477,7 @@ function Invoke-NrStrategyLab {
                 $candidates.Add((Invoke-NrStrategyProbe065 -Strategy $chosen[$i] -RepeatCount $repeatCount -StrategyIndex ($i+1) -StrategyTotal $chosen.Count))
             } catch {
                 $candidates.Add([pscustomobject]@{ strategy=$chosen[$i].Name; started=$false; observations=@(); diagnostics=@(); passedChecks=0; failedChecks=1; warningChecks=0; probeError=$_.Exception.Message })
-                Write-NrLog -Level ERROR -Message 'Strategy Lab 0.6.5 probe failed' -Data @{ strategy=$chosen[$i].Name; error=$_.Exception.Message }
+                Write-NrLog -Level ERROR -Message 'Strategy Lab probe failed' -Data @{ strategy=$chosen[$i].Name; errorType=$_.Exception.GetType().Name }
             }
         }
     } finally {

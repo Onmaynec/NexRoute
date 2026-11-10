@@ -6,6 +6,18 @@
 
 Пока нет изменений.
 
+## [0.7.1] - 2026-11-10
+
+### Strategy Lab и диагностика
+
+- Рейтинг опирается на повторные HTTPS-замеры. DNS, TLS, ICMP, HLS, streaming и DPI-range учитываются как отдельная диагностика.
+- Сертификат TLS теперь проверяется системным trust store; A/AAAA DNS работает на IPv4- и IPv6-only сетях.
+- DPI-range не засчитывает HTTP 4xx, timeout и неполную передачу.
+- Readiness видео требует HLS-сегмент, голосовой UDP помечен как не измеренный.
+- Добавлен диагностический health summary и privacy-minimised ZIP/clipboard export с разрешёнными полями.
+- В истории не сохраняются network identity и raw URL с токенами; сохранена совместимость схемы и rollback.
+- Добавлены regression-тесты рейтинга и диагностики.
+
 ## [0.7.0] - 2026-11-10
 
 ### Strategy Manifest

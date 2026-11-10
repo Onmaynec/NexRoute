@@ -1,6 +1,8 @@
 # Strategy Lab ranking model
 
-NexRoute 0.6.4 replaces the legacy one-shot synthetic score with an explainable repeated-observation ranking model.
+NexRoute 0.7.1 сохраняет explainable ranking, но использует повторные **HTTPS-наблюдения** для доступности. DNS, TLS, ICMP, HLS, streaming и DPI-range помечены как diagnosticOnly и не повышают score, если HTTPS не работает.
+
+NexRoute 0.6.4 replaced the legacy one-shot synthetic score with an explainable repeated-observation ranking model.
 
 ## Measurement contract
 
@@ -72,4 +74,4 @@ The final strategy-id rule makes exact ties deterministic and is called out in t
 
 ## History compatibility
 
-New runs use history schema 3 and ranking schema 1. The CLI and native Dashboard understand the new fields, including `inconclusive` and winner explanations. Older history files remain readable through the legacy score display path; NexRoute does not rewrite old history into the new model.
+New runs use history schema 4 and ranking schema 1. The 0.7.1 measurement model is https-primary-071; previous history files are not modified. The CLI and native Dashboard understand the new fields, including `inconclusive` and winner explanations. Older history files remain readable through the legacy score display path; NexRoute does not rewrite old history into the new model.

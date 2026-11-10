@@ -131,6 +131,7 @@ try {
         '.service/next/nexroute-repair-v2.ps1','.service/next/nexroute-repair-v2-fixes.ps1',
         '.service/next/nexroute-strategy-builder-v2.ps1','.service/next/nexroute-strategy-builder-v2-fixes.ps1',
         '.service/next/nexroute-strategy-manifest.ps1','.service/strategy-manifest.json',
+        '.service/next/nexroute-diagnostics-071.ps1',
         '.service/strategy-refresh-report.json',
         '.service/next/nexroute-ipv6-runtime-v2.ps1','.service/next/nexroute-ipv6-runtime-v2-fixes.ps1','.service/next/nexroute-family-probe.ps1',
         '.service/next/nexroute-media.ps1','.service/next/nexroute-strategy-lab-v2.ps1','.service/next/nexroute-strategy-lab-classic.ps1',
