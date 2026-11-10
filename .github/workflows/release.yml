@@ -141,6 +141,7 @@ jobs:
             -OutputDirectory ./artifacts `
             -PackageSha256 $env:NEXROUTE_SHA256 `
             -UpstreamSha256 $env:NEXROUTE_UPSTREAM_SHA256 `
+            -StrategyManifestPath ./overlay/.service/strategy-manifest.json `
             -PatchTargetCount ([int]$env:NEXROUTE_PATCH_TARGETS) `
             -StrategyCount ([int]$env:NEXROUTE_STRATEGIES) `
             -ServiceCount ([int]$env:NEXROUTE_SERVICES) `

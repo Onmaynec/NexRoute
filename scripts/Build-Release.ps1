@@ -364,9 +364,29 @@ try {
     Copy-Item -LiteralPath $controller -Destination $coreController -Force
     Copy-Item -LiteralPath (Join-Path $repositoryRoot 'overlay/.service/nexroute-services-entry.ps1') -Destination $controller -Force
     Set-Content -LiteralPath (Join-Path $serviceDirectory 'language.txt') -Value 'EN' -Encoding ASCII
+    $strategyManifestSource = Join-Path $repositoryRoot 'overlay/.service/strategy-manifest.json'
+    $strategyManifestTarget = Join-Path $serviceDirectory 'strategy-manifest.json'
+    if (-not (Test-Path -LiteralPath $strategyManifestSource -PathType Leaf)) {
+        throw "The checked-in strategy manifest is missing: $strategyManifestSource"
+    }
+    Copy-Item -LiteralPath $strategyManifestSource -Destination $strategyManifestTarget -Force
 
     Write-Step 'Applying Service Matrix runtime'
     & $controller -Mode Apply -Root $packageRoot | Out-Null
+
+    # The build-only refresh writes per-profile hashes linked to the immutable
+    # strategy manifest. Fail before packaging if either side disagrees.
+    $refreshReportPath = Join-Path $serviceDirectory 'strategy-refresh-report.json'
+    if (-not (Test-Path -LiteralPath $refreshReportPath -PathType Leaf)) {
+        throw 'Build did not create strategy-refresh-report.json.'
+    }
+    $refreshReport = Get-Content -LiteralPath $refreshReportPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $strategyManifestHash = (Get-FileHash -LiteralPath $strategyManifestTarget -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ([string]$refreshReport.manifest.sha256 -cne $strategyManifestHash -or
+        [int]$refreshReport.manifest.profileCount -ne 21 -or
+        @($refreshReport.strategies).Count -ne 21) {
+        throw 'Strategy refresh and packaged manifest provenance disagree.'
+    }
 
     $strategyFiles = @(Get-ChildItem -LiteralPath $packageRoot -Filter '*.bat' -File | Where-Object { $_.Name -notin @('service.bat', 'nexroute.bat') })
     if ($strategyFiles.Count -ne 22) { throw "Expected 22 real strategy BAT files, got $($strategyFiles.Count)." }
@@ -409,6 +429,16 @@ try {
             infrastructureTargets = 2
         }
         patches = @($patchJournal.ToArray())
+        strategyManifest = [ordered]@{
+            schemaVersion = 1
+            path = '.service/strategy-manifest.json'
+            sha256 = $strategyManifestHash
+            strategySetVersion = [string]$refreshReport.manifest.strategySetVersion
+            profileCount = 21
+            profiles = @($refreshReport.strategies | ForEach-Object {
+                [ordered]@{ id = [string]$_.profile; sha256 = [string]$_.profileSha256 }
+            })
+        }
     }
     Write-NexRouteJson -Path (Join-Path $serviceDirectory 'patch-report.json') -Value $patchReport
 
@@ -424,6 +454,8 @@ try {
         'Service Matrix schema: 2',
         'State schema: 2 with legacy migration and backup',
         'Strategy integration: 22/22 real Flowseal BAT profiles',
+        ('Strategy manifest SHA-256: {0}' -f $strategyManifestHash),
+        'Strategy set: 0.7.0 with 21 validated specialized profiles',
         'Dynamic filters: isolated per-service domain/IP/TCP/UDP groups',
         'Shared-domain policy: excluded only when every owner is disabled',
         'IP sources: strict IPv4 CIDR validation and 14-day last-known-good cache',

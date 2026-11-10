@@ -12,6 +12,10 @@ Asset:      zapret-discord-youtube-1.10.3.zip
 
 Точная идентичность архива хранится в `.service/upstream-manifest.json`. Release-сборка не использует плавающий `latest` и не принимает архив только по совпадению имени.
 
+## Два независимых manifest
+
+`.service/upstream-manifest.json` закрепляет исходный архив Flowseal и его SHA-256. В версии NexRoute 0.7.0 добавлен отдельный `.service/strategy-manifest.json`: он описывает 21 специализированный профиль, но не меняет upstream release lock и не разрешает загрузку сторонних скриптов. См. [STRATEGY_MANIFEST.md](STRATEGY_MANIFEST.md).
+
 ## Декларативный manifest
 
 Manifest schema v1 описывает:

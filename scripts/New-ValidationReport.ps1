@@ -4,6 +4,7 @@ param(
     [string]$OutputDirectory = (Join-Path (Get-Location) 'artifacts'),
     [string]$PackageSha256,
     [string]$UpstreamSha256,
+    [string]$StrategyManifestPath,
     [int]$PatchTargetCount = 0,
     [int]$StrategyCount = 0,
     [int]$ServiceCount = 0,
@@ -201,6 +202,7 @@ function New-NrValidationReportDocument {
         [Parameter(Mandatory=$true)][ValidatePattern('^\d+\.\d+\.\d+$')][string]$Version,
         [string]$PackageSha256,
         [string]$UpstreamSha256,
+        [string]$StrategyManifestPath,
         [int]$PatchTargetCount,
         [int]$StrategyCount,
         [int]$ServiceCount,
@@ -220,6 +222,28 @@ function New-NrValidationReportDocument {
         [string]$Ipv6RuntimeStatus = 'experimental'
     )
 
+    $strategyManifestEvidence = $null
+    if (-not [string]::IsNullOrWhiteSpace($StrategyManifestPath)) {
+        # Validate the manifest with the same parser used by the release builder.
+        $refreshModule = Join-Path $PSScriptRoot '../overlay/.service/next/nexroute-strategy-refresh.ps1'
+        if (-not (Test-Path -LiteralPath $refreshModule -PathType Leaf)) {
+            throw "Strategy manifest validator not found: $refreshModule"
+        }
+        . $refreshModule
+        $catalog = Read-NrStrategyManifest -Path $StrategyManifestPath
+        $strategyManifestEvidence = [pscustomobject][ordered]@{
+            schemaVersion = 1
+            strategySetVersion = [string]$catalog.StrategySetVersion
+            sha256 = [string]$catalog.Sha256
+            profileCount = @($catalog.Profiles).Count
+            profiles = @($catalog.Profiles | ForEach-Object {
+                [pscustomobject][ordered]@{
+                    id = [string]$_.id
+                    sha256 = Get-NrManifestProfileSha256 -Profile $_
+                }
+            })
+        }
+    }
     $environment = Get-NrValidationEnvironment
     $checks = @()
     $add = {
@@ -353,6 +377,7 @@ function New-NrValidationReportDocument {
         release = [pscustomobject][ordered]@{
             packageSha256 = Get-NrValidationText $PackageSha256
             upstreamSha256 = Get-NrValidationText $UpstreamSha256
+            strategyManifest = $strategyManifestEvidence
             patchTargetCount = $PatchTargetCount
             strategyCount = $StrategyCount
             serviceCount = $ServiceCount
@@ -387,6 +412,7 @@ function ConvertTo-NrValidationMarkdown {
         '','## Release identities','',
         "- Package SHA-256: $($Report.release.packageSha256)",
         "- Upstream SHA-256: $($Report.release.upstreamSha256)",
+        $(if ($Report.release.strategyManifest) { "- Strategy manifest SHA-256: $($Report.release.strategyManifest.sha256)" } else { '- Strategy manifest: not supplied' }),
         "- Patch targets: $($Report.release.patchTargetCount)",
         "- Strategies: $($Report.release.strategyCount)",
         "- Services: $($Report.release.serviceCount)",
@@ -442,7 +468,7 @@ if (-not $NoMain) {
         }
     }
     $report = New-NrValidationReportDocument -Version $Version -PackageSha256 $PackageSha256 `
-        -UpstreamSha256 $UpstreamSha256 -PatchTargetCount $PatchTargetCount -StrategyCount $StrategyCount `
+        -UpstreamSha256 $UpstreamSha256 -StrategyManifestPath $StrategyManifestPath -PatchTargetCount $PatchTargetCount -StrategyCount $StrategyCount `
         -ServiceCount $ServiceCount -NativeTrayIncluded $NativeTrayIncluded -NativeTrayExitCode $NativeTrayExitCode `
         -NativeDashboardIncluded $NativeDashboardIncluded -NativeDashboardExitCode $NativeDashboardExitCode `
         -NativeDashboardSha256 $NativeDashboardSha256 `

@@ -6,6 +6,19 @@
 
 Пока нет изменений.
 
+## [0.7.0] - 2026-11-10
+
+### Strategy Manifest
+
+- 21 специализированный DPI-профиль перенесён в `overlay/.service/strategy-manifest.json` с версией схемы и сохранением исходных stable IDs;
+- добавлен строгий parser/validator параметров, режимов, SNI, TCP/UDP scopes, путей ресурсов и зависимостей от payload-файлов;
+- поддержан прежний BAT-генератор без изменения команд `winws`;
+- golden regression сравнивает каталог и байты BAT со зафиксированной реализацией 0.6.3;
+- Builder и preview читают единые безопасные сведения о профилях, workers принимают stable ID как альтернативу имени BAT;
+- в package patch report, strategy refresh report и validation report добавлены SHA-256 manifest и 21 profile digest;
+- обновлены RU/EN документация, сайт, тесты версии и release contracts;
+- Flowseal 1.10.3, 22 upstream-стратегии, 24 patch targets и Service Matrix не изменены.
+
 ## [0.6.6] - 2026-11-10
 
 ### Стабилизация

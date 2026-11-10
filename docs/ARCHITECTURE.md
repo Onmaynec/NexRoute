@@ -1,4 +1,4 @@
-# Архитектура NexRoute 0.6.6 🏗️
+# Архитектура NexRoute 0.7.0 🏗️
 
 ## Принцип
 
@@ -31,7 +31,15 @@ Immutable Flowseal 1.10.3 archive
         └── stable GitHub Release
 ```
 
-Flowseal 1.10.3 содержит 22 upstream-стратегии, включая `general (ALT13).bat`. 21 специализированный профиль strategy-refresh 0.6.3 пока находится в PowerShell-каталоге; перенос в manifest отнесён к 0.7.0. Patch report фиксирует 24 target-а: 22 стратегии, `service.bat` и `utils/test zapret.ps1`.
+Flowseal 1.10.3 содержит 22 upstream-стратегии, включая `general (ALT13).bat`. Для 21 специализированного профиля NexRoute источник истины — `overlay/.service/strategy-manifest.json` (schema v1, strategy set 0.7.0). Генератор `nexroute-strategy-refresh.ps1` не хранит больше каталог внутри PowerShell; старые значения и BAT-байты подтверждаются golden tests. Patch report по-прежнему содержит 24 target-а: 22 стратегии, `service.bat` и `utils/test zapret.ps1`.
+
+## Strategy Manifest
+
+Источник: `overlay/.service/strategy-manifest.json`. Схема не допускает неизвестные поля, произвольные команды и опасные пути. Валидатор `nexroute-strategy-manifest.ps1` нормализует параметры перед передачей в прежний генератор BAT.
+
+Во время сборки manifest проверяется до изменения файлов. Сгенерированные результаты связаны SHA-256 в `.service/strategy-refresh-report.json` и `.service/patch-report.json`; финальная проверка пакета повторно вычисляет manifest digest и per-profile hashes. Release validation публикует те же provenance данные.
+
+В runtime приложение читает только установленные локальные JSON/BAT-файлы: Strategy Builder показывает read-only projection, preview и worker selection используют те же ID и имена файлов. Сеть не используется для загрузки произвольных стратегий. Подробнее: [STRATEGY_MANIFEST.md](STRATEGY_MANIFEST.md).
 
 ## Control layer
 

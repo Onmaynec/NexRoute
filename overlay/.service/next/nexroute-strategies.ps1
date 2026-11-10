@@ -156,6 +156,14 @@ function Show-NrStrategyPreview {
     $result=Test-NrStrategyConfiguration -Path $strategy.FullName
     Write-NrHeader -Title (T 'previewCommand')
     Write-Host ('  ' + $strategy.BaseName) -ForegroundColor Cyan
+    if (Get-Command 'Get-NrManifestStrategyByName' -ErrorAction SilentlyContinue) {
+        $manifestProfile = Get-NrManifestStrategyByName -Name $strategy.Name
+        if ($manifestProfile) {
+            Write-Host ('  Profile: ' + $manifestProfile.id) -ForegroundColor DarkGray
+            Write-Host ('  Family : ' + $manifestProfile.family) -ForegroundColor DarkGray
+            Write-Host ('  Modes  : ' + ($manifestProfile.modes -join ',')) -ForegroundColor DarkGray
+        }
+    }
     Write-Host ''
     Write-Host $result.Command -ForegroundColor Gray
     Write-Host ''

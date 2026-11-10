@@ -42,9 +42,10 @@ function Invoke-NexRoute063StrategyRefreshBuild {
     param([Parameter(Mandatory)][string]$Root)
 
     $rootPath = [System.IO.Path]::GetFullPath($Root)
+    # Preserve the 0.6.3 payload gate before checking the new manifest.
     Assert-NexRoute063Payloads -Root $rootPath
-
-    $catalog = @(Get-NexRoute063StrategyCatalog)
+    $manifest = Read-NrStrategyManifest -PayloadRoot $rootPath
+    $catalog = @($manifest.Catalog)
     if ($catalog.Count -ne 21) {
         throw "Expected 21 NexRoute 0.6.3 strategy profiles, got $($catalog.Count)."
     }
@@ -85,6 +86,8 @@ function Invoke-NexRoute063StrategyRefreshBuild {
 
     $strategyReports = New-Object 'System.Collections.Generic.List[object]'
     foreach ($spec in $catalog) {
+        $sourceProfile = @($manifest.Profiles | Where-Object { $_.id -ceq $spec.Profile }) | Select-Object -First 1
+        if (-not $sourceProfile) { throw "Strategy manifest catalog mismatch: $($spec.Profile)" }
         $path = Join-Path $rootPath ([string]$spec.File)
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             throw "Missing strategy file: $($spec.File)"
@@ -108,6 +111,7 @@ function Invoke-NexRoute063StrategyRefreshBuild {
             file = ([string]$spec.File).Replace('\','/')
             profile = [string]$spec.Profile
             family = [string]$spec.Family
+            profileSha256 = Get-NrManifestProfileSha256 -Profile $sourceProfile
             beforeSha256 = $before
             afterSha256 = $after
         })
@@ -120,7 +124,7 @@ function Invoke-NexRoute063StrategyRefreshBuild {
     else {
         'unknown'
     }
-    $targetVersion = if ($sourceVersion -eq '0.6.3') { '0.6.3' } else { '0.6.3-candidate' }
+    $targetVersion = if ($sourceVersion -match '^[0-9]+[.][0-9]+[.][0-9]+$') { $sourceVersion } else { '0.6.3-candidate' }
 
     $report = [ordered]@{
         schemaVersion = 1
@@ -129,6 +133,13 @@ function Invoke-NexRoute063StrategyRefreshBuild {
         targetProvider = 'Informatsionnye Kommunikatsii / wired / Sibay, Russia'
         strategyCount = $strategyReports.Count
         strategySet = 'NexRoute 0.6.3 RKN refresh'
+        manifest = [ordered]@{
+            schemaVersion = 1
+            path = '.service/strategy-manifest.json'
+            strategySetVersion = [string]$manifest.StrategySetVersion
+            sha256 = [string]$manifest.Sha256
+            profileCount = $catalog.Count
+        }
         criticalTargets = @(
             'DiscordGateway',
             'DiscordCDN',
@@ -161,6 +172,7 @@ function Invoke-NexRoute063StrategyRefreshBuild {
 
     return [pscustomobject]@{
         StrategyCount = $strategyReports.Count
+        ManifestSha256 = [string]$manifest.Sha256
         Report = $reportPath
         DiscordList = $discordListPath
         YouTubeList = $youtubeListPath

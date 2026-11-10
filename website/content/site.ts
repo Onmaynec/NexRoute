@@ -102,7 +102,7 @@ export const detailedFeatures = [
     eyebrow: "SERVICE MATRIX",
     title: "Профили сервисов и отдельные capture scopes",
     description:
-      "Выбирайте нужные платформы, а NexRoute подготовит отдельные доменные и IP-списки, TCP/UDP groups и non-overlapping worker scopes.",
+      "Выбирайте нужные платформы, а NexRoute подготовит отдельные доменные и IP-списки, TCP/UDP groups и non-overlapping worker scopes. Встроенные DPI-профили читаются из проверяемого Strategy Manifest 0.7.0.",
     bullets: ["15 готовых профилей", "Изолированные workers", "Restart-safe state"],
     href: "/docs/service-matrix",
     icon: SlidersHorizontal,

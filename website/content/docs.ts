@@ -23,14 +23,14 @@ export const docsPages: Record<string, DocPage> = {
   "getting-started": {
     slug: "getting-started",
     title: "Быстрый старт",
-    description: "Проверка четырёх release assets, распаковка и первый запуск NexRoute 0.6.6.",
+    description: "Проверка четырёх release assets, распаковка и первый запуск NexRoute 0.7.0.",
     sourceUrl: `${repo}/README.md`,
     sections: [
       {
         id: "requirements",
         title: "Перед началом",
         paragraphs: [
-          "NexRoute 0.6.6 предназначен для Windows 10 x64 и Windows 11 x64. Терминальный интерфейс поддерживает Windows PowerShell 5.1, а нативные desktop-компоненты компилируются без NuGet-зависимостей.",
+          "NexRoute 0.7.0 предназначен для Windows 10 x64 и Windows 11 x64. Терминальный интерфейс поддерживает Windows PowerShell 5.1, а нативные desktop-компоненты компилируются без NuGet-зависимостей.",
         ],
         bullets: [
           "Права администратора для установки службы и управления WinDivert.",
@@ -459,7 +459,7 @@ export const docsPages: Record<string, DocPage> = {
         id: "upstream",
         title: "Locked upstream",
         paragraphs: [
-          "Declarative upstream manifest закрепляет Flowseal repository, tag, asset, size, SHA-256 и required paths. Несовпадение останавливает build до применения 24 tracked patch targets.",
+          "Declarative upstream manifest закрепляет Flowseal repository, tag, asset, size, SHA-256 и required paths. Несовпадение останавливает build до применения 24 tracked patch targets. В NexRoute 0.7.0 отдельный локальный strategy-manifest.json описывает 21 специализированный профиль и связывается SHA-256 с отчётом сборки.",
         ],
       },
       {
@@ -469,7 +469,7 @@ export const docsPages: Record<string, DocPage> = {
           language: "powershell",
           title: "Build-Release.ps1",
           value:
-            "pwsh ./scripts/Build-Release.ps1 `\n  -Version 0.6.6 `\n  -OutputDirectory ./artifacts `\n  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip",
+            "pwsh ./scripts/Build-Release.ps1 `\n  -Version 0.7.0 `\n  -OutputDirectory ./artifacts `\n  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip",
         },
       },
       {
@@ -479,7 +479,7 @@ export const docsPages: Record<string, DocPage> = {
           language: "powershell",
           title: "Build-Release.ps1",
           value:
-            "pwsh ./scripts/Build-Release.ps1 `\n  -Version 0.6.6 `\n  -OutputDirectory ./artifacts-offline `\n  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip",
+            "pwsh ./scripts/Build-Release.ps1 `\n  -Version 0.7.0 `\n  -OutputDirectory ./artifacts-offline `\n  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip",
         },
         note:
           "Offline package повторяет desktop, notification, viewer и provenance self-tests и обязан использовать тот же upstream digest.",

@@ -1,0 +1,1624 @@
+{
+  "schemaVersion": 1,
+  "strategySetVersion": "0.7.0",
+  "sourceCatalogVersion": "0.6.3",
+  "upstreamVersion": "1.10.3",
+  "profiles": [
+    {
+      "id": "nr063-01-auto-sniext-ts",
+      "displayName": "general",
+      "file": "general.bat",
+      "family": "auto-multisplit-sniext-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multisplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": [
+          "2",
+          "sniext+1"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 679,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 6,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-02-static-fakedsplit-ts",
+      "displayName": "general (ALT)",
+      "file": "general (ALT).bat",
+      "family": "static-fakedsplit-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "fakedsplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 6,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-03-auto-multidisorder-ts",
+      "displayName": "general (ALT2)",
+      "file": "general (ALT2).bat",
+      "family": "auto-multidisorder-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multidisorder"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": [
+          "1",
+          "midsld"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 11,
+        "quicRepeats": 11,
+        "discordRepeats": 5,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-04-auto-hostfakesplit-ts",
+      "displayName": "general (ALT3)",
+      "file": "general (ALT3).bat",
+      "family": "auto-hostfakesplit-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "hostfakesplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 5,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-05-static-multisplit-badseq",
+      "displayName": "general (ALT4)",
+      "file": "general (ALT4).bat",
+      "family": "static-multisplit-badseq",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multisplit"
+        ],
+        "fooling": [
+          "badseq"
+        ],
+        "splitPositions": [
+          "1"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 681,
+        "repeats": 8,
+        "quicRepeats": 10,
+        "discordRepeats": 6,
+        "cutoff": 3
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-06-syndata-multidisorder",
+      "displayName": "general (ALT5)",
+      "file": "general (ALT5).bat",
+      "family": "syndata-multidisorder",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "syndata",
+          "multidisorder"
+        ],
+        "fooling": [],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 0,
+        "quicRepeats": 11,
+        "discordRepeats": 6,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "ipv4"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-07-static-multisplit-ts-681",
+      "displayName": "general (ALT6)",
+      "file": "general (ALT6).bat",
+      "family": "static-multisplit-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multisplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": [
+          "1"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 681,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 4,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-08-auto-sniext-ts-ya",
+      "displayName": "general (ALT7)",
+      "file": "general (ALT7).bat",
+      "family": "auto-multisplit-sniext-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multisplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": [
+          "2",
+          "sniext+1"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "ya.ru",
+        "secondary": "www.google.com"
+      },
+      "parameters": {
+        "seqOvl": 679,
+        "repeats": 8,
+        "quicRepeats": 10,
+        "discordRepeats": 4,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-09-auto-fake-badseq",
+      "displayName": "general (ALT8)",
+      "file": "general (ALT8).bat",
+      "family": "auto-fake-badseq",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake"
+        ],
+        "fooling": [
+          "badseq"
+        ],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 8,
+        "quicRepeats": 9,
+        "discordRepeats": 5,
+        "cutoff": 3
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-10-auto-fakedsplit-badseq",
+      "displayName": "general (ALT9)",
+      "file": "general (ALT9).bat",
+      "family": "auto-fakedsplit-badseq",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "fakedsplit"
+        ],
+        "fooling": [
+          "badseq"
+        ],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 4,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-11-auto-multisplit-ts-652",
+      "displayName": "general (ALT10)",
+      "file": "general (ALT10).bat",
+      "family": "auto-multisplit-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multisplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": [
+          "1"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 652,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 4,
+        "cutoff": 3
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-12-hostfakesplit-only-ts",
+      "displayName": "general (ALT11)",
+      "file": "general (ALT11).bat",
+      "family": "hostfakesplit-only-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "hostfakesplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 0,
+        "quicRepeats": 10,
+        "discordRepeats": 5,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-13-static-stun2-hybrid",
+      "displayName": "general (ALT12)",
+      "file": "general (ALT12).bat",
+      "family": "static-stun2-hybrid",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multisplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": [
+          "1"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 664,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 4,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-14-exp-auto-stun2",
+      "displayName": "general (EXP)",
+      "file": "general (EXP).bat",
+      "family": "exp-auto-stun2",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multisplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": [
+          "1"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 480,
+        "repeats": 8,
+        "quicRepeats": 12,
+        "discordRepeats": 4,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-15-auto-multidisorder-badseq",
+      "displayName": "general (FAKE TLS AUTO)",
+      "file": "general (FAKE TLS AUTO).bat",
+      "family": "auto-multidisorder-badseq",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multidisorder"
+        ],
+        "fooling": [
+          "badseq"
+        ],
+        "splitPositions": [
+          "1",
+          "midsld"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 11,
+        "quicRepeats": 11,
+        "discordRepeats": 6,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-16-auto-fakedsplit-ts",
+      "displayName": "general (FAKE TLS AUTO ALT)",
+      "file": "general (FAKE TLS AUTO ALT).bat",
+      "family": "auto-fakedsplit-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "fakedsplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 6,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-17-auto-hostfakesplit-altorder",
+      "displayName": "general (FAKE TLS AUTO ALT2)",
+      "file": "general (FAKE TLS AUTO ALT2).bat",
+      "family": "auto-hostfakesplit-altorder",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "hostfakesplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 5,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-18-auto-multisplit-ts-681",
+      "displayName": "general (FAKE TLS AUTO ALT3)",
+      "file": "general (FAKE TLS AUTO ALT3).bat",
+      "family": "auto-multisplit-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multisplit"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": [
+          "1"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 681,
+        "repeats": 8,
+        "quicRepeats": 12,
+        "discordRepeats": 4,
+        "cutoff": 3
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-19-simple-static-fake-ts",
+      "displayName": "general (SIMPLE FAKE)",
+      "file": "general (SIMPLE FAKE).bat",
+      "family": "static-fake-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 8,
+        "quicRepeats": 10,
+        "discordRepeats": 6,
+        "cutoff": 3
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-20-simple-auto-fake-ts",
+      "displayName": "general (SIMPLE FAKE ALT)",
+      "file": "general (SIMPLE FAKE ALT).bat",
+      "family": "auto-fake-ts",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake"
+        ],
+        "fooling": [
+          "ts"
+        ],
+        "splitPositions": []
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "www.google.com",
+        "secondary": "ya.ru"
+      },
+      "parameters": {
+        "seqOvl": 0,
+        "repeats": 8,
+        "quicRepeats": 10,
+        "discordRepeats": 5,
+        "cutoff": 3
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    },
+    {
+      "id": "nr063-21-auto-multisplit-badseq",
+      "displayName": "general (SIMPLE FAKE ALT2)",
+      "file": "general (SIMPLE FAKE ALT2).bat",
+      "family": "auto-multisplit-badseq",
+      "tcp": {
+        "scopes": {
+          "discord": "443,2053,2083,2087,2096,8443",
+          "youtube": "443",
+          "general": "80,443",
+          "fallback": "80,443,8443",
+          "game": "%GameFilterTCP%"
+        },
+        "modes": [
+          "fake",
+          "multisplit"
+        ],
+        "fooling": [
+          "badseq"
+        ],
+        "splitPositions": [
+          "1"
+        ]
+      },
+      "udp": {
+        "scopes": {
+          "quic": "443",
+          "discord": "19294-19344,50000-50100",
+          "fallback": "443",
+          "game": "%GameFilterUDP%"
+        },
+        "modes": [
+          "fake"
+        ]
+      },
+      "sni": {
+        "primary": "ya.ru",
+        "secondary": "www.google.com"
+      },
+      "parameters": {
+        "seqOvl": 568,
+        "repeats": 8,
+        "quicRepeats": 11,
+        "discordRepeats": 4,
+        "cutoff": 4
+      },
+      "fakePayloads": [
+        "bin/ACTIVE_DISCORD_UDP.bin",
+        "bin/ACTIVE_GAME_UDP.bin",
+        "bin/quic_initial_4pda_to.bin",
+        "bin/quic_initial_www_google_com.bin",
+        "bin/stun.bin",
+        "bin/stun2.bin",
+        "bin/tls_clienthello_max_ru.bin",
+        "bin/tls_clienthello_www_google_com.bin"
+      ],
+      "requiredLists": [
+        "lists/ipset-all.txt",
+        "lists/ipset-exclude-user.txt",
+        "lists/ipset-exclude.txt",
+        "lists/list-exclude-user.txt",
+        "lists/list-exclude.txt",
+        "lists/list-general-user.txt",
+        "lists/list-general.txt",
+        "lists/list-google.txt",
+        "lists/list-nexroute-discord-critical.txt",
+        "lists/list-nexroute-youtube-critical.txt"
+      ],
+      "compatibility": {
+        "flowseal": "1.10.3",
+        "windows": "10/11-x64",
+        "addressFamily": "upstream-dependent"
+      },
+      "provenance": {
+        "sourceVersion": "0.6.3",
+        "source": "Get-NexRoute063StrategyCatalog"
+      }
+    }
+  ]
+}

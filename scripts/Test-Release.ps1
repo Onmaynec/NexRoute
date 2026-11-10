@@ -62,6 +62,44 @@ if ($sourceManifest.expectedSha256 -and $upstreamLock.sha256 -ne ([string]$sourc
 
 $patchReport = Get-Content -LiteralPath (Join-Path $root '.service/patch-report.json') -Raw -Encoding UTF8 | ConvertFrom-Json
 $patches = @($patchReport.patches)
+
+# Verify that the published manifest, source catalog and both build reports
+# describe the exact same 21 profiles. A changed JSON file cannot be masked
+# by copying a valid patch-report.json from an earlier build.
+$manifestPath = Join-Path $root '.service/strategy-manifest.json'
+$sourceStrategyManifest = Join-Path $repositoryRoot 'overlay/.service/strategy-manifest.json'
+$refreshReportPath = Join-Path $root '.service/strategy-refresh-report.json'
+foreach ($requiredManifestFile in @($manifestPath,$sourceStrategyManifest,$refreshReportPath)) {
+    if (-not (Test-Path -LiteralPath $requiredManifestFile -PathType Leaf)) {
+        throw "Missing strategy manifest evidence: $requiredManifestFile"
+    }
+}
+. (Join-Path $repositoryRoot 'overlay/.service/next/nexroute-strategy-refresh.ps1')
+$normalizedManifest = Read-NrStrategyManifest -Path $manifestPath -PayloadRoot $root
+$sourceStrategySha = (Get-FileHash -LiteralPath $sourceStrategyManifest -Algorithm SHA256).Hash.ToLowerInvariant()
+$refreshReport = Get-Content -LiteralPath $refreshReportPath -Raw -Encoding UTF8 | ConvertFrom-Json
+$patchManifest = $patchReport.strategyManifest
+if ($normalizedManifest.Sha256 -cne $sourceStrategySha -or
+    [string]$refreshReport.manifest.sha256 -cne $sourceStrategySha -or
+    [string]$patchManifest.sha256 -cne $sourceStrategySha) {
+    throw 'Strategy manifest SHA-256 does not match the source and build evidence.'
+}
+if ($patchManifest.strategySetVersion -cne '0.7.0' -or
+    [int]$patchManifest.profileCount -ne 21 -or
+    @($patchManifest.profiles).Count -ne 21 -or
+    @($refreshReport.strategies).Count -ne 21) {
+    throw 'Strategy manifest provenance is incomplete.'
+}
+foreach ($profile in @($normalizedManifest.Profiles)) {
+    $digest = Get-NrManifestProfileSha256 -Profile $profile
+    $inPatch = @($patchManifest.profiles | Where-Object { $_.id -ceq $profile.id })
+    $inRefresh = @($refreshReport.strategies | Where-Object { $_.profile -ceq $profile.id })
+    if ($inPatch.Count -ne 1 -or $inRefresh.Count -ne 1 -or
+        [string]$inPatch[0].sha256 -cne $digest -or
+        [string]$inRefresh[0].profileSha256 -cne $digest) {
+        throw "Strategy profile provenance mismatch: $($profile.id)"
+    }
+}
 if ([int]$patchReport.schemaVersion -ne 1) { throw 'Patch report schema must be 1.' }
 if ($patchReport.nexRouteVersion -ne $expectedVersion) { throw 'Patch report contains the wrong NexRoute version.' }
 if ($patchReport.upstreamSha256 -ne $upstreamLock.sha256) { throw 'Patch report and upstream lock use different archive hashes.' }

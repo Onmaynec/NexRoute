@@ -13,6 +13,16 @@ export const metadata = createMetadata(
 
 const fallback = [
   {
+    version: "0.7.0",
+    date: "2026-11-10",
+    summary: "Strategy Manifest: декларативные 21 профиль, проверяемый генератор, golden regression и SHA-256 provenance.",
+  },
+  {
+    version: "0.6.6",
+    date: "2026-11-10",
+    summary: "Стабилизация документации, release metadata и updater regression.",
+  },
+  {
     version: "0.6.5",
     date: "2026-09-21",
     summary: "Возвращено числовое меню, переработан Strategy Lab с повторными проверками и live-прогрессом.",

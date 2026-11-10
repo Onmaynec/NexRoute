@@ -1,9 +1,9 @@
-Describe 'NexRoute 0.6.6 release coherence' {
+Describe 'NexRoute 0.7.0 release coherence' {
     BeforeAll {
         $root=Split-Path -Parent $PSScriptRoot
         $script:version=(Get-Content -LiteralPath (Join-Path $root '.service/version.txt') -Raw -Encoding UTF8).Trim()
-        $script:releaseNotes=Get-Content -LiteralPath (Join-Path $root '.github/release-notes/v0.6.6.md') -Raw -Encoding UTF8
-        $script:acceptance=Get-Content -LiteralPath (Join-Path $root 'docs/RELEASE_0.6.6_ACCEPTANCE.md') -Raw -Encoding UTF8
+        $script:releaseNotes=Get-Content -LiteralPath (Join-Path $root '.github/release-notes/v0.7.0.md') -Raw -Encoding UTF8
+        $script:acceptance=Get-Content -LiteralPath (Join-Path $root 'docs/RELEASE_0.7.0_ACCEPTANCE.md') -Raw -Encoding UTF8
         $script:websitePackage=Get-Content -LiteralPath (Join-Path $root 'website/package.json') -Raw -Encoding UTF8 | ConvertFrom-Json
         $script:websiteLock=Get-Content -LiteralPath (Join-Path $root 'website/package-lock.json') -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
         $script:validateWorkflow=Get-Content -LiteralPath (Join-Path $root '.github/workflows/validate.yml') -Raw -Encoding UTF8
@@ -12,26 +12,27 @@ Describe 'NexRoute 0.6.6 release coherence' {
         $script:launcherSmoke=Get-Content -LiteralPath (Join-Path $root 'scripts/Test-WindowsLaunchers.ps1') -Raw -Encoding UTF8
         $script:updaterEntry=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/nexroute-updater-entry.ps1') -Raw -Encoding UTF8
         $script:refresh=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/next/nexroute-strategy-refresh.ps1') -Raw -Encoding UTF8
+        $script:strategyManifest=Get-Content -LiteralPath (Join-Path $root 'overlay/.service/strategy-manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json
         $script:evidence=Get-Content -LiteralPath (Join-Path $root 'scripts/Test-StrategyLab063Evidence.ps1') -Raw -Encoding UTF8
     }
 
-    It 'uses 0.6.6 as the canonical package and website version' {
-        $script:version | Should -Be '0.6.6'
+    It 'uses 0.7.0 as the canonical package and website version' {
+        $script:version | Should -Be '0.7.0'
         [string]$script:websitePackage.version | Should -Be $script:version
         [string]$script:websiteLock['version'] | Should -Be $script:version
         [string]$script:websiteLock['packages']['']['version'] | Should -Be $script:version
-        $script:releaseNotes | Should -Match ([regex]::Escape('# NexRoute 0.6.6 — стабилизация'))
-        $script:acceptance | Should -Match ([regex]::Escape('NexRoute 0.6.6 — критерии готовности релиза'))
+        $script:releaseNotes | Should -Match ([regex]::Escape('# NexRoute 0.7.0 — Strategy Manifest'))
+        $script:acceptance | Should -Match ([regex]::Escape('NexRoute 0.7.0 — критерии готовности релиза'))
     }
 
-    It 'uses 0.6.6 package names and job labels in the validation workflow' {
+    It 'uses 0.7.0 package names and job labels in the validation workflow' {
         foreach ($token in @(
-            'Validate NexRoute 0.6.6 sources',
-            'Build and test NexRoute 0.6.6',
-            "if (`$version -ne '0.6.6')",
-            'NexRoute-0.6.6-smoke',
-            'artifacts/NexRoute-0.6.6-win-x64.zip',
-            'artifacts/NexRoute-0.6.6-win-x64.zip.sha256'
+            'Validate NexRoute 0.7.0 sources',
+            'Build and test NexRoute 0.7.0',
+            "if (`$version -ne '0.7.0')",
+            'NexRoute-0.7.0-smoke',
+            'artifacts/NexRoute-0.7.0-win-x64.zip',
+            'artifacts/NexRoute-0.7.0-win-x64.zip.sha256'
         )) { $script:validateWorkflow | Should -Match ([regex]::Escape($token)) }
     }
 
@@ -51,7 +52,10 @@ Describe 'NexRoute 0.6.6 release coherence' {
     }
 
     It 'keeps the 21-profile refresh and live evidence gate in the stable source tree' {
-        foreach ($token in @('nr063-01','nr063-21','multisplit','multidisorder','fakedsplit','hostfakesplit','syndata')) { $script:refresh | Should -Match ([regex]::Escape($token)) }
+        @($script:strategyManifest.profiles).Count | Should -Be 21
+        $script:strategyManifest.strategySetVersion | Should -Be '0.7.0'
+        foreach ($token in @('Get-NexRoute063StrategyCatalog','Read-NrStrategyManifest','Get-NexRoute063TcpArguments')) { $script:refresh | Should -Match ([regex]::Escape($token)) }
+        foreach ($token in @('nr063-01','nr063-21','multisplit','multidisorder','fakedsplit','hostfakesplit','syndata')) { ($script:strategyManifest | ConvertTo-Json -Depth 20) | Should -Match ([regex]::Escape($token)) }
         foreach ($target in @('DiscordGateway','DiscordCDN','DiscordUpdates','YouTubeWeb','YouTubeShort','YouTubeImage','YouTubeVideoRedirect','GoogleMain','CloudflareWeb')) { $script:evidence | Should -Match ([regex]::Escape($target)) }
     }
 
@@ -76,8 +80,8 @@ Describe 'NexRoute 0.6.6 release coherence' {
         (& (Join-Path $root 'scripts/Test-GitHubActionsPinning.ps1') -Root $root).status | Should -Be 'passed'
     }
 
-    It 'documents the four-subject 0.6.6 release trust flow' {
-        foreach ($token in @('NexRoute-0.6.6-win-x64.zip','NexRoute-0.6.6-win-x64.zip.sha256','NexRoute-0.6.6-validation.json','NexRoute-0.6.6-validation.md')) { $script:releaseNotes | Should -Match ([regex]::Escape($token)) }
+    It 'documents the four-subject 0.7.0 release trust flow' {
+        foreach ($token in @('NexRoute-0.7.0-win-x64.zip','NexRoute-0.7.0-win-x64.zip.sha256','NexRoute-0.7.0-validation.json','NexRoute-0.7.0-validation.md')) { $script:releaseNotes | Should -Match ([regex]::Escape($token)) }
         foreach ($token in @('NotificationToastChannel','NotificationFallbackChannel','actions/attest v4.2.2','gh attestation verify','NexRoute-${{ steps.version.outputs.version }}-validation.json','NexRoute-${{ steps.version.outputs.version }}-validation.md')) { $script:releaseWorkflow | Should -Match ([regex]::Escape($token)) }
     }
 }
