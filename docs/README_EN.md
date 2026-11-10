@@ -2,16 +2,18 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](../LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](COMPATIBILITY.md)
-[![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.0-6f42c1)](UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.6.0-24e1d6)](../.service/version.txt)
+[![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.3-6f42c1)](UPSTREAM.md)
+[![Version](https://img.shields.io/badge/version-0.6.6-24e1d6)](../.service/version.txt)
 
 NexRoute is a local Windows route-control toolkit for DPI desynchronization strategies. It manages `winws` and WinDivert, service-specific filter scopes, release verification, and rollback on Windows 10 and Windows 11 x64.
 
 > NexRoute is not a VPN, proxy, or anonymity service. It does not change the public IP address.
 
-## Version 0.6.0 — production-hardening and behavioral validation
+## Version 0.6.6 — stabilization
 
-Version 0.6.0 adds a verifiable runtime and release contract:
+Version 0.6.6 aligns docs, website, build examples and release metadata with Flowseal 1.10.3. Regression tests cover documentation and the 0.6.5 → 0.6.6 updater migration.
+
+Existing runtime and release-verification capabilities are retained:
 
 - isolated per-service workers with unique process state, logs, strategies, and non-overlapping filter scopes;
 - deterministic failover thresholds, recovery, cooldown, maximum-switch limits, and synthetic fault injection;
@@ -25,17 +27,17 @@ Version 0.6.0 adds a verifiable runtime and release contract:
 - portable GitHub artifact-attestation verification without a preinstalled GitHub CLI;
 - detached update transactions and migration fixtures from 0.4.1 and 0.5.0.
 
-See [RELEASE_0.6.0_ACCEPTANCE.md](RELEASE_0.6.0_ACCEPTANCE.md).
+See [RELEASE_0.6.6_ACCEPTANCE.md](RELEASE_0.6.6_ACCEPTANCE.md).
 
 ## Release assets and verification
 
-A complete 0.6.0 release contains four related assets:
+A complete 0.6.6 release contains four related assets:
 
 ```text
-NexRoute-0.6.0-win-x64.zip
-NexRoute-0.6.0-win-x64.zip.sha256
-NexRoute-0.6.0-validation.json
-NexRoute-0.6.0-validation.md
+NexRoute-0.6.6-win-x64.zip
+NexRoute-0.6.6-win-x64.zip.sha256
+NexRoute-0.6.6-validation.json
+NexRoute-0.6.6-validation.md
 ```
 
 All four subjects are covered by one GitHub artifact attestation. The portable verifier checks immutable release URLs, the package checksum, and every attested subject before installing the validation report and matching local verification receipt.
@@ -43,17 +45,17 @@ All four subjects are covered by one GitHub artifact attestation. The portable v
 Manual verification:
 
 ```powershell
-gh attestation verify .\NexRoute-0.6.0-win-x64.zip --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.0-win-x64.zip.sha256 --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.0-validation.json --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.0-validation.md --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.6-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.6-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.6-validation.json --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.6-validation.md --repo Onmaynec/NexRoute
 ```
 
 The Validation Viewer does not automatically trust imported JSON. A document remains `attestation-not-verified` until a digest-matched local receipt exists. Wrong product/version documents, duplicate check IDs, unknown statuses, and inconsistent overall status are rejected.
 
 ## Product capabilities
 
-- 21 real Flowseal strategies;
+- 22 upstream Flowseal strategies (21 specialized NexRoute refresh profiles);
 - 15 Service Matrix profiles;
 - per-service worker isolation and deterministic failover;
 - Strategy Lab history, scoring, recommendations, and native Dashboard;

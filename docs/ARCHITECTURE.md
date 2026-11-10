@@ -1,21 +1,21 @@
-# Архитектура NexRoute 0.6.0 🏗️
+# Архитектура NexRoute 0.6.6 🏗️
 
 ## Принцип
 
-NexRoute не заменяет сетевой движок zapret. Проект создаёт контролируемый Windows distribution поверх immutable Flowseal `1.10.0`, добавляя service isolation, diagnostics, native desktop tools, transactional updates и verifiable release evidence.
+NexRoute не заменяет сетевой движок zapret. Проект создаёт контролируемый Windows distribution поверх immutable Flowseal `1.10.3`, добавляя service isolation, diagnostics, native desktop tools, transactional updates и verifiable release evidence.
 
 ```text
-Immutable Flowseal 1.10.0 archive
+Immutable Flowseal 1.10.3 archive
         │
         ├── winws + WinDivert + payloads
-        ├── 21 strategy launchers
+        ├── 22 upstream strategy launchers
         ├── lists / utils / service.bat
         └── committed SHA-256 + required paths
                        │
                        ▼
               Build-Release / Build-Package
         ├── validates upstream identity
-        ├── applies 23 tracked patch targets
+        ├── applies 24 tracked patch targets
         ├── copies NexRoute overlay/runtime
         ├── compiles 4 native Windows tools
         ├── generates icon and shortcut
@@ -30,6 +30,8 @@ Immutable Flowseal 1.10.0 archive
         ├── verification before publication
         └── stable GitHub Release
 ```
+
+Flowseal 1.10.3 содержит 22 upstream-стратегии, включая `general (ALT13).bat`. 21 специализированный профиль strategy-refresh 0.6.3 пока находится в PowerShell-каталоге; перенос в manifest отнесён к 0.7.0. Patch report фиксирует 24 target-а: 22 стратегии, `service.bat` и `utils/test zapret.ps1`.
 
 ## Control layer
 

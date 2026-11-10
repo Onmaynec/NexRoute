@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows)](docs/COMPATIBILITY.md)
 [![Flowseal baseline](https://img.shields.io/badge/Flowseal-1.10.3-6f42c1)](docs/UPSTREAM.md)
-[![Version](https://img.shields.io/badge/version-0.6.4-24e1d6)](.service/version.txt)
+[![Version](https://img.shields.io/badge/version-0.6.6-24e1d6)](.service/version.txt)
 
 **Локальная Windows-система управления стратегиями обхода DPI с изолированными сервисными workers, проверяемыми обновлениями и честным release validation.**
 
@@ -15,6 +15,18 @@
 
 > [!IMPORTANT]
 > NexRoute не является VPN, прокси или средством анонимизации. Проект локально управляет `winws` и WinDivert, не меняет публичный IP-адрес и применяет выбранные стратегии только к трафику включённых сервисов.
+
+## NexRoute 0.6.6 — Стабилизация
+
+В 0.6.6 синхронизированы действующие инструкции, сайт и metadata с release contract. Добавлены тесты документации и обновления с версии 0.6.5.
+
+- Flowseal 1.10.3, 22 upstream-стратегии, 24 patch targets и 15 Service Matrix profiles сохранены;
+- classic UI, Strategy Lab, workers и native tools работают на прежней основе;
+- исправлены устаревшие версии в командах сборки и проверке release assets;
+- добавлены regression checks для документации и updater migration/rollback;
+- параметры сетевых стратегий не изменяются.
+
+Подробности: [release notes](.github/release-notes/v0.6.6.md), [acceptance](docs/RELEASE_0.6.6_ACCEPTANCE.md).
 
 ## NexRoute 0.6.5 — Classic UI + Strategy Lab 🟥
 
@@ -140,13 +152,13 @@
 
 ## Проверяемый релиз 🔏
 
-Для версии 0.6.5 публикуются четыре связанных asset:
+Для версии 0.6.6 публикуются четыре связанных asset:
 
 ```text
-NexRoute-0.6.5-win-x64.zip
-NexRoute-0.6.5-win-x64.zip.sha256
-NexRoute-0.6.5-validation.json
-NexRoute-0.6.5-validation.md
+NexRoute-0.6.6-win-x64.zip
+NexRoute-0.6.6-win-x64.zip.sha256
+NexRoute-0.6.6-validation.json
+NexRoute-0.6.6-validation.md
 ```
 
 Все четыре файла входят в одну GitHub artifact attestation. Portable verifier проверяет immutable release URLs, SHA-256 package и attestation каждого subject. После успешной проверки validation report и digest-matched receipt атомарно устанавливаются в `.service`.
@@ -154,10 +166,10 @@ NexRoute-0.6.5-validation.md
 Дополнительная ручная проверка:
 
 ```powershell
-gh attestation verify .\NexRoute-0.6.4-win-x64.zip --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.4-win-x64.zip.sha256 --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.4-validation.json --repo Onmaynec/NexRoute
-gh attestation verify .\NexRoute-0.6.4-validation.md --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.6-win-x64.zip --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.6-win-x64.zip.sha256 --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.6-validation.json --repo Onmaynec/NexRoute
+gh attestation verify .\NexRoute-0.6.6-validation.md --repo Onmaynec/NexRoute
 ```
 
 Validation Viewer не доверяет импортированному JSON автоматически. До появления matching local receipt документ отображается как `attestation-not-verified`. Wrong product/version, duplicate check IDs, неизвестные статусы и несогласованный `overallStatus` отклоняются.
@@ -228,7 +240,7 @@ NEXROUTE_BUILD_INFO.txt
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.5 `
+  -Version 0.6.6 `
   -OutputDirectory ./artifacts `
   -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 ```
@@ -237,7 +249,7 @@ pwsh ./scripts/Build-Release.ps1 `
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.3 `
+  -Version 0.6.6 `
   -OutputDirectory ./artifacts-offline `
   -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip
 ```
@@ -321,4 +333,4 @@ Release workflow дополнительно создаёт JSON/Markdown validat
 
 ---
 
-**NexRoute 0.6.4** · Baseline: **Flowseal 1.10.3** · Windows 10/11 x64
+**NexRoute 0.6.6** · Baseline: **Flowseal 1.10.3** · Windows 10/11 x64

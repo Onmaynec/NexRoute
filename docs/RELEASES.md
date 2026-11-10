@@ -1,4 +1,4 @@
-# Сборка и публикация NexRoute 0.6.0 📦
+# Сборка и публикация NexRoute 0.6.6 📦
 
 ## Политика
 
@@ -6,7 +6,7 @@
 
 Release собирается заново из `main` и считается готовым только после прохождения automated acceptance gate. Hardware- и ISP-dependent возможности не превращаются в `passed` без реального evidence: они остаются `experimental` или `unsupported` в signed validation report.
 
-Критерии версии: [RELEASE_0.6.0_ACCEPTANCE.md](RELEASE_0.6.0_ACCEPTANCE.md).
+Критерии версии: [RELEASE_0.6.6_ACCEPTANCE.md](RELEASE_0.6.6_ACCEPTANCE.md).
 
 ## Каноническая версия
 
@@ -16,11 +16,11 @@ Release собирается заново из `main` и считается го
 .service/version.txt
 ```
 
-Для 0.6.0 это значение обязано совпадать с:
+Для 0.6.6 это значение обязано совпадать с:
 
 - `website/package.json`;
 - README и CHANGELOG;
-- release notes `v0.6.0.md`;
+- release notes `v0.6.6.md`;
 - smoke artifact names;
 - package `.service/version.txt`;
 - validation report `version`.
@@ -42,7 +42,7 @@ Invoke-Pester -Path ./tests -CI -Output Detailed
 `.service/upstream-manifest.json` фиксирует:
 
 - `Flowseal/zapret-discord-youtube`;
-- tag `1.10.0`;
+- tag `1.10.3`;
 - единственный допустимый archive asset;
 - committed SHA-256;
 - минимальный размер;
@@ -54,9 +54,9 @@ Release builder использует предварительно провере
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.0 `
+  -Version 0.6.6 `
   -OutputDirectory ./artifacts `
-  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.0.zip
+  -UpstreamCachePath ./cache/zapret-discord-youtube-1.10.3.zip
 
 pwsh ./scripts/Test-Release.ps1 `
   -ArtifactsDirectory ./artifacts `
@@ -81,9 +81,9 @@ Package build компилирует системным .NET Framework compiler:
 
 ```powershell
 pwsh ./scripts/Build-Release.ps1 `
-  -Version 0.6.0 `
+  -Version 0.6.6 `
   -OutputDirectory ./artifacts-offline `
-  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.0.zip
+  -UpstreamArchive ./cache/zapret-discord-youtube-1.10.3.zip
 
 pwsh ./scripts/Test-Release.ps1 `
   -ArtifactsDirectory ./artifacts-offline `
@@ -107,9 +107,9 @@ Release ZIP содержит:
 NEXROUTE_BUILD_INFO.txt
 ```
 
-Patch report содержит ровно 23 target-а:
+Patch report содержит ровно 24 target-а:
 
-- 21 реальную Flowseal strategy;
+- 22 upstream Flowseal strategies;
 - `service.bat`;
 - `utils/test zapret.ps1`.
 
@@ -121,7 +121,7 @@ Patch report содержит ровно 23 target-а:
 
 - package version и archive name;
 - checksum и upstream lock;
-- 23 tracked patch targets, 21 strategy и 15 service profiles;
+- 24 tracked patch targets, 22 strategies и 15 service profiles;
 - Windows PowerShell 5.1 parsing и Strategy Lab BOM;
 - native assembly names, hashes и deterministic self-tests;
 - Dashboard reading Strategy Lab history fixture;
@@ -136,8 +136,8 @@ Patch report содержит ровно 23 target-а:
 После package verification workflow создаёт:
 
 ```text
-NexRoute-0.6.0-validation.json
-NexRoute-0.6.0-validation.md
+NexRoute-0.6.6-validation.json
+NexRoute-0.6.6-validation.md
 ```
 
 JSON schema v1 содержит:
@@ -156,10 +156,10 @@ Failed required check блокирует publication.
 Финальный Release содержит четыре связанных файла:
 
 ```text
-NexRoute-0.6.0-win-x64.zip
-NexRoute-0.6.0-win-x64.zip.sha256
-NexRoute-0.6.0-validation.json
-NexRoute-0.6.0-validation.md
+NexRoute-0.6.6-win-x64.zip
+NexRoute-0.6.6-win-x64.zip.sha256
+NexRoute-0.6.6-validation.json
+NexRoute-0.6.6-validation.md
 ```
 
 Все четыре subjects входят в одну GitHub artifact attestation. Workflow проверяет каждую attestation до `gh release create`.
@@ -200,14 +200,14 @@ Release workflow из `main` дополнительно:
 
 ## Release checklist ✅
 
-- [ ] repository version равен 0.6.0 во всех canonical surfaces
+- [ ] repository version равен 0.6.6 во всех canonical surfaces
 - [ ] PowerShell AST parsing проходит
 - [ ] все Pester acceptance tests проходят
 - [ ] website typecheck и build проходят
 - [ ] upstream manifest содержит committed SHA-256
 - [ ] online/offline upstream SHA совпадает
-- [ ] patch report содержит 23 unique targets
-- [ ] 21 strategy и 15 service profiles валидны
+- [ ] patch report содержит 24 unique targets
+- [ ] 22 strategies и 15 service profiles валидны
 - [ ] native tray/notifier/dashboard/viewer скомпилированы
 - [ ] online/offline desktop self-tests проходят
 - [ ] notification channels подтверждены
